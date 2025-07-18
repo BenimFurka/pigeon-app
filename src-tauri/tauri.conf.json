@@ -27,7 +27,8 @@
     "active": true,
     "targets": ["deb", "rpm", "msi"],
     "icon": [
-      "icons/favicon.png"
+      "icons/favicon.png",
+      "icons/favicon.ico"
     ]
   }
 }
