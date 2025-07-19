@@ -1,17 +1,17 @@
 <script>
-    import Tab from "./Tab.svelte";
-  export let tabs = [];
-  export let onTabSelect = () => {};
+	import Tab from "./Tab.svelte";
+	export let tabs = [];
+	export let onTabSelect = () => {};
 </script>
 
 <div class="tabs">
-  {#each tabs as tab}
-    <Tab
-      text={tab.text}
-      active={tab.active}
-      onTabClick={() => onTabSelect(tab.id)}
-    />
-  {/each}
+	{#each tabs as tab}
+		<Tab
+		text={tab.text}
+		active={tab.active}
+		onTabClick={() => onTabSelect(tab.id)}
+		/>
+	{/each}
 </div>
 
 <style>

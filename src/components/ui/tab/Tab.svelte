@@ -1,12 +1,12 @@
 <script>
-  export let text = '';
-  export let id = '';
-  export let active = false;
-  export let onTabClick = () => {};
+	export let text = '';
+	export let id = '';
+	export let active = false;
+	export let onTabClick = () => {};
 </script>
 
 <button id={id} class={`tab ${active ? 'active' : ''}`} on:click={onTabClick}>
-  {text}
+  	{text}
 </button>
 
 <style>
@@ -26,9 +26,10 @@
         
     .tab.active {
         color: var(--primary-color);
-        background: rgba(63, 81, 177, 0.1);
-        border-bottom: 2px solid var(--primary-color);    
+        background: hsla(var(--hue), 45%, 52%, 0.1);
+        border-bottom: 2px solid hsla(var(--hue), 45%, 52%, 0.8);
     }
+
     .tab:hover:not(.active) {
         background-color: var(--glass);
     }
