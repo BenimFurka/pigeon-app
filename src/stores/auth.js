@@ -1,36 +1,35 @@
 import { writable } from 'svelte/store';
 import { getApiUrl } from '../config';
+import { invoke } from '@tauri-apps/api/tauri';
 
 export const loggedIn = writable(false);
 export const currentUser = writable(null);
 export const authError = writable(null);
-export const isLoading = writable(false);
 
 async function makeAuthRequest(endpoint, data) {
-    isLoading.set(true);
-    authError.set(null);
-    console.log('Sending request to', endpoint, data);
     try {
-        const response = await fetch(getApiUrl(endpoint), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: data }), 
-            credentials: 'include'
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || 'An unknown error occurred.');
+        if (window.__TAURI__) {
+            const url = getApiUrl(endpoint)
+            const res = await invoke('make_request', { url: url, data: { data: data } });
+            
+			if (res.success === true) return res; else { authError.set(res.message) }
+        } else {
+            const res = await fetch(getApiUrl(endpoint), { 
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data),
+                credentials: 'include'
+            });
+            return await res.json();
         }
-        return result;
-    } catch (error) {
-        authError.set(error.message);
-        console.error(`Auth request to ${endpoint} failed:`, error);
+    } catch (err) {
+        console.error(err);
         return null;
-    } finally {
-        isLoading.set(false);
     }
 }
+
 
 export async function login(login, password) {
     const result = await makeAuthRequest('auth/login', { login, password });

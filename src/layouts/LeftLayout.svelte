@@ -6,9 +6,9 @@
 //  import ChatsList from '../ChatsList.svelte';
 
   export let searchQuery = '';
-
-  export let onChatSelect = (id) => {};
-  export let onSearch = (value) => {};
+// TODO: Сделать
+//  export let onChatSelect = (id) => {};
+//  export let onSearch = (value) => {};
 
 </script>
 
@@ -30,7 +30,7 @@
 </div>
 
 <style>
-	.left-layout, .right-layout {
+	.left-layout {
 		display: flex;
 		flex-direction: column;
 
@@ -40,9 +40,10 @@
 		z-index: 1;
 		overflow: hidden;
 	}
-
+/* TODO: перенести
 	.list {
 		height: calc(100vh - 100px);
 		overflow-y: auto;
 	}
+*/
 </style>

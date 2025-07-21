@@ -24,7 +24,6 @@
 			required={field.required}
 			style="width: 100%; height: 40px;"
 			bind:value={field.value}
-			on:input={(e) => fields = updateField(fields, field.id, e.target.value)}
 		/>
 		{/each}
 		<Button text={sumbit} type="submit" style="width: 100%; margin: 20px 0px 0px 0px;"/>
