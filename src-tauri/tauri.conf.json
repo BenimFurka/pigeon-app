@@ -7,7 +7,7 @@
     "distDir": "../public"
   },
   "package": {
-    "productName": "pigeon-app",
+    "productName": "Pigeon App",
     "version": "0.1.0"
   },
   "tauri": {
