@@ -1,9 +1,9 @@
-<script>
-	export let text = '';
-	export let type = 'button';
-	export let disabled = false;
-	export let style = '';
-	export let onClick = () => {};
+<script lang="ts">
+	export let text: string = '';
+	export let type: "button" | "submit" | "reset" | null | undefined = 'button';
+	export let disabled: boolean = false;
+	export let style: string = '';
+	export let onClick: (e: MouseEvent) => void = (e) => {};
 </script>
 
 <button type={type} disabled={disabled} style={style} on:click={onClick}>

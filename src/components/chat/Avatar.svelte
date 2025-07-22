@@ -1,13 +1,13 @@
-<script>
-	import { avatars } from '../../stores/avatarStore.js';
+<script lang="ts">
+	import { avatars } from '../../stores/avatar';
 
-	export let userId;
-	export let size = 40;
+	export let id: number;
+	export let size: number = 40;
 
-	let avatarPromise = avatars.getAvatar(userId);
+	let avatarPromise: Promise<string | null> = avatars.getAvatar(id);
 
-	$: if (userId) {
-		avatarPromise = avatars.getAvatar(userId);
+	$: if (id) {
+		avatarPromise = avatars.getAvatar(id);
 	}
 </script>
 

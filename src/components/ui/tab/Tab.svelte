@@ -1,11 +1,11 @@
-<script>
-	export let text = '';
-	export let id = '';
-	export let active = false;
-	export let onTabClick = () => {};
+<script lang="ts">
+	export let text: string = '';
+	export let id: string = '';
+	export let active: boolean = false;
+	export let onClick: (e: MouseEvent) => void = (e) => {};
 </script>
 
-<button id={id} class={`tab ${active ? 'active' : ''}`} on:click={onTabClick}>
+<button id={id} class={`tab ${active ? 'active' : ''}`} on:click={onClick}>
   	{text}
 </button>
 

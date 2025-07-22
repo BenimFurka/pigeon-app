@@ -1,11 +1,12 @@
-<script>
+<script lang="ts">
 	import Input from "../Input.svelte";
 	import Button from "../Button.svelte";
+    import { InputItem } from "../../../types/components";
 
-	export let title = '';
-	export let sumbit = 'Отправить';
-	export let fields = [];
-	export let onSubmit = () => {};
+	export let title: string = '';
+	export let submit: string = 'Отправить';
+	export let fields: InputItem[]= [];
+	export let onSubmit: (e: SubmitEvent) => void = (e) => {};
 	export let active = false;
 </script>
 
@@ -26,7 +27,7 @@
 			bind:value={field.value}
 		/>
 		{/each}
-		<Button text={sumbit} type="submit" style="width: 100%; margin: 20px 0px 0px 0px;"/>
+		<Button text={submit} type="submit" style="width: 100%; margin: 20px 0px 0px 0px;"/>
   	</form>
 </div>
 

@@ -1,11 +1,11 @@
-<script>
-	export let label = '';
-	export let id = '';
-	export let type = 'text';
-	export let placeholder = '';
-	export let required = false;
-	export let value = '';
-	export let style = '';
+<script lang="ts">
+	export let label: string = '';
+	export let id: string = '';
+	export let type: string = 'text';
+	export let placeholder: string = '';
+	export let required: boolean = false;
+	export let value: string = '';
+	export let style: string = '';
 </script>
 
 <div class="input-group">

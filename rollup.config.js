@@ -5,6 +5,8 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
+import sveltePreprocess from 'svelte-preprocess';
+import typescript from '@rollup/plugin-typescript';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -18,7 +20,7 @@ function serve() {
 	return {
 		writeBundle() {
 			if (server) return;
-			server = spawn('npm', ['run', 'start', '--', '--dev'], {
+			server = spawn('npm', ['run', 'start', '--', '--dev', '--host', '0.0.0.0', '--port', '1420'], {
 				stdio: ['ignore', 'inherit', 'inherit'],
 				shell: true
 			});
@@ -30,7 +32,7 @@ function serve() {
 }
 
 export default {
-	input: 'src/main.js',
+	input: 'src/main.ts',
 	output: {
 		sourcemap: true,
 		format: 'iife',
@@ -42,7 +44,8 @@ export default {
 			compilerOptions: {
 				// enable run-time checks when not in production
 				dev: !production
-			}
+			},
+			preprocess: sveltePreprocess()
 		}),
 		// we'll extract any component CSS out into
 		// a separate file - better for performance
@@ -56,9 +59,18 @@ export default {
 		resolve({
 			browser: true,
 			dedupe: ['svelte'],
-			exportConditions: ['svelte']
+			exportConditions: ['.svelte', '.mjs', '.js', '.ts', '.json']
 		}),
 		commonjs(),
+		typescript({
+			tsconfig: "tsconfig.json",
+			compilerOptions: {
+				module: "ESNext",
+				moduleResolution: "node",
+				verbatimModuleSyntax: false
+			},
+			filterRoot: process.cwd()
+			}),
 
 		// In dev mode, call `npm run start` once
 		// the bundle has been generated

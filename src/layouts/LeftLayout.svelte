@@ -1,14 +1,14 @@
-<script>
-  import Button from '../components/ui/Button.svelte';
-  import Input from '../components/ui/Input.svelte';
-  import Bar from '../components/ui/Bar.svelte';
-// TODO: Сделать
-//  import ChatsList from '../ChatsList.svelte';
+<script lang="ts">
+	import Button from '../components/ui/Button.svelte';
+	import Input from '../components/ui/Input.svelte';
+	import Bar from '../components/ui/Bar.svelte';
+	import ChatsList from '../ChatsList.svelte';
+    import ChatList from '../components/chat/ChatList.svelte';
 
-  export let searchQuery = '';
-// TODO: Сделать
-//  export let onChatSelect = (id) => {};
-//  export let onSearch = (value) => {};
+	export let searchQuery = '';
+	// TODO: Сделать
+	//  export let onChatSelect = (id) => {};
+	//  export let onSearch = (value) => {};
 
 </script>
 
@@ -27,6 +27,7 @@
 		style="width: 100%; margin: 10px; padding: 10px;"
 		bind:value={searchQuery} />
    </Bar>
+	<ChatList></ChatList>
 </div>
 
 <style>

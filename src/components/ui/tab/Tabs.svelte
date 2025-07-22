@@ -1,7 +1,9 @@
-<script>
+<script lang="ts">
+    import { TabItem } from "../../../types/components";
 	import Tab from "./Tab.svelte";
-	export let tabs = [];
-	export let onTabSelect = () => {};
+
+	export let tabs: TabItem[] = [];
+	export let onTabSelect: (id: string) => void = (id) => {};
 </script>
 
 <div class="tabs">
@@ -9,7 +11,7 @@
 		<Tab
 		text={tab.text}
 		active={tab.active}
-		onTabClick={() => onTabSelect(tab.id)}
+		onClick={() => onTabSelect(tab.id)}
 		/>
 	{/each}
 </div>

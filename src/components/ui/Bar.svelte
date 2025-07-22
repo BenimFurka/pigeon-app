@@ -1,6 +1,6 @@
-<script>
-	export let noCenter = false;
-	export let style = '';
+<script lang="ts">
+	export let noCenter: boolean = false;
+	export let style: string = '';
 </script>
 
 <div 
@@ -24,10 +24,6 @@
         margin: 0;
         align-items: center;
         justify-content: space-between;
-    }
-
-    .bar > * {
-      margin: 0 10px;
     }
 
     .bar.no-center {

@@ -1,11 +1,11 @@
-<script>
+<script lang="ts">
 	import AuthLayout from "./AuthLayout.svelte";
 	import LeftLayout from "./LeftLayout.svelte";
-	import { loggedIn } from '../stores/auth.js';
+	import { loggedIn } from '../stores/auth';
 </script>
 
 
-{#if !$loggedIn}
+{#if $loggedIn}
 <main>
 	<AuthLayout></AuthLayout>
 </main>
