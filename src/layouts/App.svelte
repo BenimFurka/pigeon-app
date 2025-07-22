@@ -5,7 +5,7 @@
 </script>
 
 
-{#if $loggedIn}
+{#if !$loggedIn}
 <main>
 	<AuthLayout></AuthLayout>
 </main>
