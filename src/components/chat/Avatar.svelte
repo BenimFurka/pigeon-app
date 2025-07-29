@@ -1,26 +1,37 @@
 <script lang="ts">
-	import { avatars } from '../../stores/avatar';
+    import { onMount } from 'svelte';
+    import { avatars } from '../../stores/avatar';
 
-	export let id: number;
-	export let size: number = 40;
+    export let id: number;
+    export let size: number = 40;
 
-	let avatarPromise: Promise<string | null> = avatars.getAvatar(id);
+    let avatarUrl: string | null = null;
+    let isVisible = false;
+    let container: HTMLDivElement;
 
-	$: if (id) {
-		avatarPromise = avatars.getAvatar(id);
-	}
+    onMount(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    isVisible = true;
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.1 }
+        );
+        observer.observe(container);
+        return () => observer.disconnect();
+    });
+
+    $: if (isVisible && id) {
+        avatars.getAvatar(id).then(url => avatarUrl = url);
+    }
 </script>
 
-<div class="avatar-container" style="width: {size}px; height: {size}px;">
-	{#await avatarPromise}
-		<img src="/assets/image/default.png" alt="" class="avatar" />
-	{:then avatarUrl}
-		{#if avatarUrl}
-			<img src={avatarUrl} alt="" class="avatar" />
-		{:else}
-			<img src="/assets/image/default.png" alt="" class="avatar" />
-		{/if}
-	{/await}
+<div bind:this={container} class="avatar-container" style="width: {size}px; height: {size}px;">
+    {#if isVisible && avatarUrl}
+        <img src={avatarUrl} alt="" class="avatar" />
+    {/if}
 </div>
 
 <style>

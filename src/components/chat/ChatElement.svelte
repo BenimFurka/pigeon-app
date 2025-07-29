@@ -1,7 +1,9 @@
 <!-- Требует проверки хз -->
 
 <script lang="ts">
+    import { Profile, profiles } from "../../stores/profile";
     import { ChatType } from "../../types/enums";
+    import { Message } from "../../types/message";
     import Avatar from "./Avatar.svelte";
 
     export let name: string = '';
@@ -9,19 +11,37 @@
     export let type: ChatType;
 
     export let lastMessage: Message;
-    export let lastSender: User;
-
+    export let lastSenderId: number;
     export let userId: number | null;
+    
+    let isLoading: boolean = true;
+    let lastSender: Profile | undefined = undefined;
+    async function load() {
+        try {
+            isLoading = true;
+            const newLastSender = await profiles.getProfile(lastSenderId);
+            if (newLastSender != null) lastSender = newLastSender;
+        } catch (err) {
+            console.error("Failed to load user:", err);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    $: {
+        if (lastSenderId !== undefined) {
+            load();
+        }
+    }
 </script>
 
 <div class="chat-element">
 	<Avatar id={
         type === ChatType.DM && userId !== null ? userId : id
     }></Avatar>
-
     <div class="chat-info">
         <span class="chat-name">{name}</span>
-        <span class="last-message">{lastSender.name}: {lastMessage.content}</span>
+        <span class="last-message">{lastSender !== undefined && lastSender !== null ? lastSender.name : ""}: {lastMessage.content}</span>
     </div>
 </div>
 

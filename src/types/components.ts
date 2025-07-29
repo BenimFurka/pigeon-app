@@ -1,4 +1,6 @@
+import { Profile } from "../stores/profile";
 import { ChatType } from "./enums";
+import { Message } from "./message";
 
 export interface InputItem {
     id?: string;
@@ -18,6 +20,6 @@ export interface TabItem {
 export interface ChatItem {
     type: ChatType,
     name: string,
-    lastSender: User,
+    lastSender: Profile,
     lastMessage: Message
 }

@@ -2,14 +2,12 @@
 	import Button from '../components/ui/Button.svelte';
 	import Input from '../components/ui/Input.svelte';
 	import Bar from '../components/ui/Bar.svelte';
-	import ChatsList from '../ChatsList.svelte';
     import ChatList from '../components/chat/ChatList.svelte';
 
 	export let searchQuery = '';
 	// TODO: Сделать
 	//  export let onChatSelect = (id) => {};
-	//  export let onSearch = (value) => {};
-
+    //  export let onSearch: (value: string) => void = (value) => {};
 </script>
 
 <div class="left-layout" id="left-layout">
@@ -40,11 +38,7 @@
 		
 		z-index: 1;
 		overflow: hidden;
+
+		background-color: var(--glass);
 	}
-/* TODO: перенести
-	.list {
-		height: calc(100vh - 100px);
-		overflow-y: auto;
-	}
-*/
 </style>
