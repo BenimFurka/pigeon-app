@@ -17,8 +17,8 @@
         position: relative;
         transition: var(--transition);
         background-image: 
-			linear-gradient(var(--glass), var(--glass)),
-			linear-gradient(var(--secondary-color), var(--secondary-color));
+          linear-gradient(var(--glass), var(--glass)),
+          linear-gradient(var(--secondary-color), var(--secondary-color));
         color: var(--text-color);
         height: 45px;
         margin: 0;

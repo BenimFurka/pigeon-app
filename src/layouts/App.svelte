@@ -2,6 +2,8 @@
 	import AuthLayout from "./AuthLayout.svelte";
 	import LeftLayout from "./LeftLayout.svelte";
 	import { loggedIn } from '../stores/auth';
+    import RightLayout from "./RightLayout.svelte";
+    import SettingsLayout from "./SettingsLayout.svelte";
 </script>
 
 
@@ -10,12 +12,18 @@
 	<AuthLayout></AuthLayout>
 </main>
 {:else}
-<main>
+<main class="app">
+	<SettingsLayout></SettingsLayout>
 	<LeftLayout></LeftLayout>
+	<RightLayout></RightLayout>
 </main>
 {/if}
 
 <style>
+	.app {
+		display: flex;
+		width: 100%;
+	}
 	:global(:root) {
 		--hue: 235;
 		
@@ -34,7 +42,26 @@
 		--radius-sm: 8px;
 		--radius-md: 12px;
 	}
-	
+	:global(body) {
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		display: flex;
+		padding: 0;
+		margin: 0;
+		color: var(--text-color);
+		background: var(--secondary-color);
+		width: 100%;
+		height: 100%;
+		position: relative; 
+		overflow: hidden; 
+		transition: var(--transition);
+	}
+	* {
+
+		box-sizing: border-box; 
+	}
+</style>
+<!--
+<style>
 	:global(body) {
 		font-family: 'Poppins', sans-serif;
 		background: var(--secondary-color);
@@ -48,3 +75,4 @@
 		color: var(--text-color);
 	}
 </style>
+{/if}-->

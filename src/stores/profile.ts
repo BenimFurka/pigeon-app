@@ -1,7 +1,8 @@
 import { get, writable } from 'svelte/store';
 import { getApiUrl } from '../config';
-import { ApiResponse } from '../types/body';
+import { ApiResponse } from '../types/api';
 import { invoke } from '@tauri-apps/api/tauri';
+import { makeRequest } from '../utils/api';
 
 export interface Profile {
     name: string;
@@ -66,7 +67,7 @@ async function getProfile(id: number, forceRefresh = false): Promise<Profile | n
         }
 
         const cache = await caches.open(cacheName);
-        const requestUrl = getApiUrl(`users/${id}`);
+        const url = `users/${id}`;
         const headers: Record<string, string> = {
             'Content-Type': 'application/json'
         };
@@ -77,10 +78,10 @@ async function getProfile(id: number, forceRefresh = false): Promise<Profile | n
             headers['Authorization'] = `Bearer ${accessToken}`;
         }
             
-        let profileData: Profile | null = null;
+        let profileData: Profile;
         
         if (!forceRefresh) {
-            const cachedResponse = await cache.match(requestUrl);
+            const cachedResponse = await cache.match(getApiUrl(url));
             if (cachedResponse) {
                 try {
                     profileData = await cachedResponse.json();
@@ -88,47 +89,15 @@ async function getProfile(id: number, forceRefresh = false): Promise<Profile | n
                     return profileData;
                 } catch (error) {
                     console.warn(`[Profiles] Corrupted cache for ${id}`, error);
-                    await cache.delete(requestUrl);
+                    await cache.delete(getApiUrl(url));
                 }
             }
         }
 
-        if (window.__TAURI__) {
-            const options = {
-                url: requestUrl,
-                headers: headers,
-                method: "GET"
-            }
-        
-            const responseData: ApiResponse | string = await invoke('make_request', { options });
-        
-            if (typeof responseData === "string") {
-                throw new Error('Unexpected string response');
-            }
+        let req = await makeRequest(url, null, true, "POST");
+        profileData = req.data as Profile;
 
-            if (!responseData.success) {
-                throw new Error(responseData.message || 'Failed to fetch profile');
-            }
-
-            profileData = responseData.data as Profile;
-
-            
-        } else {
-            const responseData = await fetch(requestUrl, { 
-                method: 'POST', 
-                headers: headers,
-            })
-
-
-            if (!responseData.ok) {
-                return null;
-            }
-
-            const json = await responseData.json();
-            profileData = json as Profile;
-        }
-        
-        await cache.put(requestUrl, new Response(JSON.stringify(profileData), {
+        await cache.put(getApiUrl(url), new Response(JSON.stringify(profileData), {
             headers: { 'Content-Type': 'application/json' }
         }));
         

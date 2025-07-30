@@ -62,11 +62,10 @@
 		color: var(--text-color);
 		transition: var(--transition);
 		
-		width: auto;
+		min-width: 0%;
 		max-width: 100%;
 
 		min-height: 24px;
-		height: auto;
 		max-height: 36px;
 
 		justify-self: center;
@@ -81,7 +80,8 @@
 {#if !label}
 	<style>
 		.input-group {
-		display: flex;
+			display: flex;
+			flex: 1;
 		}
 	</style>
 {/if}

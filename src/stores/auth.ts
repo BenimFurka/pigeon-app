@@ -1,72 +1,23 @@
 import { writable } from 'svelte/store';
-import { getApiUrl } from '../config';
-import { invoke } from '@tauri-apps/api/tauri';
-import { ApiResponse } from '../types/body';
+import { ApiResponse } from '../types/api';
+import { makeRequest } from '../utils/api';
 
 export const loggedIn = writable<boolean>(false);
 export const currentUser = writable<number | null>(null);
 export const authError = writable<string | null>(null);
 
-async function makeAuthRequest(endpoint: string, data?: any, includeAuth = false): Promise<ApiResponse | undefined> {
+async function makeAuthRequest(endpoint: string, body?: any, includeAuth = false): Promise<ApiResponse | undefined> {
     try {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-        };
-        
-        if (includeAuth) {
-            const accessToken = localStorage.getItem('access_token');
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-        }
-
-        if (window.__TAURI__) {
-            const url = getApiUrl(endpoint);
-
-            const options = {
-                url,
-                data: { data: data},
-                headers
-            }
-
-            const res: ApiResponse | string = await invoke('make_request', { 
-                options
-            });
-
-            if (typeof res === "string") { 
-                authError.set(res); 
-                return undefined;
-            }
-            
-            if (res.success === true) return res; 
-            else { 
-                authError.set(res.message); 
-                return undefined;
-            }
-            
-        } else {
-            const res = await fetch(getApiUrl(endpoint), { 
-                method: 'POST', 
-                headers: headers,
-                body: JSON.stringify({data: data})
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                authError.set(errorData.message || 'Request failed');
-                return undefined;
-            }
-
-            return await res.json() as ApiResponse;
-        }
+        return await makeRequest(endpoint, body, includeAuth);
     } catch (err) {
         console.error(err);
+        authError.set(err as string);
         return undefined;
     }
 }
 
 export async function login(login: string, password: string) {
-    const result = await makeAuthRequest('auth/login', { login, password });
+    const result = await makeAuthRequest('auth/login', JSON.stringify({ data: { login, password } }));
     if (result && result.success && result.data) {
         localStorage.setItem('access_token', result.data.access_token);
         localStorage.setItem('refresh_token', result.data.refresh_token);
@@ -75,7 +26,7 @@ export async function login(login: string, password: string) {
 }
 
 export async function verifyEmail(email: string, code: number) {
-    const result = await makeAuthRequest('auth/verify', { email, code });
+    const result = await makeAuthRequest('auth/verify', JSON.stringify({ data: { email, code } }));
     if (result && result.success && result.data) {
         localStorage.setItem('access_token', result.data.access_token);
         localStorage.setItem('refresh_token', result.data.refresh_token);
@@ -88,7 +39,7 @@ export async function verifyPasswordReset(email: string, code: number, new_passw
         authError.set('New password must be at least 6 characters long.');
         return false;
     }
-    const result = await makeAuthRequest('auth/reset-verify', { email, code, new_password });
+    const result = await makeAuthRequest('auth/reset-verify', JSON.stringify({ data: { email, code, new_password } }));
     if (result && result.success && result.data) {
         localStorage.setItem('access_token', result.data.access_token);
         localStorage.setItem('refresh_token', result.data.refresh_token);
@@ -114,12 +65,12 @@ export async function register(username: string, email: string, password: string
         authError.set('Please enter a valid email.');
         return false;
     }
-    const result = await makeAuthRequest('auth/register', { username, email, password, name });
+    const result = await makeAuthRequest('auth/register', JSON.stringify({ data: { username, email, password, name } }));
     return !!result;
 }
 
 export async function requestPasswordReset(email: string) {
-    const result = await makeAuthRequest('auth/reset', { email });
+    const result = await makeAuthRequest('auth/reset', JSON.stringify({ data: { email } }));
     return !!result;
 }
 
@@ -144,7 +95,7 @@ export async function refreshTokens() {
             return;
         }
 
-        const result = await makeAuthRequest('auth/refresh', { refresh_token: refreshToken });
+        const result = await makeAuthRequest('auth/refresh', JSON.stringify({ refresh_token: refreshToken }));
         
         if (result && result.success && result.data) {
             localStorage.setItem('access_token', result.data.access_token);

@@ -35,10 +35,14 @@
 
 		min-height: 0;
 		height: 100%;
+		width: 300px;
 		
 		z-index: 1;
 		overflow: hidden;
+		position: absolute;
 
-		background-color: var(--glass);
+		background-image: 
+			linear-gradient(var(--glass), var(--glass)),
+			linear-gradient(var(--secondary-color), var(--secondary-color));
 	}
 </style>

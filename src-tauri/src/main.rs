@@ -15,7 +15,7 @@ struct ApiResponse {
 struct RequestOptions {
     url: String,
     method: Option<String>,
-    data: Option<serde_json::Value>,
+    data: Option<String>,
     headers: Option<serde_json::Value>,
 }
 

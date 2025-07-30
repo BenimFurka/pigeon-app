@@ -1,7 +1,6 @@
 <script>
     import { ChatType } from "../../types/enums";
     import { Message } from "../../types/message";
-    import { User } from "../../types/user";
     import ChatElement from "./ChatElement.svelte";
 </script>
 
