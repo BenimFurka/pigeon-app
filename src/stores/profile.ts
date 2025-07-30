@@ -1,7 +1,5 @@
 import { get, writable } from 'svelte/store';
 import { getApiUrl } from '../config';
-import { ApiResponse } from '../types/api';
-import { invoke } from '@tauri-apps/api/tauri';
 import { makeRequest } from '../utils/api';
 
 export interface Profile {
@@ -94,7 +92,7 @@ async function getProfile(id: number, forceRefresh = false): Promise<Profile | n
             }
         }
 
-        let req = await makeRequest(url, null, true, "POST");
+        let req = await makeRequest(url, null, true, "GET");
         profileData = req.data as Profile;
 
         await cache.put(getApiUrl(url), new Response(JSON.stringify(profileData), {
@@ -149,15 +147,15 @@ function invalidate(id: number): void {
     });
     
     caches.open(cacheName).then(cache => {
-        const requestUrl = getApiUrl(`users/${id}`);
-        cache.delete(requestUrl);
+        const url = getApiUrl(`users/${id}`);
+        cache.delete(url);
         console.log(`[Profiles] Cache invalidated for user ${id}`);
     });
 }
 
 async function getCurrentProfile(): Promise<Profile|null> {
     const cache = await caches.open(cacheName);
-    const requestUrl = getApiUrl(`users`);
+    const url = 'users';
 
     let profileData: Profile | null = null;
     
@@ -169,47 +167,14 @@ async function getCurrentProfile(): Promise<Profile|null> {
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
-
-
-    if (window.__TAURI__) {
-        const options = {
-            url: requestUrl,
-            headers: headers,
-            data: {}
-        }
-
-        const responseData: ApiResponse | string = await invoke('make_request', options);
-
-        if (typeof responseData === "string") {
-            throw new Error('Unexpected string response');
-        }
-
-        if (!responseData.success) {
-            throw new Error(responseData.message || 'Failed to fetch profile');
-        }
-
-        profileData = responseData.data as Profile;
-
-        
-    } else {
-        const responseData = await fetch(requestUrl, { 
-            method: 'POST', 
-            headers: headers,
-        })
-
-
-        if (!responseData.ok) {
-            return null;
-        }
-
-        const json = await responseData.json();
-        profileData = json as Profile;
-    }
     
+    let req = await makeRequest(url, null, true, "GET");
+    profileData = req.data as Profile;
+
     const now = Date.now();
     const idKey: string = String(profileData.id);
 
-    await cache.put(requestUrl, new Response(JSON.stringify(profileData), {
+    await cache.put(getApiUrl(url), new Response(JSON.stringify(profileData), {
         headers: { 'Content-Type': 'application/json' }
     }));
     
