@@ -3,6 +3,7 @@
 	import Input from '../components/ui/Input.svelte';
 	import Bar from '../components/ui/Bar.svelte';
     import ChatList from '../components/chat/ChatList.svelte';
+	import { Settings } from 'lucide-svelte';
 
 	export let searchQuery = '';
 	// TODO: Сделать
@@ -12,14 +13,6 @@
 
 <div class="left-layout" id="left-layout">
    <Bar>
-    <Button 
-		text="⚙️" 
-		style="background: none; min-width: 30px; width: 30px;"
-		onClick={() => {
-			// TODO: послать реализацию настроек в задницу
-			console.log('типа в настройках')
-		}}
-	/>
     <Input 
 		placeholder="Поиск..."
 		style="width: 100%; margin: 10px; padding: 10px;"
@@ -37,12 +30,15 @@
 		height: 100%;
 		width: 300px;
 		
-		z-index: 1;
+		margin-left: 40px;
+		z-index: 0;
 		overflow: hidden;
-		position: absolute;
 
 		background-image: 
 			linear-gradient(var(--glass), var(--glass)),
 			linear-gradient(var(--secondary-color), var(--secondary-color));
-	}
+                
+		transition: var(--transition);	
+    }
+
 </style>

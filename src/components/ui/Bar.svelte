@@ -27,6 +27,7 @@
     }
 
     .bar.no-center {
+      padding-left: var(--radius-md);
       justify-content: flex-start;
     }
 </style>

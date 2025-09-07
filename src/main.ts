@@ -1,17 +1,24 @@
 import App from './layouts/App.svelte';
-import { refreshTokens } from './stores/auth';
 import { avatars } from './stores/avatar';
 import { profiles } from './stores/profile';
+import { session } from './modules/session';
 
 async function initApp() {
-  await refreshTokens();
-  
-  await avatars.initializeCache();
-  await profiles.initializeCache();
+  try {
+    await Promise.all([
+      avatars.initializeCache(),
+      profiles.initializeCache()
+    ]);
 
-  return new App({ target: document.body });
+    await session.initialize();
+
+    return new App({ target: document.body });
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    return new App({ target: document.body });
+  }
 }
 
-const app = Promise.resolve(initApp());
+const app = initApp();
 
 export default app;

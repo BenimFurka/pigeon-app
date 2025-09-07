@@ -76,7 +76,6 @@ export async function requestPasswordReset(email: string) {
 
 const TOKEN_EXPIRY_BUFFER = 15 * 60 * 1000;
 
-// TODO: Отредачить ща лень
 export function shouldRefreshToken(): boolean {
     const expiryTime = Number(localStorage.getItem('token_expiry'));
     
@@ -95,17 +94,21 @@ export async function refreshTokens() {
             return;
         }
 
-        const result = await makeAuthRequest('auth/refresh', JSON.stringify({ refresh_token: refreshToken }));
+        const result = await makeAuthRequest('auth/refresh', JSON.stringify({ data: { refresh_token: refreshToken }}));
         
         if (result && result.success && result.data) {
-            localStorage.setItem('access_token', result.data.access_token);
-            localStorage.setItem('refresh_token', result.data.refresh_token);
-            loggedIn.set(true);
+            if (result.data.access_token && result.data.refresh_token) {
+                localStorage.setItem('access_token', result.data.access_token);
+                localStorage.setItem('refresh_token', result.data.refresh_token);
+                loggedIn.set(true);
+            } else {
+                throw new Error('Invalid token data');
+            }
         } else {
             throw new Error('Refresh failed');
         }
     } catch (error) {
-        console.error('Token refresh failed:', error);
+        console.error('Token refresh failed:', error);        
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         loggedIn.set(false);

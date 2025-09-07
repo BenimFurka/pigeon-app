@@ -54,6 +54,6 @@ export async function makeRequest(endpoint: string, body?: any, includeAuth = fa
         }
     } catch (err) {
         console.error(err);
-        throw new Error("Request failed");
+        throw new Error(`Request failed: ${err}`);
     }
 }

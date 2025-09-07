@@ -52,7 +52,6 @@
         gap: 10px;
         padding: 10px;
         cursor: pointer;
-        background: var(--glass);
         border-radius: 8px;
         opacity: 0.85;
         margin: 5px;
@@ -64,6 +63,10 @@
         width: calc(100% - 20px);
         max-width: 100%;
         overflow: hidden;
+    }
+
+    .chat-element:hover {
+        backdrop-filter: var(--glass);
     }
 
     .chat-info {

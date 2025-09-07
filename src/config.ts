@@ -1,9 +1,11 @@
+// можно настроить здесь конфиги
 const config = {
   server: {
     secure: false,
     host: 'localhost',
     port: 8080,
-    apiPath: '/api'
+    apiPath: '/api',
+    apiVer: 'v1'
   },
   
   websocket: {
@@ -21,16 +23,15 @@ export const getServerUrl = () => {
   return `${protocol}://${config.server.host}:${config.server.port}`;
 };
 
-export const getWebSocketUrl = (endpoint = '') => {
+export const getWebSocketUrl = (): string => {
   const protocol = config.server.secure ? 'wss' : 'ws';
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${protocol}://${config.server.host}:${config.server.port}${normalizedEndpoint}`;
+  return `${protocol}://${config.server.host}:${config.server.port}${config.server.apiPath}/${config.server.apiVer}/ws`;
 };
 
 export const getApiUrl = (endpoint = '') => {
   const baseUrl = getServerUrl();
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${baseUrl}${config.server.apiPath}${normalizedEndpoint}`;
+  return `${baseUrl}${config.server.apiPath}/${config.server.apiVer}${normalizedEndpoint}`;
 };
 
 export default config;

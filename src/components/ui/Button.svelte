@@ -1,5 +1,4 @@
 <script lang="ts">
-	export let text: string = '';
 	export let type: "button" | "submit" | "reset" | null | undefined = 'button';
 	export let disabled: boolean = false;
 	export let style: string = '';
@@ -7,7 +6,7 @@
 </script>
 
 <button type={type} disabled={disabled} style={style} on:click={onClick}>
-	{text}
+	<slot></slot>
 </button>
 
 <style>

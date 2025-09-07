@@ -35,6 +35,7 @@ async function initializeCache(): Promise<void> {
     try {
         const cache = await caches.open(cacheName);
         const requests = await cache.keys();
+        
         console.log(`[Profiles] Cache initialized with ${requests.length} entries`);
     } catch (error) {
         console.error('[Profiles] Cache initialization error:', error);
@@ -155,7 +156,7 @@ function invalidate(id: number): void {
 
 async function getCurrentProfile(): Promise<Profile|null> {
     const cache = await caches.open(cacheName);
-    const url = 'users';
+    const url = 'users/me';
 
     let profileData: Profile | null = null;
     

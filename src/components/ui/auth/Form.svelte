@@ -27,7 +27,9 @@
 			bind:value={field.value}
 		/>
 		{/each}
-		<Button text={submit} type="submit" style="width: 100%; margin: 20px 0px 0px 0px;"/>
+		<Button type="submit" style="width: 100%; margin: 20px 0px 0px 0px;">
+			{submit}
+		</Button>
   	</form>
 </div>
 

@@ -4,31 +4,30 @@
 	import { loggedIn } from '../stores/auth';
     import RightLayout from "./RightLayout.svelte";
     import SettingsLayout from "./SettingsLayout.svelte";
+    import Sidebar from "./Sidebar.svelte";
+	export let inSettings: boolean = false;
 </script>
 
 
 {#if !$loggedIn}
-<main>
+<main class="auth">
 	<AuthLayout></AuthLayout>
 </main>
 {:else}
 <main class="app">
-	<SettingsLayout></SettingsLayout>
+	<Sidebar bind:inSettings></Sidebar>
+	<SettingsLayout bind:inSettings></SettingsLayout>
 	<LeftLayout></LeftLayout>
 	<RightLayout></RightLayout>
 </main>
 {/if}
 
 <style>
-	.app {
-		display: flex;
-		width: 100%;
-	}
 	:global(:root) {
 		--hue: 235;
 		
 		--primary-color: hsl(var(--hue), 45%, 52%);
-		--secondary-color: hsl(var(--hue), 16%, 6%);
+		--secondary-color: hsl(var(--hue), 14%, 6%);
 
 		--border-color: #333333;
 		--text-color: #FAFAFA;
@@ -55,24 +54,21 @@
 		overflow: hidden; 
 		transition: var(--transition);
 	}
-	* {
 
+	* {
 		box-sizing: border-box; 
 	}
-</style>
-<!--
-<style>
-	:global(body) {
-		font-family: 'Poppins', sans-serif;
-		background: var(--secondary-color);
+
+	.app {
 		display: flex;
-		justify-content: center;
-		align-items: center;
+		width: 100%;
+	}
+
+	.auth {
+		display: flex;
 		flex-direction: column;
-		height: 100vh;
-		margin: 0;
-		transition: var(--transition);
-		color: var(--text-color);
+		place-content: center;
+		place-items: center;
+		width: 100%
 	}
 </style>
-{/if}-->

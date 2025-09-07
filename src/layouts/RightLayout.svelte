@@ -3,7 +3,7 @@
 </script>
 
 <div id="right-layout" class="right-layout">
-    <Bar noCenter={true} style="padding-left: var(--radius-md);">
+    <Bar noCenter={true}>
         <div class="chat-bar-text">
             <span id="chat-bar-name">Название чата</span>
             <span id="chat-bar-status"></span>
