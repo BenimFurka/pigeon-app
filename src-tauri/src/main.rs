@@ -118,16 +118,15 @@ async fn make_request(options: RequestOptions) -> Result<ApiResponse, String> {
         data,
     })
 }
-
 #[tauri::command]
-async fn init_websocket(url: String, token: String) -> Result<(), String> {
+async fn init_websocket(app: tauri::AppHandle, url: String, token: String) -> Result<(), String> {
     let mut client = WS_CLIENT.lock().await;
     
     if let Some(ws_client) = client.as_ref() {
         ws_client.disconnect().await;
     }
     
-    let ws_client = WebSocketClient::new(&url, &token)
+    let ws_client = WebSocketClient::new(&url, &token, app)
         .await
         .map_err(|e| e.to_string())?;
     

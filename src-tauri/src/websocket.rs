@@ -4,6 +4,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
+use tauri::{AppHandle, Manager};
 
 type WsStream = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
@@ -22,7 +23,7 @@ pub struct WebSocketClient {
 }
 
 impl WebSocketClient {
-    pub async fn new(url: &str, token: &str) -> Result<Self, WsError> {
+    pub async fn new(url: &str, token: &str, app: AppHandle) -> Result<Self, WsError> {
         let mut url = Url::parse(url)?;
         
         if url.query_pairs().find(|(k, _)| k == "token").is_none() {
@@ -49,7 +50,7 @@ impl WebSocketClient {
             }
         });
 
-        Self::start_message_handler(read, Arc::clone(&sink));
+        Self::start_message_handler(read, Arc::clone(&sink), app);
 
         Ok(WebSocketClient { sink })
     }
@@ -73,22 +74,29 @@ impl WebSocketClient {
     fn start_message_handler(
         mut read: impl StreamExt<Item = Result<Message, tokio_tungstenite::tungstenite::Error>> + Unpin + Send + 'static,
         sink: Arc<Mutex<Option<futures_util::stream::SplitSink<WsStream, Message>>>>,
+        app: AppHandle,
     ) {
         tokio::spawn(async move {
             while let Some(message) = read.next().await {
                 match message {
                     Ok(Message::Text(text)) => {
-                        println!("Received message: {}", text);
+                        let _ = app.emit_all("websocket-message", text);
                     }
                     Ok(Message::Close(_)) => {
-                        println!("WebSocket connection closed");
+                        let _ = app.emit_all("websocket-close", "");
                         break;
                     }
                     Err(e) => {
-                        eprintln!("Error reading message: {}", e);
+                        let _ = app.emit_all("websocket-error", e.to_string());
                         break;
                     }
-                    _ => {}
+                    _ => {
+                        if let Ok(Message::Binary(data)) = message {
+                            if let Ok(text) = String::from_utf8(data) {
+                                let _ = app.emit_all("websocket-message", text);
+                            }
+                        }
+                    }
                 }
             }
             

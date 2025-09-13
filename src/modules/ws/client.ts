@@ -1,4 +1,3 @@
-// TODO: надо будет всё проверить и делать всё отсюда наверное
 import { getWebSocketUrl } from "../../config";
 import { invoke } from "@tauri-apps/api/tauri";
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
