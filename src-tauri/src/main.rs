@@ -1,5 +1,3 @@
-//! TODO: логирование через крейт
-
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod websocket;
@@ -10,6 +8,7 @@ use websocket::WebSocketClient;
 use reqwest::{Client, Method, header::{HeaderMap, HeaderName, HeaderValue}};
 use serde::{Deserialize, Serialize};
 use serde_json;
+use log::{info, warn, error, debug};
 
 lazy_static::lazy_static! {
     static ref WS_CLIENT: Arc<Mutex<Option<WebSocketClient>>> = Arc::new(Mutex::new(None));
@@ -32,6 +31,9 @@ struct RequestOptions {
 
 #[tauri::command]
 async fn make_request(options: RequestOptions) -> Result<ApiResponse, String> {    
+    info!("Making request to: {}", options.url);
+    debug!("Request options: {:?}", options);
+    
     let client = Client::new();
     let mut headers = HeaderMap::new();
     
@@ -61,9 +63,12 @@ async fn make_request(options: RequestOptions) -> Result<ApiResponse, String> {
         Some("DELETE") => Method::DELETE,
         Some("PATCH") => Method::PATCH,
         _ => {
+            warn!("Unknown method specified, defaulting to GET");
             Method::GET
         }
     };
+
+    debug!("Using method: {:?}", method);
 
     let mut request_builder = client.request(method.clone(), &options.url).headers(headers.clone());
 
@@ -85,23 +90,39 @@ async fn make_request(options: RequestOptions) -> Result<ApiResponse, String> {
     }
 
     let response = match request_builder.send().await {
-        Ok(resp) => resp,
-        Err(e) => return Err(e.to_string()),
+        Ok(resp) => {
+            info!("Request successful, status: {}", resp.status());
+            resp
+        },
+        Err(e) => {
+            error!("Request failed: {}", e);
+            return Err(e.to_string());
+        },
     };
 
     let status = response.status();
 
     let response_text = match response.text().await {
-        Ok(text) => text,
-        Err(e) => return Err(e.to_string()),
+        Ok(text) => {
+            debug!("Response text: {}", text);
+            text
+        },
+        Err(e) => {
+            error!("Failed to read response text: {}", e);
+            return Err(e.to_string());
+        },
     };
 
     let response_data = if !response_text.is_empty() {
         match serde_json::from_str(&response_text) {
             Ok(data) => data,
-            Err(_) => serde_json::Value::Null
+            Err(_) => {
+                warn!("Failed to parse response as JSON, using null");
+                serde_json::Value::Null
+            }
         }
     } else {
+        debug!("Empty response received");
         serde_json::Value::Null
     };
 
@@ -112,48 +133,73 @@ async fn make_request(options: RequestOptions) -> Result<ApiResponse, String> {
         
     let data = response_data.get("data").cloned();
 
+    info!("Request completed with success: {}", success);
+    
     Ok(ApiResponse {
         success,
         message,
         data,
     })
 }
+
 #[tauri::command]
 async fn init_websocket(app: tauri::AppHandle, url: String, token: String) -> Result<(), String> {
+    info!("Initializing WebSocket connection to: {}", url);
+    
     let mut client = WS_CLIENT.lock().await;
     
     if let Some(ws_client) = client.as_ref() {
+        info!("Disconnecting existing WebSocket client");
         ws_client.disconnect().await;
     }
     
     let ws_client = WebSocketClient::new(&url, &token, app)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            error!("Failed to create WebSocket client: {}", e);
+            e.to_string()
+        })?;
     
     *client = Some(ws_client);
+    info!("WebSocket client initialized successfully");
     Ok(())
 }
 
 #[tauri::command]
 async fn send_websocket_message(message: String) -> Result<(), String> {
+    debug!("Sending WebSocket message: {}", message);
+    
     let client = WS_CLIENT.lock().await;
     if let Some(ws_client) = client.as_ref() {
-        ws_client.send_message(&message).await.map_err(|e| e.to_string())?;
+        ws_client.send_message(&message).await.map_err(|e| {
+            error!("Failed to send WebSocket message: {}", e);
+            e.to_string()
+        })?;
+        info!("WebSocket message sent successfully");
         Ok(())
     } else {
+        warn!("WebSocket client is not initialized when trying to send message");
         Err("WebSocket client is not initialized".to_string())
     }
 }
 
 #[tauri::command]
 async fn disconnect_websocket() {
+    info!("Disconnecting WebSocket");
+    
     let client = WS_CLIENT.lock().await;
     if let Some(ws_client) = client.as_ref() {
         ws_client.disconnect().await;
+        info!("WebSocket disconnected successfully");
+    } else {
+        warn!("No WebSocket client to disconnect");
     }
 }
 
 fn main() {
+    env_logger::init();
+    info!("Application starting");
+    
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             make_request,
