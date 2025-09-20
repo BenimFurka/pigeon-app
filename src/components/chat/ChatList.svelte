@@ -1,6 +1,6 @@
-<script>
+<script lang="ts">
+    import type { Message } from "../../types/message";
     import { ChatType } from "../../types/enums";
-    import { Message } from "../../types/message";
     import ChatElement from "./ChatElement.svelte";
 </script>
 

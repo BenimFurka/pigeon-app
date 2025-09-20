@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { TabItem } from "../../../types/components";
+    import type { TabItem } from "../../../types/components";
 	import Tab from "./Tab.svelte";
 
 	export let tabs: TabItem[] = [];

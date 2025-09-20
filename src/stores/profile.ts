@@ -1,6 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { getApiUrl } from '../config';
-import { makeRequest } from '../utils/api';
+import { makeRequest } from '../lib/api';
 
 export interface Profile {
     name: string;

@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { loggedIn, refreshTokens } from '../stores/auth';
 import { profiles } from '../stores/profile';
-import { WSClient } from './ws/client';
+import { WSClient } from './ws-client';
 
 export class Session {
     private static instance: Session;
@@ -18,25 +18,69 @@ export class Session {
         return Session.instance;
     }
 
+    public async initializeWithAuth(): Promise<void> {
+        const hasTokens = localStorage.getItem("refresh_token") && localStorage.getItem("access_token");
+
+        if (!hasTokens) {
+            loggedIn.set(false);
+            return;
+        }
+
+        try {
+            const profile = await profiles.getCurrentProfile();
+            if (profile) {
+                loggedIn.set(true);
+                this._profile = profile;
+                await this.initializeSession();
+            } else {
+                await refreshTokens();
+                const newProfile = await profiles.getCurrentProfile();
+                if (newProfile) {
+                    loggedIn.set(true);
+                    this._profile = newProfile;
+                    await this.initializeSession();
+                } else {
+                    loggedIn.set(false);
+                }
+            }
+        } catch (error) {
+            console.error("Error during auth check:", error);
+            loggedIn.set(false);
+        }
+    }
+
+    private async initializeSession(): Promise<void> {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (token && this.ws) {
+                this.ws.close();
+            }
+            if (token) {
+                this.ws = new WSClient(token);
+            }
+            this.setupTokenRefresh();
+        } catch (error) {
+            console.error('Failed to setup session:', error);
+        }
+    }
+
     public async initialize(): Promise<void> {
         if (!localStorage.getItem("refresh_token")) {
             await refreshTokens();
         }
+
         loggedIn.subscribe(async (isLoggedIn) => {
             if (isLoggedIn) {
-                await this.setupAuthenticatedSession();
-                this.setupTokenRefresh();
+                await this.initializeSession();
             } else {
                 this.clearSession();
             }
         });
 
         if (get(loggedIn)) {
-            await this.setupAuthenticatedSession();
-            this.setupTokenRefresh();
+            await this.initializeSession();
         }
     }
-
 
     public async getProfile() {
         if (!this._profile && get(loggedIn)) {

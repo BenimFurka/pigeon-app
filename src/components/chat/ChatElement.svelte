@@ -1,9 +1,10 @@
 <!-- Требует проверки хз -->
 
 <script lang="ts">
-    import { Profile, profiles } from "../../stores/profile";
+    import type { Profile } from "../../stores/profile";
+    import { profiles } from "../../stores/profile";
+    import type { Message } from "../../types/message";
     import { ChatType } from "../../types/enums";
-    import { Message } from "../../types/message";
     import Avatar from "./Avatar.svelte";
 
     export let name: string = '';

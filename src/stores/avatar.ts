@@ -1,3 +1,5 @@
+// TODO: Refactoring
+
 import { get, writable } from 'svelte/store';
 import { getApiUrl } from '../config';
 

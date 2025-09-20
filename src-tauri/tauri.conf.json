@@ -1,50 +1,37 @@
 {
-  "$schema": "https://schema.tauri.app/config/1",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Pigeon App",
+  "version": "0.1.0",
+  "identifier": "com.furka.pigeon-app",
   "build": {
+    "frontendDist": "../.svelte-kit/output/client",
+    "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../public"
+    "beforeBuildCommand": "npm run build"
   },
-  "package": {
-    "productName": "Pigeon App",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "http": {
-        "request": true
-      },
-      "protocol": { 
-        "asset": true 
-      },
-      "shell": {
-        "all": false,
-        "open": true
-      }
-    },
+  "app": {
     "windows": [
       {
         "title": "Pigeon App",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "security": {
       "csp": null
-    },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.furka.pigeon-app",
-      "icon": [
-        "icons/favicon.png",
-        "icons/favicon.ico"
-      ],
-      "copyright": "Copyright © 2024-2025 BenimFurka. Licensed under GPL-v3.0.",
-      "publisher": "BenimFurka",
-      "category": "SocialNetworking"
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/favicon.png",
+      "icons/favicon.ico"
+    ],
+    "copyright": "Copyright © 2024-2025 BenimFurka. Licensed under GPL-v3.0.",
+    "publisher": "BenimFurka",
+    "category": "SocialNetworking"
   }
 }

@@ -5,26 +5,28 @@ description = "Fast and secure messenger for communication"
 authors = ["BenimFurka"]
 license = "GPL-v3.0"
 edition = "2021"
+rust-version = "1.71"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
-tauri-build = { version = "1", features = [] }
+tauri-build = { version = "2.0.0-rc.13", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = [ "protocol-asset", "http-request", "shell-open"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-reqwest = { version = "0.12.22", features = ["json"] }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.0.0-rc.17", features = [] }
+tauri-plugin-log = "2.0.0-rc"
+reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 url = "2.4"
 thiserror = "1.0"
 lazy_static = "1.4"
-log = "0.4"
-env_logger = "0.10" 
-
-[features]
-# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
-custom-protocol = ["tauri/custom-protocol"]
+env_logger = "0.10"

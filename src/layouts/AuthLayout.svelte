@@ -10,7 +10,7 @@
 		verifyPasswordReset,
 		authError
 	} from '../stores/auth';
-    import { InputItem } from '../types/components';
+    import type { InputItem } from '../types/components';
 
 	let view = 'login';
 

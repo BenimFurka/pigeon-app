@@ -4,7 +4,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter};
 use log::{info, warn, error, debug};
 
 type WsStream = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
@@ -27,9 +27,9 @@ impl WebSocketClient {
     pub async fn new(url: &str, token: &str, app: AppHandle) -> Result<Self, WsError> {
         info!("Creating new WebSocket connection to: {}", url);
         debug!("Token: {}", token);
-        
+
         let mut url = Url::parse(url)?;
-        
+
         if url.query_pairs().find(|(k, _)| k == "token").is_none() {
             let mut pairs = url.query_pairs_mut();
             pairs.append_pair("token", &format!("Bearer {}", token));
@@ -52,15 +52,15 @@ impl WebSocketClient {
         tokio::spawn(async move {
             info!("Scheduling authentication message...");
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            
+
             let auth_message = serde_json::json!({
                 "type": "auth",
                 "data": { "token": format!("Bearer {}", token) }
             });
-            
+
             debug!("Sending authentication message: {}", auth_message);
-            
-            if let Some(mut write) = sink_clone.lock().await.as_mut() {
+
+            if let Some(write) = sink_clone.lock().await.as_mut() {
                 match write.send(Message::Text(auth_message.to_string())).await {
                     Ok(_) => info!("Authentication message sent successfully"),
                     Err(e) => error!("Failed to send authentication message: {}", e),
@@ -77,7 +77,7 @@ impl WebSocketClient {
 
     pub async fn send_message(&self, message: &str) -> Result<(), WsError> {
         debug!("Sending WebSocket message: {}", message);
-        
+
         let mut lock = self.sink.lock().await;
         if let Some(write) = lock.as_mut() {
             write.send(Message::Text(message.to_string())).await.map_err(|e| {
@@ -110,22 +110,22 @@ impl WebSocketClient {
         app: AppHandle,
     ) {
         info!("Starting WebSocket message handler");
-        
+
         tokio::spawn(async move {
             debug!("WebSocket message handler started");
-            
+
             while let Some(message) = read.next().await {
                 match message {
                     Ok(Message::Text(text)) => {
                         debug!("Received text message: {}", text);
-                        match app.emit_all("websocket-message", text) {
+                        match app.emit("websocket-message", text) {
                             Ok(_) => debug!("Message emitted to frontend"),
                             Err(e) => error!("Failed to emit message to frontend: {}", e),
                         }
                     }
                     Ok(Message::Close(_)) => {
                         info!("WebSocket connection closed by server");
-                        match app.emit_all("websocket-close", "") {
+                        match app.emit("websocket-close", "") {
                             Ok(_) => debug!("Close event emitted to frontend"),
                             Err(e) => error!("Failed to emit close event: {}", e),
                         }
@@ -133,7 +133,7 @@ impl WebSocketClient {
                     }
                     Err(e) => {
                         error!("WebSocket error: {}", e);
-                        match app.emit_all("websocket-error", e.to_string()) {
+                        match app.emit("websocket-error", e.to_string()) {
                             Ok(_) => debug!("Error event emitted to frontend"),
                             Err(emit_err) => error!("Failed to emit error event: {}", emit_err),
                         }
@@ -144,7 +144,7 @@ impl WebSocketClient {
                         match String::from_utf8(data) {
                             Ok(text) => {
                                 debug!("Converted binary to text: {}", text);
-                                match app.emit_all("websocket-message", text) {
+                                match app.emit("websocket-message", text) {
                                     Ok(_) => debug!("Binary message emitted to frontend"),
                                     Err(e) => error!("Failed to emit binary message: {}", e),
                                 }
@@ -165,7 +165,7 @@ impl WebSocketClient {
                     }
                 }
             }
-            
+
             info!("WebSocket message handler stopped");
             let _ = sink.lock().await.take();
         });

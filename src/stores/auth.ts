@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
-import { ApiResponse } from '../types/api';
-import { makeRequest } from '../utils/api';
+import type { ApiResponse } from '../types/api';
+import { makeRequest } from '../lib/api';
 
 export const loggedIn = writable<boolean>(false);
 export const currentUser = writable<number | null>(null);
