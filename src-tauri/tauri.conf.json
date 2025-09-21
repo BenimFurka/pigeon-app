@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.furka.pigeon-app",
   "build": {
-    "frontendDist": "../.svelte-kit/output/client",
+    "frontendDist": "../build",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"

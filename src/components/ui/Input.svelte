@@ -52,28 +52,35 @@
 		position: relative;
 		flex: 1;
 
-		border: none;
+		outline: none;
+		border: 1px solid #333333;
 		border-radius: var(--radius-sm);
-		
-		margin: 0 auto; 
-		padding: 10px 12px;
-		
+
+		margin: auto;
+		padding: 8px 16px;
+
 		background-color: var(--secondary-color);
 		color: var(--text-color);
 		transition: var(--transition);
-		
+
 		min-width: 0%;
 		max-width: 100%;
 
 		min-height: 24px;
-		max-height: 36px;
+		max-height: 32px;
 
 		justify-self: center;
-		font-size: 15px;
+		font-size: 14px;
 	}
-		
+
 	input:focus {
 		outline: none;
+		box-shadow: 0 0 0 2px var(--primary-color);
+		border-color: var(--primary-color);
+	}
+
+	input::placeholder {
+		color: rgba(255, 255, 255, 0.5);
 	}
 </style>
 

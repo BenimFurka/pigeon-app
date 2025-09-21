@@ -10,6 +10,7 @@
 </button>
 
 <style>
+    /* TODO: Анимация при смене состояния */
     .tab {
         flex: 1;
         padding: 12px;
