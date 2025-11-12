@@ -18,31 +18,37 @@ async function makeAuthRequest(endpoint: string, body?: any, includeAuth = false
 
 export async function login(login: string, password: string) {
     const result = await makeAuthRequest('auth/login', JSON.stringify({ data: { login, password } }));
-    if (result && result.success && result.data) {
-        localStorage.setItem('access_token', result.data.access_token);
-        localStorage.setItem('refresh_token', result.data.refresh_token);
+    if (result && result.data) {
+        const { access_token, refresh_token, user } = result.data;
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+        currentUser.set(user.id);
         loggedIn.set(true);
     }
 }
 
-export async function verifyEmail(email: string, code: number) {
+export async function verifyEmail(email: string, code: string) {
     const result = await makeAuthRequest('auth/verify', JSON.stringify({ data: { email, code } }));
-    if (result && result.success && result.data) {
-        localStorage.setItem('access_token', result.data.access_token);
-        localStorage.setItem('refresh_token', result.data.refresh_token);
+    if (result && result.data) {
+        const { access_token, refresh_token, user } = result.data;
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+        currentUser.set(user.id);
         loggedIn.set(true);
     }
 }
 
-export async function verifyPasswordReset(email: string, code: number, new_password: string) {
+export async function verifyPasswordReset(email: string, code: string, new_password: string) {
     if (new_password.length < 6) {
         authError.set('New password must be at least 6 characters long.');
         return false;
     }
     const result = await makeAuthRequest('auth/reset-verify', JSON.stringify({ data: { email, code, new_password } }));
-    if (result && result.success && result.data) {
-        localStorage.setItem('access_token', result.data.access_token);
-        localStorage.setItem('refresh_token', result.data.refresh_token);
+    if (result && result.data) {
+        const { access_token, refresh_token, user } = result.data;
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+        currentUser.set(user.id);
         loggedIn.set(true);
         return true;
     }
@@ -96,7 +102,7 @@ export async function refreshTokens() {
 
         const result = await makeAuthRequest('auth/refresh', JSON.stringify({ data: { refresh_token: refreshToken }}));
         
-        if (result && result.success && result.data) {
+        if (result && result.data) {
             if (result.data.access_token && result.data.refresh_token) {
                 localStorage.setItem('access_token', result.data.access_token);
                 localStorage.setItem('refresh_token', result.data.refresh_token);

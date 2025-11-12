@@ -169,7 +169,7 @@ export class WSClient {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN || !this.authToken) return;
         
         const authMessage = {
-            type: 'auth',
+            type: 'authenticate',
             data: { token: `Bearer ${this.authToken}` }
         } as const;
         

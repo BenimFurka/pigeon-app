@@ -7,8 +7,10 @@
     import Sidebar from '../layouts/Sidebar.svelte';
     import { avatars } from '../stores/avatar';
     import { profiles } from '../stores/profile';
+	import { chats } from '../stores/chats'
     import { session } from '../lib/session';
 	import { page } from '$app/stores';
+
 	let inSettings: boolean = false;
 
     let initialized = false;
@@ -16,7 +18,6 @@
     $: if ($page) {
         console.log("Page loaded, initializing session...");
         if (!initialized) {
-            console.log("bpb");
             initializeApp();
         }
     }
@@ -24,12 +25,13 @@
     async function initializeApp() {
         try {
             await Promise.all([
-                avatars.initializeCache(),
+				avatars.initializeCache(),
+        		chats.initializeCache(),
                 profiles.initializeCache()
             ]);
             console.log("Caches initialized");
-            await session.initializeWithAuth();
-            console.log("Session initialized with auth check");
+            await session.initialize();
+            console.log("Session initialized");
         } catch (error) {
             console.error("Error in initialization:", error);
         }

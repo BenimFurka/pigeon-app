@@ -59,7 +59,7 @@
 
 	async function handleVerify() {
 		const email = getValue(registerFields, 'email');
-		await verifyEmail(email, Number(getValue(verifyFields, 'code')));
+		await verifyEmail(email, getValue(verifyFields, 'code'));
 	}
 
 	async function handleRequestReset() {
@@ -69,7 +69,7 @@
 
 	async function handleResetPassword() {
 		const email = getValue(forgotPasswordFields, 'email');
-		await verifyPasswordReset(email, Number(getValue(resetPasswordFields, 'code')), getValue(resetPasswordFields, 'new_password'));
+		await verifyPasswordReset(email, getValue(resetPasswordFields, 'code'), getValue(resetPasswordFields, 'new_password'));
 		if (!$authError) switchView('login');
 	}
 
