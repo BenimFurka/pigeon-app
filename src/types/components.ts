@@ -1,6 +1,6 @@
-import type { Profile } from "../stores/profile";
-import { ChatType } from "./enums";
-import type { Message } from "./message";
+import { Profile } from "../queries/profile";
+import type { Message } from "./models";
+import { ChatType } from "./models";
 
 export interface InputItem {
     id?: string;

@@ -1,4 +1,4 @@
-<!-- TODO: Переименовать button в text (необязательно?), смена состояния мыши только при наведении конкретно на текст -->
+<!-- TODO: refactor -->
 <script lang="ts">
     export let disabled: boolean = false;
     export let style: string = '';

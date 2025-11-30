@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { avatars } from '../../stores/avatar';
+    import { useAvatar } from '../../queries/avatar';
 
     export let id: number;
     export let size: number = 40;
@@ -23,14 +23,17 @@
         return () => observer.disconnect();
     });
 
-    $: if (isVisible && id) {
-        avatars.getAvatar(id).then(url => avatarUrl = url);
+    $: avatarQuery = isVisible && id ? useAvatar(id) : null
+    $: if (avatarQuery && $avatarQuery?.data) {
+        avatarUrl = $avatarQuery.data;
     }
 </script>
 
 <div bind:this={container} class="avatar-container" style="width: {size}px; height: {size}px;">
     {#if isVisible && avatarUrl}
         <img src={avatarUrl} alt="" class="avatar" />
+    {:else if isVisible }
+        <img src="./assets/image/default.png" alt="" class="avatar"/>
     {/if}
 </div>
 

@@ -1,10 +1,14 @@
 <script lang="ts">
-	let { children } = $props();
+  import { QueryClientProvider } from '@tanstack/svelte-query';
+  import { queryClient } from '$lib/query';
 </script>
+
 
 <svelte:head>
 	<link rel="icon" href="/favicon.png" />
 	<link rel="stylesheet" href="/global.css" />
 </svelte:head>
-
-{@render children?.()}
+ 
+<QueryClientProvider client={queryClient}>
+    <slot />
+</QueryClientProvider>

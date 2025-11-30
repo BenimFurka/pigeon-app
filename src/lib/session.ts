@@ -1,9 +1,13 @@
 import { get } from 'svelte/store';
 import { loggedIn, refreshTokens, currentUser } from '../stores/auth';
-import { profiles } from '../stores/profile';
+import { typing } from '../stores/typing';
 import { WSClient } from './ws-client';
+import type { ServerMessage } from '../types/websocket';
+import type { Message as ChatMessage } from '../types/models';
+import { queryClient } from './query';
+import { messageKeys } from '../queries/messages';
 
-const TOKEN_REFRESH_INTERVAL = 15 * 60 * 1000;
+const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
 
 export class Session {
     private static instance: Session;
@@ -49,9 +53,8 @@ export class Session {
         if (!this.hasValidTokens()) {
             throw new Error('No valid tokens available');
         }
-
+        
         await this.initializeWebSocket();
-        await this.loadInitialData();
 
         this.setupTokenRefresh();
 
@@ -66,18 +69,88 @@ export class Session {
             this.ws.close();
         }
 
-        this.ws = new WSClient(token)
+        this.ws = new WSClient(token);
+        
+        this.ws.on('message', (event: { type: string; data: any }) => {
+            const incoming = event.data as ServerMessage;
+            this.handleWebSocketMessage(incoming);
+        });
+        
+        this.ws.on('open', () => {
+            console.log('[Session] WebSocket connected');
+        });
     }
 
-    private async loadInitialData(): Promise<void> {
-        try {
-            this._profile = await profiles.getCurrentProfile();
-            if (this._profile?.id) {
-                currentUser.set(this._profile.id);
+    private handleWebSocketMessage(message: ServerMessage): void {
+        switch (message.type) {
+            case 'new_message': {
+                if ('data' in message && message.data) {
+                    const chatId = message.data.message.chat_id as number;
+                    const key = messageKeys.list(chatId);
+                    const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+                    const next = [...prev, message.data.message].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                    queryClient.setQueryData(key, next);
+                }
+                break;
             }
-        } catch (error) {
-            console.error('Failed to load initial data:', error);
-            throw error;
+            case 'message_edited': {
+                if ('data' in message && message.data) {
+                    const chatId = message.data.message.chat_id as number;
+                    const key = messageKeys.list(chatId);
+                    const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+                    const next = prev.map(m => m.id === message.data.message.id ? { ...m, ...message.data.message } : m);
+                    queryClient.setQueryData(key, next);
+                }
+                break;
+            }
+            case 'message_deleted': {
+                if ('data' in message && message.data) {
+                    const chatId = message.data.chat_id as number;
+                    const key = messageKeys.list(chatId);
+                    const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+                    const next = prev.map(m => m.id === message.data.message_id ? { ...m, is_deleted: true, deleted_at: new Date().toISOString() } : m);
+                    queryClient.setQueryData(key, next);
+                }
+                break;
+            }
+            case 'reaction_added': {
+                if ('data' in message && message.data) {
+                    const cache = queryClient.getQueryCache().findAll({ queryKey: messageKeys.all });
+                    for (const q of cache) {
+                        const key = q.queryKey as ReturnType<typeof messageKeys.list>;
+                        const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+                        if (prev.some(m => m.id === message.data.message_id)) {
+                            const next = prev.map(m => m.id === message.data.message_id ? { ...m, reactions: [...(m.reactions || []), message.data.reaction] } : m);
+                            queryClient.setQueryData(key, next);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            case 'reaction_removed': {
+                if ('data' in message && message.data) {
+                    const cache = queryClient.getQueryCache().findAll({ queryKey: messageKeys.all });
+                    for (const q of cache) {
+                        const key = q.queryKey as ReturnType<typeof messageKeys.list>;
+                        const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+                        if (prev.some(m => m.id === message.data.message_id)) {
+                            const next = prev.map(m => m.id === message.data.message_id ? { ...m, reactions: (m.reactions || []).filter((r: any) => !(r.user_id === message.data.user_id && r.emoji === message.data.emoji)) } : m);
+                            queryClient.setQueryData(key, next);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            case 'authenticated': {
+                if ('data' in message && message.data) {
+                    currentUser.set(message.data.user_id)
+                }
+            }
+        }
+        if (message.type === 'user_typing' && 'data' in message && message.data) {
+            typing.setTyping(message.data.chat_id, message.data.user_id, message.data.is_typing);
         }
     }
 
@@ -102,6 +175,12 @@ export class Session {
         loggedIn.subscribe((isLoggedIn) => {
             if (previousValue && !isLoggedIn) {
                 this.clearSession();
+            }
+
+            if (!previousValue && isLoggedIn) {
+                this.initializeAuthenticatedSession().catch((e) => {
+                    console.error('Failed to initialize session after login:', e);
+                });
             }
             previousValue = isLoggedIn;
         });
@@ -137,17 +216,6 @@ export class Session {
     }
 
     public async getProfile() {
-        if (!this._profile && get(loggedIn)) {
-            try {
-                this._profile = await profiles.getCurrentProfile();
-                if (this._profile?.id) {
-                    currentUser.set(this._profile.id);
-                }
-            } catch (error) {
-                console.error('Failed to load profile:', error);
-                throw error;
-            }
-        }
         return this._profile;
     }
 

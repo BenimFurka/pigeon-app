@@ -1,21 +1,36 @@
 <script lang="ts">
-    import type { Message } from "../../types/message";
-    import { ChatType } from "../../types/enums";
-    import ChatElement from "./ChatElement.svelte";
+    import { useChats } from '../../queries/chats';
+    import ChatElement from './ChatElement.svelte';
+    import type { Chat } from '../../types/models';
+    import { createEventDispatcher } from 'svelte';
+    
+    // TODO: use events
+    export let onSelect: (chat: Chat) => void; 
+
+    export let selectedChatId: number | null = null;
+
+    const chatsQuery = useChats();
+    $: chatList = $chatsQuery?.data || [];
+    $: isLoading = $chatsQuery?.isLoading;
+    $: error = $chatsQuery?.error ? String($chatsQuery.error) : null;
 </script>
 
 <div class="list">
-<!--
-  <ChatElement id={-1} type={ChatType.DM} userId={1} lastSenderId=1 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-2} type={ChatType.DM} userId={2} lastSenderId=2 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-15} type={ChatType.DM} userId={15} lastSenderId=15 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-4} type={ChatType.DM} userId={4} lastSenderId=4 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-5} type={ChatType.DM} userId={5} lastSenderId=5 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-6} type={ChatType.DM} userId={6} lastSenderId=6 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-7} type={ChatType.DM} userId={7} lastSenderId=7 lastMessage={new Message()}></ChatElement>
-  <ChatElement id={-8} type={ChatType.DM} userId={8} lastSenderId=8 lastMessage={new Message()}></ChatElement>
--->
-    <!-- тут будут сообщения -->
+    {#if isLoading}
+        <div class="loading">Загрузка чатов...</div>
+    {:else if error}
+        <div class="error">{error}</div>
+    {:else if chatList.length === 0}
+        <div class="empty">Нет чатов</div>
+    {:else}
+        {#each chatList as chat (chat.id)}
+            <ChatElement 
+                chat={chat}
+                selected={selectedChatId === Number(chat.id)}
+                {onSelect}
+            />
+        {/each}
+    {/if}
 </div>
 
 <style>
@@ -29,5 +44,15 @@
         margin: 10px;
         color: var(--text-color);
         padding: 5px;
+    }
+    
+    .loading, .error, .empty {
+        padding: 20px;
+        text-align: center;
+        opacity: 0.6;
+    }
+    
+    .error {
+        color: #ff4d4d;
     }
 </style>

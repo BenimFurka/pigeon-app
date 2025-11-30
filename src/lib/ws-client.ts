@@ -168,10 +168,12 @@ export class WSClient {
     private sendAuth(): void {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN || !this.authToken) return;
         
-        const authMessage = {
+        const authMessage: import('../types/websocket').AuthenticateMessage = {
             type: 'authenticate',
-            data: { token: `Bearer ${this.authToken}` }
-        } as const;
+            data: {
+                token: `Bearer ${this.authToken}`
+            }
+        };
         
         this.socket.send(JSON.stringify(authMessage));
     }

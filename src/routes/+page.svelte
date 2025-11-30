@@ -5,31 +5,20 @@
     import RightLayout from '../layouts/RightLayout.svelte';
     import SettingsLayout from '../layouts/SettingsLayout.svelte';
     import Sidebar from '../layouts/Sidebar.svelte';
-    import { avatars } from '../stores/avatar';
-    import { profiles } from '../stores/profile';
-	import { chats } from '../stores/chats'
+    import type { Chat } from '../types/models';
     import { session } from '../lib/session';
-	import { page } from '$app/stores';
-
+	
 	let inSettings: boolean = false;
+	let selectedChat: Chat| null = null;
 
     let initialized = false;
 
-    $: if ($page) {
-        console.log("Page loaded, initializing session...");
-        if (!initialized) {
-            initializeApp();
-        }
-    }
-
+	if (!initialized) {
+		initializeApp();
+	}
+    
     async function initializeApp() {
         try {
-            await Promise.all([
-				avatars.initializeCache(),
-        		chats.initializeCache(),
-                profiles.initializeCache()
-            ]);
-            console.log("Caches initialized");
             await session.initialize();
             console.log("Session initialized");
         } catch (error) {
@@ -37,19 +26,22 @@
         }
         initialized = true;
     }
+
+	function handleChatSelect(chat: Chat) {
+		selectedChat = chat;
+	}
 </script>
 
-
-{#if !$loggedIn && initialized}
-<main class="auth">
-	<AuthLayout></AuthLayout>
-</main>
-{:else if initialized}
+{#if initialized && $loggedIn}
 <main class="app">
-	<Sidebar bind:inSettings></Sidebar>
-	<SettingsLayout bind:inSettings></SettingsLayout>
-	<LeftLayout></LeftLayout>
-	<RightLayout></RightLayout>
+    <Sidebar bind:inSettings />
+    <SettingsLayout bind:inSettings />
+    <LeftLayout onChatSelect={handleChatSelect} />
+    <RightLayout selectedChat={selectedChat} />
+</main>
+{:else}
+<main class="auth">
+    <AuthLayout></AuthLayout>
 </main>
 {/if}
 
@@ -57,8 +49,8 @@
 	:global(:root) {
 		--hue: 235;
 		
-		--primary-color: hsl(var(--hue), 45%, 52%);
-		--secondary-color: hsl(var(--hue), 14%, 6%);
+		--primary-color: hsl(var(--hue), 35%, 50%);
+		--secondary-color: hsl(var(--hue), 15%, 6%);
 
 		--border-color: #333333;
 		--text-color: #FAFAFA;
@@ -72,16 +64,12 @@
 		--radius-sm: 8px;
 		--radius-md: 12px;
 	}
+	
 	:global(body) {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 		display: flex;
-		padding: 0;
-		margin: 0;
 		color: var(--text-color);
 		background: var(--secondary-color);
-		width: 100%;
-		height: 100%;
-		position: relative; 
 		overflow: hidden; 
 		transition: var(--transition);
 	}

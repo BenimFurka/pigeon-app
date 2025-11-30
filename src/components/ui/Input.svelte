@@ -49,28 +49,15 @@
 	}
 
 	input {
-		position: relative;
-		flex: 1;
-
-		outline: none;
-		border: 1px solid #333333;
-		border-radius: var(--radius-sm);
-
+        background: var(--secondary-color);
+		border: none;
+        border-radius: var(--radius-sm);
+        color: var(--text-color);
+        font-size: 14px;
+        outline: none;
+		padding-left: 6px;
 		margin: auto;
-		padding: 8px 16px;
-
-		background-color: var(--secondary-color);
-		color: var(--text-color);
-		transition: var(--transition);
-
-		min-width: 0%;
-		max-width: 100%;
-
-		min-height: 24px;
-		max-height: 32px;
-
-		justify-self: center;
-		font-size: 14px;
+        transition: var(--transition);
 	}
 
 	input:focus {
@@ -88,6 +75,17 @@
 	<style>
 		.input-group {
 			display: flex;
+			gap: 6px;
+			flex: 1;
+		}
+	</style>
+{:else}
+	<style>
+		.input-group {
+			display: flex;
+			height: 72px;
+			flex-direction: column;
+			gap: 6px;
 			flex: 1;
 		}
 	</style>

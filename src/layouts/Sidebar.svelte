@@ -1,32 +1,76 @@
 <script lang="ts">
     import { Settings } from "lucide-svelte";
-    import Button from "../components/ui/Button.svelte";
+    import { currentUser } from "../stores/auth";
+    import { useCurrentProfile } from "../queries/profile";
+    import Avatar from "../components/chat/Avatar.svelte";
 
 	export let inSettings: boolean = false;
+
+    const profileQuery = useCurrentProfile();
+    $: currentProfile = $profileQuery?.data || null;
 </script>    
 
 <div class="sidebar">
-	<Button
-		style="min-width: 30px; width: 30px; background: transparent; border: none; padding: 0; margin: 0;"
-		onClick={() => {
-			inSettings = !inSettings;
-		}}
-	><Settings color={'rgba(255,255,255,0.4)'} /></Button>
+	<div class="sidebar-actions">
+		<button
+			class="sidebar-button {inSettings ? 'active' : ''}"
+			on:click={() => {
+				inSettings = !inSettings;
+			}}
+			title="Настройки"
+			aria-label="Настройки"
+		>
+			<Settings size={20} />
+		</button>
+	</div>
 </div>
 
 <style>
     .sidebar {
-        padding: 5px 0px 5px 0px;
+        padding: 10px 0;
         position: absolute;
         display: flex;
-        flex-direction: column;
+        flex-direction: column-reverse;
         align-items: center;
-        justify-content: flex-start;
-        max-width: 10%;    
-        background-color: hsl(var(--hue), 4%, 10%);
-        width: 40px;
+        justify-content: space-between;
+        background-color: hsl(var(--hue), 16%, 7%);
+        width: 42px;
         min-width: 0;
         height: 100%;
         z-index: 5;
+        gap: 10px;
+    }
+    
+    .sidebar-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 12px;
+    }
+    
+    .sidebar-button {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.4);
+        cursor: pointer;
+        padding: 6px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        width: 36px;
+        height: 36px;
+    }
+    
+    .sidebar-button:hover {
+        background: var(--glass);
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .sidebar-button.active {
+        background: var(--primary-color);
+        color: var(--text-color);
     }
 </style>

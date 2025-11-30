@@ -1,23 +1,24 @@
 import { writable } from 'svelte/store';
-import type { ApiResponse } from '../types/api';
+import type { ApiResponse, AuthResponse } from '../types/models';
 import { makeRequest } from '../lib/api';
 
 export const loggedIn = writable<boolean>(false);
 export const currentUser = writable<number | null>(null);
 export const authError = writable<string | null>(null);
 
-async function makeAuthRequest(endpoint: string, body?: any, includeAuth = false): Promise<ApiResponse | undefined> {
+async function makeAuthRequest<T = any>(endpoint: string, body?: any, includeAuth = false): Promise<ApiResponse<T> | undefined> {
     try {
-        return await makeRequest(endpoint, body, includeAuth);
+        return await makeRequest<T>(endpoint, body, includeAuth);
     } catch (err) {
         console.error(err);
-        authError.set(err as string);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        authError.set(errorMessage);
         return undefined;
     }
 }
 
 export async function login(login: string, password: string) {
-    const result = await makeAuthRequest('auth/login', JSON.stringify({ data: { login, password } }));
+    const result = await makeAuthRequest<AuthResponse>('auth/login', { data: { login, password } });
     if (result && result.data) {
         const { access_token, refresh_token, user } = result.data;
         localStorage.setItem('access_token', access_token);
@@ -28,7 +29,7 @@ export async function login(login: string, password: string) {
 }
 
 export async function verifyEmail(email: string, code: string) {
-    const result = await makeAuthRequest('auth/verify', JSON.stringify({ data: { email, code } }));
+    const result = await makeAuthRequest<AuthResponse>('auth/verify', { data: { code } });
     if (result && result.data) {
         const { access_token, refresh_token, user } = result.data;
         localStorage.setItem('access_token', access_token);
@@ -43,7 +44,7 @@ export async function verifyPasswordReset(email: string, code: string, new_passw
         authError.set('New password must be at least 6 characters long.');
         return false;
     }
-    const result = await makeAuthRequest('auth/reset-verify', JSON.stringify({ data: { email, code, new_password } }));
+    const result = await makeAuthRequest<AuthResponse>('auth/reset-verify', { data: { email, code, new_password } });
     if (result && result.data) {
         const { access_token, refresh_token, user } = result.data;
         localStorage.setItem('access_token', access_token);
@@ -71,16 +72,16 @@ export async function register(username: string, email: string, password: string
         authError.set('Please enter a valid email.');
         return false;
     }
-    const result = await makeAuthRequest('auth/register', JSON.stringify({ data: { username, email, password, name } }));
-    return !!result;
+    const result = await makeAuthRequest('auth/register', { data: { username, email, password, name } });
+    return !!result && !result.error;
 }
 
 export async function requestPasswordReset(email: string) {
-    const result = await makeAuthRequest('auth/reset', JSON.stringify({ data: { email } }));
-    return !!result;
+    const result = await makeAuthRequest('auth/reset', { data: { email } });
+    return !!result && !result.error;
 }
 
-const TOKEN_EXPIRY_BUFFER = 15 * 60 * 1000;
+const TOKEN_EXPIRY_BUFFER = 30 * 60 * 1000;
 
 export function shouldRefreshToken(): boolean {
     const expiryTime = Number(localStorage.getItem('token_expiry'));
@@ -100,12 +101,12 @@ export async function refreshTokens() {
             return;
         }
 
-        const result = await makeAuthRequest('auth/refresh', JSON.stringify({ data: { refresh_token: refreshToken }}));
+        const result = await makeAuthRequest<AuthResponse>('auth/refresh', { data: { refresh_token: refreshToken } });
         
         if (result && result.data) {
             if (result.data.access_token && result.data.refresh_token) {
                 localStorage.setItem('access_token', result.data.access_token);
-                localStorage.setItem('refresh_token', result.data.refresh_token);
+                //localStorage.setItem('refresh_token', result.data.refresh_token);
                 loggedIn.set(true);
             } else {
                 throw new Error('Invalid token data');

@@ -2,7 +2,7 @@
 const config = {
   server: {
     secure: false,
-    host: 'localhost',
+    host: window.location.hostname,
     port: 8080,
     apiPath: '/api',
     apiVer: 'v1'
