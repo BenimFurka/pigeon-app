@@ -8,6 +8,7 @@
     import Sidebar from '../layouts/Sidebar.svelte';
     import type { Chat } from '../types/models';
     import { session } from '../lib/session';
+    import '../stores/window';
     
     let inSettings: boolean = false;
     let selectedChat: Chat | null = null;
@@ -147,7 +148,7 @@
 	.app {
 		display: flex;
 		width: 100%;
-        height: 100vh;
+        height: var(--window-height);
         position: relative;
         overflow: hidden;
 	}
