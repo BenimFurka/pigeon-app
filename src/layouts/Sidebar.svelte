@@ -4,25 +4,28 @@
     import { useCurrentProfile } from "../queries/profile";
     import Avatar from "../components/chat/Avatar.svelte";
 
-	export let inSettings: boolean = false;
+    export let inSettings: boolean = false;
+    export let onToggleSettings: () => void = () => {};
 
     const profileQuery = useCurrentProfile();
     $: currentProfile = $profileQuery?.data || null;
+
+    function handleToggle() {
+        onToggleSettings();
+    }
 </script>    
 
 <div class="sidebar">
-	<div class="sidebar-actions">
-		<button
-			class="sidebar-button {inSettings ? 'active' : ''}"
-			on:click={() => {
-				inSettings = !inSettings;
-			}}
-			title="Настройки"
-			aria-label="Настройки"
-		>
-			<Settings size={20} />
-		</button>
-	</div>
+    <div class="sidebar-actions">
+        <button
+            class="sidebar-button {inSettings ? 'active' : ''}"
+            on:click={handleToggle}
+            title="Настройки"
+            aria-label="Настройки"
+        >
+            <Settings size={20} />
+        </button>
+    </div>
 </div>
 
 <style>

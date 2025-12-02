@@ -10,7 +10,15 @@
     const dispatch = createEventDispatcher();
     
     let inputValue = '';
-    let inputElement: HTMLInputElement;
+    let inputElement: HTMLTextAreaElement;
+
+    function adjustTextareaHeight() {
+        if (!inputElement) return;
+        inputElement.style.height = 'auto';
+        const maxHeight = 200;
+        const newHeight = Math.min(Math.max(inputElement.scrollHeight, 40), maxHeight);
+        inputElement.style.height = `${newHeight}px`
+    }
     
     function handleSubmit() {
         if (!chatId || !inputValue.trim()) return;
@@ -31,6 +39,7 @@
         });
         
         inputValue = '';
+        adjustTextareaHeight();
         dispatch('clearReply');
         
         sendTyping(false);
@@ -47,6 +56,7 @@
         if (chatId) {
             sendTyping(true);
         }
+        adjustTextareaHeight();
     }
     
     let typingTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -77,6 +87,10 @@
     function handleCancelReply() {
         dispatch('clearReply');
     }
+
+    $: if (inputElement) {
+        adjustTextareaHeight();
+    }
 </script>
 
 <div class="message-input-container">
@@ -91,15 +105,15 @@
     {/if}
     
     <div class="input-wrapper">
-        <input
-            type="text"
+        <textarea
             bind:this={inputElement}
             bind:value={inputValue}
             placeholder={replyToMessage ? "Напишите ответ..." : "Напишите сообщение..."}
             on:keydown={handleKeyDown}
             on:input={handleInput}
             class="message-input"
-        />
+            rows="1"
+        ></textarea>
         <button 
             class="send-button" 
             on:click={handleSubmit}
@@ -167,19 +181,25 @@
         display: flex;
         gap: 8px;
         padding: 12px;
-        align-items: center;
+        align-items: flex-end;
     }
     
     .message-input {
         flex: 1;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         background: var(--secondary-color);
         border: none;
         border-radius: var(--radius-sm);
-        padding: 10px 16px;
+        padding: 10px 10px;
         color: var(--text-color);
         font-size: 14px;
         outline: none;
         transition: var(--transition);
+        min-height: 40px;
+        max-height: 200px;
+        resize: none;
+        line-height: 1.4;
+        box-sizing: border-box; 
     }
     
     .message-input:focus {

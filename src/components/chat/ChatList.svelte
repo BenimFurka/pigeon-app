@@ -3,9 +3,6 @@
     import ChatElement from './ChatElement.svelte';
     import type { Chat } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
-    
-    // TODO: use events
-    export let onSelect: (chat: Chat) => void; 
 
     export let selectedChatId: number | null = null;
 
@@ -13,6 +10,12 @@
     $: chatList = $chatsQuery?.data || [];
     $: isLoading = $chatsQuery?.isLoading;
     $: error = $chatsQuery?.error ? String($chatsQuery.error) : null;
+
+    const dispatch = createEventDispatcher<{ select: { chat: Chat } }>();
+
+    function handleSelect(event: CustomEvent<{ chat: Chat }>) {
+        dispatch('select', event.detail);
+    }
 </script>
 
 <div class="list">
@@ -27,7 +30,7 @@
             <ChatElement 
                 chat={chat}
                 selected={selectedChatId === Number(chat.id)}
-                {onSelect}
+                on:select={handleSelect}
             />
         {/each}
     {/if}

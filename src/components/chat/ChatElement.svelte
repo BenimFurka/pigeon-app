@@ -7,10 +7,9 @@
     
     export let chat: Chat;
     export let selected: boolean = false;
-     
-    // TODO: Use events
-    export let onSelect: (chat: Chat) => void = () => {};
-    
+
+    const dispatch = createEventDispatcher<{ select: { chat: Chat } }>();
+
     let lastMessageText = '';
     let lastSenderName = '';
     let lastSenderId: number | null = null;
@@ -34,13 +33,13 @@
     }
     
     function handleClick() {
-        onSelect(chat);
+        dispatch('select', { chat });
     }
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            onSelect(chat);
+            dispatch('select', { chat });
         }
     }
 </script>

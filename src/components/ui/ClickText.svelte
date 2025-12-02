@@ -1,4 +1,3 @@
-<!-- TODO: refactor -->
 <script lang="ts">
     export let disabled: boolean = false;
     export let style: string = '';
@@ -16,13 +15,11 @@
         background: none;
         border: none;
         cursor: pointer;
-        background-color: none;
-        padding: 10px 16px;
         transition: var(--transition);
         margin: 10px;
         display: inline-flex;
-        justify-content: center;
-        align-items: center;
+        justify-content: start;
+        align-items: start;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
     }

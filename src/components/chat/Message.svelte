@@ -310,7 +310,7 @@
     .other .bubble { margin-right: auto; }
     .own .bubble { margin-left: auto; }
 
-    .message.other:is(.single .end) .bubble {  border-radius: 12px 12px 6px 0px;}
+    .message.other:is(.single, .end) .bubble {  border-radius: 12px 12px 6px 0px;}
     .message.own:is(.single, .end) .bubble { border-radius: 12px 12px 0px 6px; }
 
     .message:where(.own, .other):is(.start) .bubble {  border-radius: 12px 12px 6px 6px;}
@@ -350,7 +350,7 @@
         bottom: 0;
         right: 100%;
         background-color: inherit;
-        clip-path: polygon(100% 0%, 0% 0%, 100% 100%);
+        clip-path: polygon(100% 0%, 0% 100%, 100% 100%);
     }
 
     .edit-container {

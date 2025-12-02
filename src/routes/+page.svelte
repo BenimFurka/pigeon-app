@@ -1,21 +1,25 @@
 <script lang="ts">
-	import AuthLayout from '../layouts/AuthLayout.svelte';
-	import LeftLayout from '../layouts/LeftLayout.svelte';
-	import { loggedIn } from '../stores/auth';
+    import { onMount } from 'svelte';
+    import AuthLayout from '../layouts/AuthLayout.svelte';
+    import LeftLayout from '../layouts/LeftLayout.svelte';
+    import { loggedIn } from '../stores/auth';
     import RightLayout from '../layouts/RightLayout.svelte';
     import SettingsLayout from '../layouts/SettingsLayout.svelte';
     import Sidebar from '../layouts/Sidebar.svelte';
     import type { Chat } from '../types/models';
     import { session } from '../lib/session';
-	
-	let inSettings: boolean = false;
-	let selectedChat: Chat| null = null;
+    
+    let inSettings: boolean = false;
+    let selectedChat: Chat | null = null;
+    let isMobile = false;
+    let leftVisible = true;
+    let rightVisible = true;
 
     let initialized = false;
 
-	if (!initialized) {
-		initializeApp();
-	}
+    if (!initialized) {
+        initializeApp();
+    }
     
     async function initializeApp() {
         try {
@@ -27,17 +31,79 @@
         initialized = true;
     }
 
-	function handleChatSelect(chat: Chat) {
-		selectedChat = chat;
-	}
+    function updateViewportState() {
+        if (typeof window !== 'undefined') {
+            isMobile = window.innerWidth <= 900;
+        }
+    }
+
+    onMount(() => {
+        updateViewportState();
+        const handleResize = () => {
+            const wasMobile = isMobile;
+            updateViewportState();
+            if (!isMobile && wasMobile) {
+                inSettings = false;
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    });
+
+    $: leftVisible = isMobile ? (!selectedChat && !inSettings) : true;
+    $: rightVisible = isMobile ? (Boolean(selectedChat) && !inSettings) : true;
+
+    function handleChatSelect(event: CustomEvent<{ chat: Chat }>) {
+        const { chat } = event.detail;
+        selectedChat = chat;
+        if (isMobile) {
+            inSettings = false;
+        }
+    }
+
+    function handleBackToList() {
+        selectedChat = null;
+    }
+
+    function toggleSettings() {
+        inSettings = !inSettings;
+        if (isMobile && inSettings) {
+            selectedChat = null;
+        }
+    }
+
+    function closeSettings() {
+        inSettings = false;
+    }
 </script>
 
 {#if initialized && $loggedIn}
-<main class="app">
-    <Sidebar bind:inSettings />
-    <SettingsLayout bind:inSettings />
-    <LeftLayout onChatSelect={handleChatSelect} />
-    <RightLayout selectedChat={selectedChat} />
+<main class={`app ${isMobile ? 'mobile' : ''}`}>
+    {#if !isMobile}
+        <Sidebar inSettings={inSettings} onToggleSettings={toggleSettings} />
+    {/if}
+    <LeftLayout
+        onToggleSettings={toggleSettings}
+        inSettings={inSettings}
+        isMobile={isMobile}
+        isVisible={leftVisible}
+        on:select={handleChatSelect}
+    />
+    {#if !isMobile || selectedChat}
+        <RightLayout
+            selectedChat={selectedChat}
+            onBack={handleBackToList}
+            isMobile={isMobile}
+            isVisible={rightVisible}
+        />
+    {/if}
+    <SettingsLayout
+        inSettings={inSettings}
+        isMobile={isMobile}
+        onClose={closeSettings}
+    />
 </main>
 {:else}
 <main class="auth">
@@ -81,7 +147,20 @@
 	.app {
 		display: flex;
 		width: 100%;
+        height: 100vh;
+        position: relative;
+        overflow: hidden;
 	}
+
+    .app.mobile {
+        flex-direction: row;
+    }
+
+    @media (min-width: 901px) {
+        .app {
+            height: 100%;
+        }
+    }
 
 	.auth {
 		display: flex;
