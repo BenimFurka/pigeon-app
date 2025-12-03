@@ -17,157 +17,186 @@ pub enum WsError {
     Url(#[from] url::ParseError),
     #[error("Connection error: {0}")]
     Connection(String),
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
 }
 
 pub struct WebSocketClient {
     sink: Arc<Mutex<Option<futures_util::stream::SplitSink<WsStream, Message>>>>,
+    is_connected: Arc<Mutex<bool>>,
 }
 
 impl WebSocketClient {
     pub async fn new(url: &str, token: &str, app: AppHandle) -> Result<Self, WsError> {
         info!("Creating new WebSocket connection to: {}", url);
-        debug!("Token: {}", token);
-
-        let mut url = Url::parse(url)?;
-
-        if url.query_pairs().find(|(k, _)| k == "token").is_none() {
-            let mut pairs = url.query_pairs_mut();
-            pairs.append_pair("token", &format!("Bearer {}", token));
-            debug!("Added token to URL query parameters");
-        }
-
-        info!("Connecting to WebSocket...");
-        let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+        
+        let url = Url::parse(url)?;
+        
+        let (ws_stream, _) = connect_async(&url).await.map_err(|e| {
             error!("WebSocket connection failed: {}", e);
-            e
+            WsError::Connection(format!("Connection failed: {}", e))
         })?;
+        
         info!("WebSocket connection established successfully");
-
+        
         let (write, read) = ws_stream.split();
-
         let sink = Arc::new(Mutex::new(Some(write)));
-        let sink_clone = Arc::clone(&sink);
-
-        let token = token.to_string();
-        tokio::spawn(async move {
-            info!("Scheduling authentication message...");
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-            let auth_message = serde_json::json!({
-                "type": "auth",
-                "data": { "token": format!("Bearer {}", token) }
-            });
-
-            debug!("Sending authentication message: {}", auth_message);
-
-            if let Some(write) = sink_clone.lock().await.as_mut() {
-                match write.send(Message::Text(auth_message.to_string())).await {
-                    Ok(_) => info!("Authentication message sent successfully"),
-                    Err(e) => error!("Failed to send authentication message: {}", e),
-                }
-            } else {
-                warn!("Cannot send authentication message - sink is not available");
-            }
-        });
-
-        Self::start_message_handler(read, Arc::clone(&sink), app);
-
-        Ok(WebSocketClient { sink })
+        let is_connected = Arc::new(Mutex::new(true));
+        
+        let client = Self {
+            sink: Arc::clone(&sink),
+            is_connected: Arc::clone(&is_connected),
+        };
+        
+        Self::start_message_handler(read, Arc::clone(&sink), Arc::clone(&is_connected), app);
+        client.authenticate(token).await?;
+        
+        Ok(client)
     }
-
+    
+    async fn authenticate(&self, token: &str) -> Result<(), WsError> {
+        let auth_message = serde_json::to_string(&serde_json::json!({
+            "type": "authenticate",
+            "data": { 
+                "token": token,
+            }
+        }))?;
+        
+        info!("Sending authentication...");
+        self.send_message(&auth_message).await?;
+        info!("Authentication sent successfully");
+        
+        Ok(())
+    }
+    
     pub async fn send_message(&self, message: &str) -> Result<(), WsError> {
         debug!("Sending WebSocket message: {}", message);
-
-        let mut lock = self.sink.lock().await;
-        if let Some(write) = lock.as_mut() {
-            write.send(Message::Text(message.to_string())).await.map_err(|e| {
-                error!("Failed to send message: {}", e);
-                e
-            })?;
-            debug!("Message sent successfully");
-            Ok(())
-        } else {
-            warn!("Attempted to send message but WebSocket is not connected");
-            Err(WsError::Connection("WebSocket is not connected".to_string()))
+        
+        let connected = *self.is_connected.lock().await;
+        if !connected {
+            return Err(WsError::Connection("WebSocket is not connected".to_string()));
         }
-    }
-
-    pub async fn disconnect(&self) {
-        info!("Disconnecting WebSocket...");
-        if let Some(mut sink) = self.sink.lock().await.take() {
-            match sink.close().await {
-                Ok(_) => info!("WebSocket disconnected gracefully"),
-                Err(e) => warn!("Error during WebSocket disconnection: {}", e),
+        
+        let mut sink_lock = self.sink.lock().await;
+        match sink_lock.as_mut() {
+            Some(write) => {
+                let send_result = write.send(Message::Text(message.to_string())).await;
+                match send_result {
+                    Ok(_) => {
+                        debug!("Message sent successfully");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        error!("Failed to send message: {}", e);
+                        *self.is_connected.lock().await = false;
+                        Err(WsError::Tungstenite(e))
+                    }
+                }
             }
-        } else {
-            debug!("WebSocket already disconnected");
+            None => {
+                warn!("Attempted to send message but WebSocket is not connected");
+                *self.is_connected.lock().await = false;
+                Err(WsError::Connection("WebSocket sink is not available".to_string()))
+            }
         }
     }
-
+    
     fn start_message_handler(
         mut read: impl StreamExt<Item = Result<Message, tokio_tungstenite::tungstenite::Error>> + Unpin + Send + 'static,
         sink: Arc<Mutex<Option<futures_util::stream::SplitSink<WsStream, Message>>>>,
+        is_connected: Arc<Mutex<bool>>,
         app: AppHandle,
     ) {
         info!("Starting WebSocket message handler");
-
+        
         tokio::spawn(async move {
-            debug!("WebSocket message handler started");
-
+            info!("WebSocket message handler started");
+            
             while let Some(message) = read.next().await {
                 match message {
                     Ok(Message::Text(text)) => {
                         debug!("Received text message: {}", text);
-                        match app.emit("websocket-message", text) {
-                            Ok(_) => debug!("Message emitted to frontend"),
-                            Err(e) => error!("Failed to emit message to frontend: {}", e),
+                        
+                        match serde_json::from_str::<serde_json::Value>(&text) {
+                            Ok(json) => {
+                                match app.emit("websocket-message", json) {
+                                    Ok(_) => debug!("Message emitted to frontend"),
+                                    Err(e) => error!("Failed to emit message to frontend: {}", e),
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to parse message as JSON: {}", e);
+                                match app.emit("websocket-raw-message", text) {
+                                    Ok(_) => debug!("Raw message emitted"),
+                                    Err(e) => error!("Failed to emit raw message: {}", e),
+                                }
+                            }
                         }
                     }
-                    Ok(Message::Close(_)) => {
-                        info!("WebSocket connection closed by server");
-                        match app.emit("websocket-close", "") {
+                    Ok(Message::Close(frame)) => {
+                        info!("WebSocket connection closed by server: {:?}", frame);
+                        *is_connected.lock().await = false;
+   
+                        let event_data = serde_json::json!({
+                            "code": frame.as_ref().map(|f| u16::from(f.code)),
+                            "reason": frame.as_ref().map(|f| f.reason.as_ref().to_string())
+                        });
+                        
+                        match app.emit("websocket-close", event_data) {
                             Ok(_) => debug!("Close event emitted to frontend"),
                             Err(e) => error!("Failed to emit close event: {}", e),
                         }
                         break;
                     }
+                    Ok(Message::Ping(data)) => {
+                        debug!("Received ping ({} bytes)", data.len());
+                        if let Some(write) = sink.lock().await.as_mut() {
+                            if let Err(e) = write.send(Message::Pong(data)).await {
+                                error!("Failed to send pong: {}", e);
+                            }
+                        }
+                    }
+                    Ok(Message::Pong(_)) => {
+                        debug!("Received pong");
+                    }
+                    Ok(Message::Binary(data)) => {
+                        debug!("Received binary message ({} bytes)", data.len());
+                        match app.emit("websocket-binary", data) {
+                            Ok(_) => debug!("Binary message emitted"),
+                            Err(e) => error!("Failed to emit binary message: {}", e),
+                        }
+                    }
                     Err(e) => {
                         error!("WebSocket error: {}", e);
+                        *is_connected.lock().await = false;
+                        
                         match app.emit("websocket-error", e.to_string()) {
                             Ok(_) => debug!("Error event emitted to frontend"),
                             Err(emit_err) => error!("Failed to emit error event: {}", emit_err),
                         }
                         break;
                     }
-                    Ok(Message::Binary(data)) => {
-                        debug!("Received binary message ({} bytes)", data.len());
-                        match String::from_utf8(data) {
-                            Ok(text) => {
-                                debug!("Converted binary to text: {}", text);
-                                match app.emit("websocket-message", text) {
-                                    Ok(_) => debug!("Binary message emitted to frontend"),
-                                    Err(e) => error!("Failed to emit binary message: {}", e),
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to convert binary message to UTF-8: {}", e);
-                            }
-                        }
-                    }
-                    Ok(Message::Ping(data)) => {
-                        debug!("Received ping ({} bytes)", data.len());
-                    }
-                    Ok(Message::Pong(data)) => {
-                        debug!("Received pong ({} bytes)", data.len());
-                    }
                     _ => {
-                        debug!("Received other message type");
+                        debug!("Received other message type");   
                     }
                 }
             }
-
-            info!("WebSocket message handler stopped");
+            
             let _ = sink.lock().await.take();
+            info!("WebSocket message handler stopped");
         });
+    }
+    
+    pub async fn disconnect(&self) {
+        info!("Disconnecting WebSocket...");
+        
+        *self.is_connected.lock().await = false;
+        
+        if let Some(mut sink) = self.sink.lock().await.take() {
+            match sink.close().await {
+                Ok(_) => info!("WebSocket disconnected gracefully"),
+                Err(e) => warn!("Error during WebSocket disconnection: {}", e),
+            }
+        }
     }
 }

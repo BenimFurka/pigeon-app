@@ -30,6 +30,7 @@ export class WSClient {
 
         if (isTauri) {
             try {
+                this.connectionState = 'connecting';
                 const { invoke } = await import('@tauri-apps/api/core');
                 await invoke('init_websocket', {
                     url: getWebSocketUrl(),
@@ -43,6 +44,7 @@ export class WSClient {
                 this.emitEvent({ type: 'error', error: String(error) });
             }
         } else {
+            this.connectionState = 'connecting';
             this.connectWebSocket();
         }
     }
@@ -114,31 +116,48 @@ export class WSClient {
     public async on(event: string, callback: Function) {
         const isTauri = await getIsTauriEnvironment();
 
+        const listener = { event, callback } as { event: string; callback: Function; unlisten?: UnlistenFn };
+        this.listeners.push(listener);
+
         if (isTauri) {
-            this.listeners.push({ event, callback });
-            listen(event, (payload) => callback(payload.payload)).then((unlisten) => {
-                const listener = this.listeners.find(l => l.event === event && l.callback === callback);
-                if (listener) {
-                    listener.unlisten = unlisten;
+            const tauriEvent = this.mapTauriEvent(event);
+            if (!tauriEvent) {
+                return;
+            }
+
+            const unlisten = await listen(tauriEvent, (payload) => {
+                const normalized = this.normalizeTauriEvent(event, payload.payload);
+                if (!normalized) {
+                    return;
                 }
+
+                if (normalized.type === 'close') {
+                    this.connectionState = 'closed';
+                } else if (normalized.type === 'error') {
+                    this.connectionState = 'disconnected';
+                }
+
+                callback(normalized);
             });
-        } else {
-            this.listeners.push({ event, callback });
+
+            const stored = this.listeners.find(l => l.event === event && l.callback === callback);
+            if (stored) {
+                stored.unlisten = unlisten;
+            }
+            return;
         }
     }
 
     public async off(event: string, callback: Function) {
         const isTauri = await getIsTauriEnvironment();
 
-        if (isTauri) {
-            const listener = this.listeners.find(l => l.event === event && l.callback === callback);
-            if (listener && listener.unlisten) {
-                listener.unlisten();
-                this.listeners = this.listeners.filter(l => l !== listener);
-            }
-        } else {
-            this.listeners = this.listeners.filter(l => l.event !== event || l.callback !== callback);
+        const listener = this.listeners.find(l => l.event === event && l.callback === callback);
+
+        if (listener && listener.unlisten) {
+            listener.unlisten();
         }
+
+        this.listeners = this.listeners.filter(l => l !== listener);
     }
 
     private emitEvent(event: WsEvent) {
@@ -156,6 +175,7 @@ export class WSClient {
             }
         });
         this.listeners = [];
+        this.connectionState = 'disconnected';
     }
 
 
@@ -176,5 +196,34 @@ export class WSClient {
         };
         
         this.socket.send(JSON.stringify(authMessage));
+    }
+
+    private mapTauriEvent(event: string): string | null {
+        switch (event) {
+            case 'message':
+                return 'websocket-message';
+            case 'close':
+                return 'websocket-close';
+            case 'error':
+                return 'websocket-error';
+            default:
+                return null;
+        }
+    }
+
+    private normalizeTauriEvent(event: string, payload: any): WsEvent | null {
+        switch (event) {
+            case 'message':
+                return { type: 'message', data: payload };
+            case 'close': {
+                const code = typeof payload?.code === 'number' ? payload.code : 1000;
+                const reason = typeof payload?.reason === 'string' ? payload.reason : '';
+                return { type: 'close', code, reason };
+            }
+            case 'error':
+                return { type: 'error', error: String(payload ?? 'Unknown error') };
+            default:
+                return null;
+        }
     }
 }

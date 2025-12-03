@@ -53,31 +53,44 @@ export class Session {
         if (!this.hasValidTokens()) {
             throw new Error('No valid tokens available');
         }
-        
-        await this.initializeWebSocket();
+
+        if (!this.ws) {
+            await this.initializeWebSocket();
+        }
 
         this.setupTokenRefresh();
 
-        loggedIn.set(true);
+        if (!get(loggedIn)) {
+            loggedIn.set(true);
+        }
     }
 
     private async initializeWebSocket(): Promise<void> {
         const token = localStorage.getItem('access_token');
-        if (!token) return;
+        if (!token || this.ws) return;
 
-        if (this.ws) {
-            this.ws.close();
-        }
+        const ws = new WSClient(token);
+        this.ws = ws;
 
-        this.ws = new WSClient(token);
-        
-        this.ws.on('message', (event: { type: string; data: any }) => {
+        await ws.on('message', (event: { type: string; data: any }) => {
             const incoming = event.data as ServerMessage;
             this.handleWebSocketMessage(incoming);
         });
-        
-        this.ws.on('open', () => {
+
+        await ws.on('open', () => {
             console.log('[Session] WebSocket connected');
+        });
+
+        await ws.on('close', () => {
+            if (this.ws === ws) {
+                this.ws = null;
+            }
+        });
+
+        await ws.on('error', () => {
+            if (this.ws === ws) {
+                this.ws = null;
+            }
         });
     }
 
@@ -178,9 +191,11 @@ export class Session {
             }
 
             if (!previousValue && isLoggedIn) {
-                this.initializeAuthenticatedSession().catch((e) => {
-                    console.error('Failed to initialize session after login:', e);
-                });
+                if (!this.ws) {
+                    this.initializeAuthenticatedSession().catch((e) => {
+                        console.error('Failed to initialize session after login:', e);
+                    });
+                }
             }
             previousValue = isLoggedIn;
         });

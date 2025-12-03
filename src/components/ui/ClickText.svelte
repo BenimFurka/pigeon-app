@@ -18,8 +18,6 @@
         transition: var(--transition);
         margin: 10px;
         display: inline-flex;
-        justify-content: start;
-        align-items: start;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
     }

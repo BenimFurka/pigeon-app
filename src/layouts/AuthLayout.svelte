@@ -136,14 +136,14 @@
 
 	{#if view === 'forgotPassword' || view === 'resetPassword'}
 		<ClickText
-			style="font-size: 0.8rem;"
+			style="font-size: 0.8rem; align-self: center"
 			onClick={() => switchView('login')}
 		>
 			Назад ко входу
 		</ClickText>
 	{:else if view !== 'verifyEmail'}
 		<ClickText
-			style="font-size: 0.8rem;"
+			style="font-size: 0.8rem; align-self: center"
 			onClick={() => switchView('forgotPassword')}
 		>
 			Забыли пароль?
@@ -156,10 +156,11 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--glass);
-		padding: 25px;
+		padding: 26px;
 		border-radius: 12px;
 		width: min(90%, 240px);
 		transition: var(--transition);
+        align-self: center;
 	}
 
 	.error {
