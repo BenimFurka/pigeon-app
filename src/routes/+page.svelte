@@ -34,7 +34,7 @@
 
     function updateViewportState() {
         if (typeof window !== 'undefined') {
-            isMobile = window.innerWidth <= 900;
+            isMobile = window.innerWidth <= 576;
         }
     }
 

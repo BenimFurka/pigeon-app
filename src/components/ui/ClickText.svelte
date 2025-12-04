@@ -18,7 +18,6 @@
         transition: var(--transition);
         margin: 10px;
         display: inline-flex;
-        -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
     }
 

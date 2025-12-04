@@ -112,7 +112,7 @@
         color: var(--text-color);
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 576px) {
         .left-layout {
             position: absolute;
             top: 0;

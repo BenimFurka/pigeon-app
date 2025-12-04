@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Settings } from "lucide-svelte";
+    import { Settings, Plus } from "lucide-svelte";
     import { currentUser } from "../stores/auth";
     import { useCurrentProfile } from "../queries/profile";
     import Avatar from "../components/chat/Avatar.svelte";
@@ -17,6 +17,13 @@
 
 <div class="sidebar">
     <div class="sidebar-actions">
+        <button
+            class="sidebar-button"
+            title="Создать чат"
+            aria-label="Создать чат"
+        >
+            <Plus size={20} />
+        </button>
         <button
             class="sidebar-button {inSettings ? 'active' : ''}"
             on:click={handleToggle}
@@ -36,7 +43,7 @@
         flex-direction: column-reverse;
         align-items: center;
         justify-content: space-between;
-        background-color: hsl(var(--hue), 16%, 7%);
+        background-color: hsl(var(--hue), 12%, 7%);
         width: 42px;
         min-width: 0;
         height: 100%;

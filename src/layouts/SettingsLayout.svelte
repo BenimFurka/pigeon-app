@@ -182,7 +182,7 @@
         transform: translateX(0);
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 576px) {
         .settings-layout {
             width: 100%;
             left: 0;
