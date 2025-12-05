@@ -12,7 +12,6 @@
     export let currentUserId: number | null = null;
     export let replyToMessage: Message | null = null;
 
-    console.log(groupPosition);
     const dispatch = createEventDispatcher();
 
     let senderName = '';
@@ -36,11 +35,7 @@
     }
     
     $: isOwn = message.sender_id == currentUserId;
-    console.log(`Message with ID ${message.id} is ${isOwn ? 'owned' : 'not owned'} by user ${currentUserId}`);
-    console.log(`Message with ID ${message.id} was sent by ${message.sender_id}`);
-  
     $: isDeleted = false;
-    
     $: reactions = message.reactions || [];
     
     function handleReplyClick() {

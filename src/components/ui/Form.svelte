@@ -1,7 +1,8 @@
+
 <script lang="ts">
-	import Input from "../Input.svelte";
-	import Button from "../Button.svelte";
-    import type { InputItem } from "../../../types/components";
+	import Input from "./Input.svelte";
+	import Button from "./Button.svelte";
+    import type { InputItem } from "../../types/components";
 
 	export let title: string = '';
 	export let submit: string = 'Отправить';

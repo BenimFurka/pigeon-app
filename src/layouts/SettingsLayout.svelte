@@ -35,7 +35,7 @@
                     <ArrowLeft size={18} />
                 </button>
             {/if}
-            <span>Настройки</span>
+            <span>Настройки</span> <!-- TODO -->
         </div>
     </Bar>
     <div class="settings-content">

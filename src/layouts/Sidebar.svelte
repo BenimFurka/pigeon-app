@@ -6,6 +6,7 @@
 
     export let inSettings: boolean = false;
     export let onToggleSettings: () => void = () => {};
+    export let onOpenCreateChat: () => void = () => {};
 
     const profileQuery = useCurrentProfile();
     $: currentProfile = $profileQuery?.data || null;
@@ -21,6 +22,7 @@
             class="sidebar-button"
             title="Создать чат"
             aria-label="Создать чат"
+            on:click={onOpenCreateChat}
         >
             <Plus size={20} />
         </button>

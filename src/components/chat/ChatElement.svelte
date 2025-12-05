@@ -86,6 +86,7 @@
         max-width: 100%;
         overflow: hidden;
         outline: none;
+        background: var(--secondary-color);
     }
 
     .chat-element:hover {

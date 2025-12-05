@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Tabs from '../components/ui/tab/Tabs.svelte';
-	import Form from '../components/ui/auth/Form.svelte';
+	import Form from '../components/ui/Form.svelte';
 	import ClickText from '../components/ui/ClickText.svelte';
 	import {
 		login,
