@@ -14,62 +14,155 @@
 
 	let view = 'login';
 
+	let loginData = {
+		login: '',
+		password: ''
+	};
+
+	let registerData = {
+		display: '',
+		username: '',
+		email: '',
+		password: ''
+	};
+
+	let verifyData = {
+		code: ''
+	};
+
+	let forgotPasswordData = {
+		email: ''
+	};
+
+	let resetPasswordData = {
+		code: '',
+		new_password: ''
+	};
+
 	let loginFields: InputItem[] = [
-		{ id: 'login', label: 'Email или имя пользователя', type: 'text', required: true, value: '' },
-		{ id: 'password', label: 'Пароль', type: 'password', required: true, value: '' }
+		{ 
+			id: 'login', 
+			label: 'Email или имя пользователя', 
+			type: 'text', 
+			required: true 
+		},
+		{ 
+			id: 'password', 
+			label: 'Пароль', 
+			type: 'password', 
+			required: true 
+		}
 	];
 
 	let registerFields: InputItem[] = [
-		{ id: 'display', label: 'Отображаемое имя', type: 'text', value: '' },
-		{ id: 'username', label: 'Имя пользователя', type: 'text', required: true, value: '' },
-		{ id: 'email', label: 'Email', type: 'email', required: true, value: '' },
-		{ id: 'password', label: 'Пароль', type: 'password', required: true, value: '' }
+		{ 
+			id: 'display', 
+			label: 'Отображаемое имя', 
+			type: 'text' 
+		},
+		{ 
+			id: 'username', 
+			label: 'Имя пользователя', 
+			type: 'text', 
+			required: true 
+		},
+		{ 
+			id: 'email', 
+			label: 'Email', 
+			type: 'email', 
+			required: true 
+		},
+		{ 
+			id: 'password', 
+			label: 'Пароль', 
+			type: 'password', 
+			required: true 
+		}
 	];
 
 	let verifyFields: InputItem[] = [
-		{ id: 'code', label: 'Код из письма', type: 'text', required: true, value: '' }
+		{ 
+			id: 'code', 
+			label: 'Код из письма', 
+			type: 'text', 
+			required: true 
+		}
 	];
 
 	let forgotPasswordFields: InputItem[] = [
-		{ id: 'email', label: 'Введите ваш Email', type: 'email', required: true, value: '' }
+		{ 
+			id: 'email', 
+			label: 'Введите ваш Email', 
+			type: 'email', 
+			required: true 
+		}
 	];
 
 	let resetPasswordFields: InputItem[] = [
-		{ id: 'code', label: 'Код из письма', type: 'text', required: true, value: '' },
-		{ id: 'new_password', label: 'Новый пароль', type: 'password', required: true, value: '' }
+		{ 
+			id: 'code', 
+			label: 'Код из письма', 
+			type: 'text', 
+			required: true 
+		},
+		{ 
+			id: 'new_password', 
+			label: 'Новый пароль', 
+			type: 'password', 
+			required: true 
+		}
 	];
 
-	function getValue(fields: InputItem[], id: string) {
-		return fields.find(f => f.id === id)?.value || '';
+	function updateFormData(formData: FormData, dataStore: any) {
+		console.log(formData);
+		console.log(dataStore);
+		for (const key in dataStore) {
+			const value = formData.get(key);
+			if (value !== null) {
+				dataStore[key] = value.toString();
+			}
+		}
 	}
 
-	async function handleLogin() {
-		await login(getValue(loginFields, 'login'), getValue(loginFields, 'password'));
+	async function handleLogin(event: SubmitEvent) {
+		const formData = new FormData(event.target as HTMLFormElement);
+		updateFormData(formData, loginData);
+		await login(loginData.login, loginData.password);
 	}
 
-	async function handleRegister() {
+	async function handleRegister(event: SubmitEvent) {
+		const formData = new FormData(event.target as HTMLFormElement);
+		updateFormData(formData, registerData);
 		const success = await register(
-		getValue(registerFields, 'username'),
-		getValue(registerFields, 'email'),
-		getValue(registerFields, 'password'),
-		getValue(registerFields, 'display')
+			registerData.username,
+			registerData.email,
+			registerData.password,
+			registerData.display
 		);
 		if (success) switchView('verifyEmail');
 	}
 
-	async function handleVerify() {
-		const email = getValue(registerFields, 'email');
-		await verifyEmail(email, getValue(verifyFields, 'code'));
+	async function handleVerify(event: SubmitEvent) {
+		const formData = new FormData(event.target as HTMLFormElement);
+		updateFormData(formData, verifyData);
+		await verifyEmail(registerData.email, verifyData.code);
 	}
 
-	async function handleRequestReset() {
-		const success = await requestPasswordReset(getValue(forgotPasswordFields, 'email'));
+	async function handleRequestReset(event: SubmitEvent) {
+		const formData = new FormData(event.target as HTMLFormElement);
+		updateFormData(formData, forgotPasswordData);
+		const success = await requestPasswordReset(forgotPasswordData.email);
 		if (success) switchView('resetPassword');
 	}
 
-	async function handleResetPassword() {
-		const email = getValue(forgotPasswordFields, 'email');
-		await verifyPasswordReset(email, getValue(resetPasswordFields, 'code'), getValue(resetPasswordFields, 'new_password'));
+	async function handleResetPassword(event: SubmitEvent) {
+		const formData = new FormData(event.target as HTMLFormElement);
+		updateFormData(formData, resetPasswordData);
+		await verifyPasswordReset(
+			forgotPasswordData.email, 
+			resetPasswordData.code, 
+			resetPasswordData.new_password
+		);
 		if (!$authError) switchView('login');
 	}
 

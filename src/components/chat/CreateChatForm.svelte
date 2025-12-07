@@ -1,9 +1,9 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import Input from '../ui/Input.svelte';
-    import Button from '../ui/Button.svelte';
+    import Form from '../ui/Form.svelte';
     import { ChatType, type Chat } from '../../types/models';
     import { useCreateChat } from '../../queries/chats';
+    import type { InputItem } from '../../types/components';
 
     export let initialChatType: ChatType = ChatType.GROUP;
     export let initialName: string = '';
@@ -22,6 +22,63 @@
         isPublic = false;
     }
 
+    $: fields = getFormFields();
+    
+    function getFormFields(): InputItem[] {
+        const baseFields: InputItem[] = [
+            {
+                id: 'chat-type',
+                label: 'Тип чата',
+                type: 'select',
+                value: chatType,
+                options: [
+                    { value: ChatType.DM, label: 'Личный' },
+                    { value: ChatType.GROUP, label: 'Группа' },
+                    { value: ChatType.CHANNEL, label: 'Канал' }
+                ]
+            }
+        ];
+
+        if (chatType !== ChatType.DM) {
+            baseFields.push(
+                {
+                    id: 'chat-name',
+                    label: 'Название',
+                    type: 'text',
+                    placeholder: 'Введите название',
+                    value: name,
+                    required: true
+                },
+                {
+                    id: 'chat-description',
+                    label: 'Описание',
+                    type: 'text',
+                    placeholder: 'Краткое описание (необязательно)',
+                    value: description
+                },
+                {
+                    id: 'chat-public',
+                    label: 'Публичный',
+                    type: 'checkbox',
+                    checked: isPublic
+                }
+            );
+        }
+
+        baseFields.push({
+            id: 'chat-members',
+            label: chatType === ChatType.DM ? 'Участник (ID)' : 'Участники (ID через запятую)',
+            type: 'text',
+            placeholder: chatType === ChatType.DM ? 'Например: 42' : 'Например: 2, 5, 8',
+            value: membersInput,
+            required: chatType === ChatType.DM
+        });
+
+        return baseFields;
+    }
+
+    $: isFormActive = !$createChat.isPending;
+
     const createChat = useCreateChat();
 
     function parseMemberIds(input: string): number[] {
@@ -31,8 +88,21 @@
             .filter((id) => !Number.isNaN(id) && id > 0);
     }
 
-    async function handleSubmit(event: Event) {
+    async function handleFormSubmit(event: SubmitEvent) {
         event.preventDefault();
+        const formData = new FormData(event.target as HTMLFormElement);
+        
+        const newChatType = formData.get('chat-type') as ChatType;
+        chatType = newChatType;
+        
+        if (chatType !== ChatType.DM) {
+            name = (formData.get('chat-name') as string) || '';
+            description = (formData.get('chat-description') as string) || '';
+            isPublic = formData.get('chat-public') === 'on';
+        }
+        
+        membersInput = (formData.get('chat-members') as string) || '';
+        
         const memberIds = parseMemberIds(membersInput);
 
         if (chatType === ChatType.DM && memberIds.length !== 1) {
@@ -57,6 +127,14 @@
             const result = await $createChat.mutateAsync(payload);
             if (result) {
                 dispatch('created', { chat: result });
+                if (chatType === ChatType.DM) {
+                    membersInput = '';
+                } else {
+                    name = '';
+                    description = '';
+                    isPublic = true;
+                    membersInput = '';
+                }
             }
         } catch (error) {
             console.error(error);
@@ -64,110 +142,23 @@
     }
 </script>
 
-<form class="create-chat-form" on:submit|preventDefault={handleSubmit}>
-    <!-- TODO: Use Form -->
-    <div class="field">
-        <label for="chat-type">Тип чата</label>
-        <select
-            id="chat-type"
-            bind:value={chatType}
-            disabled={$createChat.isPending}
-        >
-            <option value={ChatType.DM}>Личный</option>
-            <option value={ChatType.GROUP}>Группа</option>
-            <option value={ChatType.CHANNEL}>Канал</option>
-        </select>
-    </div>
+<Form
+    submit={$createChat.isPending ? 'Создание...' : 'Создать чат'}
+    fields={fields}
+    onSubmit={handleFormSubmit}
+    active={isFormActive}
+/>
 
-    {#if chatType !== ChatType.DM}
-        <Input
-            id="chat-name"
-            label="Название"
-            placeholder="Введите название"
-            bind:value={name}
-        />
-
-        <Input
-            id="chat-description"
-            label="Описание"
-            placeholder="Краткое описание (необязательно)"
-            bind:value={description}
-        />
-
-        <div class="field toggle">
-            <label for="chat-public">Публичный</label>
-            <input
-                id="chat-public"
-                type="checkbox"
-                bind:checked={isPublic}
-                disabled={$createChat.isPending}
-            />
-        </div>
-
-    {/if}
-
-    <!-- TODO: maybe do with search? -->
-    <Input
-        id="chat-members"
-        label={chatType === ChatType.DM ? 'Участник (ID)' : 'Участники (ID через запятую)'}
-        placeholder={chatType === ChatType.DM ? 'Например: 42' : 'Например: 2, 5, 8'}
-        bind:value={membersInput}
-    />
-
-    <div class="actions">
-        <Button type="submit" disabled={$createChat.isPending}>
-            {$createChat.isPending ? 'Создание...' : 'Создать чат'}
-        </Button>
-    </div>
-
-    {#if $createChat.error}
-        <div class="error">{String($createChat.error)}</div>
-    {/if}
-</form>
+{#if $createChat.error}
+    <div class="error">{String($createChat.error)}</div>
+{/if}
 
 <style>
-    .create-chat-form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        width: 100%;
-    }
-
-    .field {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        color: var(--text-color);
-    }
-
-    select {
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-sm);
-        padding: 10px;
-        color: var(--text-color);
-        outline: none;
-    }
-
-    select:focus {
-        border-color: var(--primary-color);
-    }
-
-    .field.toggle {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .actions {
-        display: flex;
-        justify-content: flex-end;
-    }
-
     .error {
         color: #ff4d4d;
         font-size: 0.9rem;
         opacity: 0.85;
         text-align: right;
+        margin-top: 10px;
     }
 </style>

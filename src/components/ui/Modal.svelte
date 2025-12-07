@@ -61,7 +61,9 @@
     }
 
     .modal-panel {
-        background: var(--secondary-color);
+        background-image: 
+            linear-gradient(var(--glass), var(--glass)),
+            linear-gradient(var(--secondary-color), var(--secondary-color));
         border-radius: 12px;
         width: min(420px, 100%);
         display: flex;

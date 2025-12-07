@@ -1,45 +1,58 @@
-
 <script lang="ts">
-	import Input from "./Input.svelte";
-	import Button from "./Button.svelte";
+    import Input from "./Input.svelte";
+    import Button from "./Button.svelte";
     import type { InputItem } from "../../types/components";
 
-	export let title: string = '';
-	export let submit: string = 'Отправить';
-	export let fields: InputItem[]= [];
-	export let onSubmit: (e: SubmitEvent) => void = (e) => {};
-	export let active = false;
+    export let title: string = '';
+    export let submit: string = 'Отправить';
+    export let fields: InputItem[] = [];
+    export let onSubmit: (e: SubmitEvent) => void = (e) => {};
+    export let active = false;
 </script>
 
 <div>
-  	<form on:submit|preventDefault={onSubmit} class={`${active ? 'active' : ''}`}>
-		{#if title}
-		<h2>{title}</h2>
-		{/if}
+    <form on:submit|preventDefault={onSubmit} class={`${active ? 'active' : ''}`}>
+        {#if title}
+            <h2>{title}</h2>
+        {/if}
 
-		{#each fields as field}
-		<Input
-			label={field.label}
-			id={field.id}
-			type={field.type || 'text'}
-			placeholder={field.placeholder}
-			required={field.required}
-			style="width: 100%; height: 40px;"
-			bind:value={field.value}
-		/>
-		{/each}
-		<Button type="submit" style="width: 100%; margin: 20px 0px 0px 0px;">
-			{submit}
-		</Button>
-  	</form>
+        {#each fields as field, i}
+            {#if field.type === 'text' || field.type === 'password' || field.type === 'email' || field.type === 'select'}
+                <Input
+                    label={field.label}
+                    id={field.id}
+                    name={field.id}
+                    type={field.type}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    value={field.value}
+                    options={field.type === 'select' ? field.options : undefined}
+                    style="width: 100%; height: 40px;"
+                />
+            {:else if field.type === 'checkbox'}
+                <Input
+                    label={field.label}
+                    id={field.id}
+                    name={field.id}
+                    type={field.type}
+                    checked={field.checked}
+                />
+            {/if}
+        {/each}
+
+        <Button type="submit" style="width: 100%; margin: 20px 0px 0px 0px;">
+            {submit}
+        </Button>
+    </form>
 </div>
 
 <style>
-	.active {
-		display: block;
-	}
+    .active {
+        display: flex;
+		flex-direction: column;
+    }
 
-	form {
-		display: none;
-	}
+    form {
+        display: none;
+    }
 </style>
