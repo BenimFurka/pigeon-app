@@ -4,12 +4,12 @@
     import ChatList from '../components/chat/ChatList.svelte';
     import { createEventDispatcher } from 'svelte';
     import { derived, writable } from 'svelte/store';
-    import type { Chat, UserPublic } from '../types/models';
+    import type { ChatPreview, UserPublic } from '../types/models';
     import { ChatType } from '../types/models';
     import { Settings, Plus } from 'lucide-svelte';
     import { useSearch, type SearchResults } from '../queries/search';
 
-    const dispatch = createEventDispatcher<{ select: { chat: Chat } }>();
+    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
     
     export let onToggleSettings: () => void = () => {};
     export let inSettings: boolean = false;
@@ -40,7 +40,7 @@
     $: searchIsLoading = searchActive ? Boolean($searchQueryResult?.isFetching) : false;
     $: searchError = searchActive && $searchQueryResult?.error ? String($searchQueryResult.error) : null;
 
-    function handleChatSelect(event: CustomEvent<{ chat: Chat }>) {
+    function handleChatSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
         selectedChatId = chat.id;
         dispatch('select', { chat });
@@ -144,7 +144,6 @@
         justify-content: center;
         width: 40px;
         height: 40px;
-        margin-right: 10px;
         border: none;
         border-radius: var(--radius-sm);
         background: transparent;

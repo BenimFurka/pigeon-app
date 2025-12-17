@@ -9,6 +9,7 @@
     export let checked: boolean = false;
     export let options: Array<{ value: string; label: string }> = [];
     export let style: string = '';
+    export let disabled: boolean = false;
 </script>
 
 <div class="input-group">
@@ -32,8 +33,9 @@
                 name={name}
                 placeholder={placeholder}
                 required={required}
-                {value}
-                style={style}
+                bind:value
+                {style}
+                {disabled}
             />
         {:else if type === 'password'}
             <input
@@ -42,8 +44,9 @@
                 name={name}
                 placeholder={placeholder}
                 required={required}
-                {value}
-                style={style}
+                bind:value
+                {style}
+                {disabled}
             />
         {:else if type === 'email'}
             <input
@@ -52,15 +55,17 @@
                 name={name}
                 placeholder={placeholder}
                 required={required}
-                {value}
-                style={style}
+                bind:value
+                {style}
+                {disabled}
             />
         {:else if type === 'select'}
             <select
                 id={id}
                 name={name}
                 required={required}
-                style={style}
+                    style={style}
+                    disabled={disabled}
             >
                 {#if placeholder}<option value="">{placeholder}</option>{/if}
                 {#each options as option}

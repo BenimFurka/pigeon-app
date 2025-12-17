@@ -6,34 +6,49 @@ export const loggedIn = writable<boolean>(false);
 export const currentUser = writable<number | null>(null);
 export const authError = writable<string | null>(null);
 
-async function makeAuthRequest<T = any>(endpoint: string, body?: any, includeAuth = false): Promise<ApiResponse<T> | undefined> {
+export const emailForVerification = writable<string>('');
+export const needsEmailVerification = writable<boolean>(false);
+
+async function makeAuthRequest<T = any>(endpoint: string, body?: any, includeAuth = false): Promise<{ response?: ApiResponse<T>; status?: number }> {
     try {
-        return await makeRequest<T>(endpoint, body, includeAuth);
-    } catch (err) {
+        const response = await makeRequest<T>(endpoint, body, includeAuth);
+        return { response };
+    } catch (err: any) {
         console.error(err);
-        const errorMessage = err instanceof Error ? err.message : String(err);
+        const errorMessage = err?.message || 'An unknown error occurred';
         authError.set(errorMessage);
-        return undefined;
+        return { status: err?.status };
     }
 }
 
 export async function login(login: string, password: string) {
-    const result = await makeAuthRequest<AuthResponse>('auth/login', { data: { login, password } });
-    if (result && result.data) {
-        const { access_token, refresh_token, user } = result.data;
+    const { response, status } = await makeAuthRequest<AuthResponse>('auth/login', { data: { login, password } });
+    if (status === 403) {
+        emailForVerification.set(login);
+        needsEmailVerification.set(true);
+        return false;
+    }
+    
+    if(response?.data) {
+        const { access_token, refresh_token, user } = response.data;
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
+        updateTokenTimestamp();
         currentUser.set(user.id);
         loggedIn.set(true);
+        needsEmailVerification.set(false);
+        return true;
     }
+    return false;
 }
 
 export async function verifyEmail(email: string, code: string) {
-    const result = await makeAuthRequest<AuthResponse>('auth/verify', { data: { code } });
-    if (result && result.data) {
-        const { access_token, refresh_token, user } = result.data;
+    const { response } = await makeAuthRequest<AuthResponse>('auth/verify', { data: { email, code } });
+    if (response && response.data) {
+        const { access_token, refresh_token, user } = response.data;
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
+        updateTokenTimestamp();
         currentUser.set(user.id);
         loggedIn.set(true);
     }
@@ -44,11 +59,12 @@ export async function verifyPasswordReset(email: string, code: string, new_passw
         authError.set('New password must be at least 6 characters long.');
         return false;
     }
-    const result = await makeAuthRequest<AuthResponse>('auth/reset-verify', { data: { email, code, new_password } });
-    if (result && result.data) {
-        const { access_token, refresh_token, user } = result.data;
+    const { response } = await makeAuthRequest<AuthResponse>('auth/reset-verify', { data: { email, code, new_password } });
+    if (response && response.data) {
+        const { access_token, refresh_token, user } = response.data;
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
+        updateTokenTimestamp();
         currentUser.set(user.id);
         loggedIn.set(true);
         return true;
@@ -72,16 +88,16 @@ export async function register(username: string, email: string, password: string
         authError.set('Please enter a valid email.');
         return false;
     }
-    const result = await makeAuthRequest('auth/register', { data: { username, email, password, name } });
-    return !!result && !result.error;
+    const { response } = await makeAuthRequest('auth/register', { data: { username, email, password, name } });
+    return !!response && !response.error;
 }
 
 export async function requestPasswordReset(email: string) {
-    const result = await makeAuthRequest('auth/reset', { data: { email } });
-    return !!result && !result.error;
+    const { response } = await makeAuthRequest('auth/reset', { data: { email } });
+    return !!response && !response.error;
 }
 
-const TOKEN_EXPIRY_BUFFER = 30 * 60 * 1000;
+const TOKEN_EXPIRY_BUFFER = 1 * 60 * 1000;
 
 export function shouldRefreshToken(): boolean {
     const expiryTime = Number(localStorage.getItem('token_expiry'));
@@ -93,6 +109,20 @@ export function shouldRefreshToken(): boolean {
     return (expiryTime - Date.now()) < TOKEN_EXPIRY_BUFFER;
 }
 
+const TOKEN_UPDATE_KEY = 'last_token_update';
+
+function updateTokenTimestamp() {
+    localStorage.setItem(TOKEN_UPDATE_KEY, Date.now().toString());
+}
+
+export function shouldRefreshTokens(): boolean {
+    const lastUpdate = localStorage.getItem(TOKEN_UPDATE_KEY);
+    if (!lastUpdate) return true;
+    
+    const thirtyMinutes = 1 * 60 * 1000;
+    return Date.now() - parseInt(lastUpdate, 10) > thirtyMinutes;
+}
+
 export async function refreshTokens() {
     try {
         const refreshToken = localStorage.getItem('refresh_token');
@@ -101,12 +131,11 @@ export async function refreshTokens() {
             return;
         }
 
-        const result = await makeAuthRequest<AuthResponse>('auth/refresh', { data: { refresh_token: refreshToken } });
+        const { response } = await makeAuthRequest<AuthResponse>('auth/refresh', { data: { refresh_token: refreshToken } });
         
-        if (result && result.data) {
-            if (result.data.access_token && result.data.refresh_token) {
-                localStorage.setItem('access_token', result.data.access_token);
-                //localStorage.setItem('refresh_token', result.data.refresh_token);
+        if (response && response.data) {
+            if (response.data.access_token) {
+                localStorage.setItem('access_token', response.data.access_token);
                 loggedIn.set(true);
             } else {
                 throw new Error('Invalid token data');

@@ -4,19 +4,30 @@
     import { ChatType, type Chat } from '../../types/models';
     import { useCreateChat } from '../../queries/chats';
     import type { InputItem } from '../../types/components';
+    import { writable, derived } from 'svelte/store';
+    import { useSearch } from '../../queries/search';
+    import type { ChatPreview, UserPublic } from '../../types/models';
 
     export let initialChatType: ChatType = ChatType.GROUP;
     export let initialName: string = '';
     export let initialDescription: string = '';
     export let initialMemberIds: number[] = [];
 
-    const dispatch = createEventDispatcher<{ created: { chat: Chat } }>();
+    const dispatch = createEventDispatcher<{ created: { chat: ChatPreview } }>();
 
     let chatType: ChatType = initialChatType;
     let name = initialName;
     let description = initialDescription;
     let isPublic = chatType !== ChatType.DM;
     let membersInput = initialMemberIds.join(', ');
+    let selectedUsers: UserPublic[] = [];
+
+    const memberSearch = writable('');
+    const debouncedMemberSearch = derived(memberSearch, ($value, set) => {
+        const handle = setTimeout(() => set($value.trim()), 250);
+        return () => clearTimeout(handle);
+    }, '');
+    const memberSearchQuery = useSearch(debouncedMemberSearch, { scope: 'users', limit: 5 });
 
     $: if (chatType === ChatType.DM) {
         isPublic = false;
@@ -65,15 +76,6 @@
             );
         }
 
-        baseFields.push({
-            id: 'chat-members',
-            label: chatType === ChatType.DM ? 'Участник (ID)' : 'Участники (ID через запятую)',
-            type: 'text',
-            placeholder: chatType === ChatType.DM ? 'Например: 42' : 'Например: 2, 5, 8',
-            value: membersInput,
-            required: chatType === ChatType.DM
-        });
-
         return baseFields;
     }
 
@@ -86,6 +88,17 @@
             .split(',')
             .map((segment) => Number(segment.trim()))
             .filter((id) => !Number.isNaN(id) && id > 0);
+    }
+
+    function addUser(user: UserPublic) {
+        if (!user?.id) return;
+        if (selectedUsers.some((u) => u.id === user.id)) return;
+        selectedUsers = [...selectedUsers, user];
+        memberSearch.set('');
+    }
+
+    function removeUser(id: number) {
+        selectedUsers = selectedUsers.filter((u) => u.id !== id);
     }
 
     async function handleFormSubmit(event: SubmitEvent) {
@@ -104,9 +117,10 @@
         membersInput = (formData.get('chat-members') as string) || '';
         
         const memberIds = parseMemberIds(membersInput);
+        const combinedMemberIds = Array.from(new Set([...memberIds, ...selectedUsers.map((u) => u.id)]));
 
-        if (chatType === ChatType.DM && memberIds.length !== 1) {
-            alert('нет.');
+        if (chatType === ChatType.DM && combinedMemberIds.length !== 1) {
+            alert('Укажите одного пользователя для личного чата');
             return;
         }
 
@@ -120,7 +134,7 @@
             name: chatType === ChatType.DM ? undefined : name.trim(),
             description: description.trim() || undefined,
             is_public: isPublic,
-            member_ids: memberIds,
+            member_ids: combinedMemberIds,
         };
 
         try {
@@ -135,6 +149,8 @@
                     isPublic = true;
                     membersInput = '';
                 }
+                selectedUsers = [];
+                memberSearch.set('');
             }
         } catch (error) {
             console.error(error);
@@ -147,7 +163,51 @@
     fields={fields}
     onSubmit={handleFormSubmit}
     active={isFormActive}
-/>
+>
+    <svelte:fragment slot="additional-content">
+        <div class="member-select">
+            <label for="member-search">Добавить участника</label>
+            <input
+                type="text"
+                placeholder="Введите имя пользователя"
+                bind:value={$memberSearch}
+                id="member-search"
+                class="member-search"
+            />
+            {#if $memberSearchQuery.isFetching}
+                <div class="hint">Поиск...</div>
+            {:else if $memberSearchQuery.error}
+                <div class="hint error">Ошибка поиска: {String($memberSearchQuery.error)}</div>
+            {:else if $memberSearchQuery.data?.users?.length}
+                <div class="search-results">
+                    {#each $memberSearchQuery.data.users as user (user.id)}
+                        <button
+                            type="button"
+                            class="search-result"
+                            on:click={() => addUser(user)}
+                        >
+                            <span class="name">{user.name || user.username}</span>
+                            <span class="username">@{user.username}</span>
+                        </button>
+                    {/each}
+                </div>
+            {:else if $memberSearch.trim().length >= 2}
+                <div class="hint muted">Не найдено</div>
+            {/if}
+
+            {#if selectedUsers.length}
+                <div class="selected">
+                    {#each selectedUsers as user (user.id)}
+                        <span class="chip">
+                            {user.name || user.username}
+                            <button type="button" on:click={() => removeUser(user.id)} aria-label="Убрать">×</button>
+                        </span>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    </svelte:fragment>
+</Form>
 
 {#if $createChat.error}
     <div class="error">{String($createChat.error)}</div>
@@ -159,6 +219,109 @@
         font-size: 0.9rem;
         opacity: 0.85;
         text-align: right;
-        margin-top: 10px;
+        margin: 4px 6px 0;
+    }
+
+    .member-select {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 12px;
+    }
+
+    .member-select > label {
+        display: block;
+        margin: 0 0 2px 6px;
+        font-size: 0.8rem;
+        color: var(--primary-color);
+    }
+
+    .member-search {
+        box-sizing: border-box;
+        background: var(--secondary-color);
+        border: none;
+        border-radius: var(--radius-sm);
+        color: var(--text-color);
+        font-size: 14px;
+        outline: none;
+        padding: 8px 12px;
+        width: 100%;
+        transition: var(--transition);
+        display: flex;
+        gap: auto;
+        flex: 1;
+    }
+
+    .member-search:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .member-search::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .search-results {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .search-result {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--secondary-color);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: background-color 0.2s;
+        border: none;
+        color: var(--text-color);
+        text-align: left;
+        font-size: 0.9rem;
+    }
+
+    .search-result:hover {
+        background-color: var(--primary-color);
+    }
+
+    .search-result .username {
+        opacity: 0.7;
+        font-size: 0.9em;
+    }
+
+    .selected {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--glass);
+        border-radius: var(--radius-sm);
+        padding: 8px 10px;
+    }
+
+    .chip button {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .hint {
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+
+    .hint.muted {
+        opacity: 0.6;
     }
 </style>

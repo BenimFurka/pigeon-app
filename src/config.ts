@@ -2,8 +2,9 @@
 const config = {
   server: {
     secure: false,
+    // TODO: tauri
     host: window.location.hostname,
-    port: 80,
+    port: 2443,
     apiPath: '/api',
     apiVer: 'v1'
   },

@@ -2,7 +2,7 @@
     import { useChats } from '../../queries/chats';
     import type { SearchResults } from '../../queries/search';
     import ChatElement from './ChatElement.svelte';
-    import type { Chat, UserPublic } from '../../types/models';
+    import type { ChatPreview, UserPublic } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
 
     export let selectedChatId: number | null = null;
@@ -12,18 +12,22 @@
     export let searchError: string | null = null;
 
     const chatsQuery = useChats();
-    $: chatList = $chatsQuery?.data || [];
+    $: chatList = ($chatsQuery?.data || []).slice().sort((a, b) => {
+        const aTime = new Date(a.last_message?.created_at || 0).getTime();
+        const bTime = new Date(b.last_message?.created_at || 0).getTime();
+        return bTime - aTime;
+    });
     $: isLoading = $chatsQuery?.isLoading;
     $: error = $chatsQuery?.error ? String($chatsQuery.error) : null;
     $: searchActive = searchQuery.trim().length >= 2;
 
-    const dispatch = createEventDispatcher<{ select: { chat: Chat }; startDm: { user: UserPublic } }>();
+    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview }; startDm: { user: UserPublic } }>();
 
-    function handleSelect(event: CustomEvent<{ chat: Chat }>) {
+    function handleSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         dispatch('select', event.detail);
     }
 
-    function handleSearchChatSelect(chat: Chat) {
+    function handleSearchChatSelect(chat: ChatPreview) {
         dispatch('select', { chat });
     }
 

@@ -40,6 +40,7 @@
             {/if}
         {/each}
 
+        <slot name="additional-content"></slot>
         <Button type="submit" style="width: 100%; margin: 20px 0px 0px 0px;">
             {submit}
         </Button>

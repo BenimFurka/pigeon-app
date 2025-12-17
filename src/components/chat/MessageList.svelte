@@ -5,7 +5,6 @@
     import { typing } from '../../stores/typing';
     import type { Message as MessageType } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
-    import { session } from '../../lib/session';
     
     const dispatch = createEventDispatcher();
     
@@ -60,7 +59,7 @@
     $: if (typingUsers.length > 0) {
         typingNames = [];
     } else {
-        typingNames = [];
+        typingNames = typingUsers.map(num => num.toString());
     }
 </script>
 

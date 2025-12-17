@@ -149,6 +149,13 @@ export interface UserOfflineMessage {
     };
 }
 
+export interface OnlineListMessage {
+    type: 'online_list';
+    data: {
+        list: number[];
+    };
+}
+
 export interface UserTypingMessage {
     type: 'user_typing';
     data: {
@@ -205,6 +212,7 @@ export type ServerMessage =
     | ReactionRemovedMessage
     | UserOnlineMessage
     | UserOfflineMessage
+    | OnlineListMessage
     | UserTypingMessage
     | MessageReadMessage
     | PollCreatedMessage

@@ -1,14 +1,14 @@
 import { createQuery } from '@tanstack/svelte-query';
 import { derived, type Readable } from 'svelte/store';
 import { makeRequest } from '../lib/api';
-import type { Chat, Message, UserPublic } from '../types/models';
+import type { ChatPreview, Message, UserPublic } from '../types/models';
 
 export interface SearchResults {
   users: UserPublic[];
-  chats: Chat[];
+  chats: ChatPreview[];
   messages: Array<{
     message: Message;
-    chat: Chat;
+    chat: ChatPreview;
     sender: UserPublic;
   }>;
 }

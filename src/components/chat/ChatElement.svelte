@@ -1,37 +1,63 @@
 <script lang="ts">
-    import type { Chat } from "../../types/models";
-    import { useProfile } from "../../queries/profile";
-    import { useMessages } from "../../queries/messages";
+    import type { ChatPreview, UserPublic } from "../../types/models";
+    import { useQueryClient } from '@tanstack/svelte-query';
     import Avatar from "./Avatar.svelte";
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onDestroy } from 'svelte';
+    import { presence } from '../../stores/presence';
+    import { get } from 'svelte/store';
+    import { formatLastSeen, isOlderThan } from '../../lib/datetime';
+    import { ChatType } from '../../types/models';
     
-    export let chat: Chat;
+    export let chat: ChatPreview;
     export let selected: boolean = false;
 
-    const dispatch = createEventDispatcher<{ select: { chat: Chat } }>();
+    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
 
-    let lastMessageText = '';
-    let lastSenderName = '';
-    let lastSenderId: number | null = null;
-    $: senderQuery = lastSenderId ? useProfile(lastSenderId, { enabled: !!lastSenderId }) : null;
-    $: if (senderQuery && $senderQuery?.data) {
-        const p = $senderQuery.data;
-        lastSenderName = p.name || p.username || '';
-    }
-    
-    $: msgsQuery = chat?.id ? useMessages(Number(chat.id), { enabled: !!chat?.id }) : null;
-    $: {
-        const data = msgsQuery ? $msgsQuery?.data : [];
-        if (data && data.length > 0) {
-            const lastMsg = data[data.length - 1];
-            lastSenderId = lastMsg.sender_id || null;
-        } else {
-            lastMessageText = '';
-            lastSenderName = '';
-            lastSenderId = null;
+    const queryClient = useQueryClient();
+    const presenceStore = { subscribe: presence.subscribe };
+
+    let isOnline = false;
+
+    // TODO: change last_message on update from ws
+
+    $: if (chat) {
+        if (chat.chat_type === ChatType.DM) {
+            const counterpartId = chat.other_user?.id as number | undefined ?? null;
+            if (counterpartId) {
+                const presenceData = get(presenceStore)[counterpartId];
+                if (!presenceData || isOlderThan(presenceData.updatedAt, { minutes: 5 })) {
+                    queryClient.invalidateQueries({ 
+                        queryKey: ['presence', counterpartId] 
+                    });
+                }
+            }
         }
     }
+
+    let unsubscribePresence = () => {};
     
+    onDestroy(() => {
+        unsubscribePresence();
+    });
+    
+    $: if (chat?.chat_type === ChatType.DM) {
+        const counterpartId = chat.other_user?.id as number | undefined ?? null;
+        if (typeof counterpartId === 'number') {
+            unsubscribePresence();
+            
+            unsubscribePresence = presence.subscribe(($presence) => {
+                const record = counterpartId ? $presence[counterpartId] : undefined;
+                isOnline = Boolean(record?.online);
+            });
+            
+            const record = get(presenceStore)[counterpartId];
+            isOnline = Boolean(record?.online);
+        } else {
+            unsubscribePresence();
+            isOnline = false;
+        }
+    }
+
     function handleClick() {
         dispatch('select', { chat });
     }
@@ -51,19 +77,24 @@
     on:click={handleClick}
     on:keydown={handleKeydown}
 >
-    <Avatar id={chat.owner_id || chat.id} />
-    <div class="chat-info">
-        <span class="chat-name">{chat.name || `Чат #${chat.id}`}</span>
-        {#if lastMessageText}
-            <span class="last-message">
-                {#if lastSenderName}
-                    {lastSenderName}: 
-                {/if}
-                {lastMessageText}
-            </span>
-        {:else}
-            <span class="last-message empty">Нет сообщений</span>
+    <div class="avatar-wrapper">
+        <Avatar avatarUrl={chat.other_user && chat.chat_type === "DM" ? chat.other_user.avatar_url : chat.avatar_url} />
+        {#if chat.chat_type === ChatType.DM && isOnline}
+            <span class="online-dot" aria-hidden="true"></span>
         {/if}
+    </div>
+    <div class="chat-info">
+        <span class="chat-name">{chat.other_user && chat.chat_type === "DM" ? chat.other_user.name : chat.name}</span>
+        <div class="last-message">
+            {#if chat.last_message}
+                {#if chat.last_user}
+                    <span class="sender-name">{chat.last_user.name}: </span>
+                {/if}
+                {chat.last_message.content}
+            {:else}
+                <span class="last-message empty">Нет сообщений</span>
+            {/if}
+        </div>  
     </div>
 </div>
 
@@ -87,6 +118,27 @@
         overflow: hidden;
         outline: none;
         background: var(--secondary-color);
+    }
+
+    .avatar-wrapper {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .online-dot {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        /* TODO: var */
+        background: #2ecc71;
+        border: 2px solid var(--secondary-color);
+    }
+
+    .sender-name {
+        font-weight: 600;
     }
 
     .chat-element:hover {

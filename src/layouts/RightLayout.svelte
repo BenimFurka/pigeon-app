@@ -4,24 +4,55 @@
     import MessageList from "../components/chat/MessageList.svelte";
     import MessageInput from "../components/chat/MessageInput.svelte";
     import { typing } from "../stores/typing";
-    import type { Chat } from "../types/models";
-    import { ArrowLeft } from 'lucide-svelte';
+    import { presence } from "../stores/presence";
+    import { get } from 'svelte/store';
+    import { ChatType, type ChatPreview } from "../types/models";
+    import { formatLastSeen } from "../lib/datetime";
+    import ChatHeader from '../components/chat/ChatHeader.svelte';
 
-    export let selectedChat: Chat | null = null;
+    export let selectedChat: ChatPreview | null = null;
     export let onBack: () => void = () => {};
     export let isMobile: boolean = false;
     export let isVisible: boolean = true;
+    
+    let isOnline = false;
+    let lastSeenText: string | null = null;
     
     let replyToMessage: import("../types/models").Message | null = null;
     let rightLayoutElement: HTMLDivElement;
     
     $: layoutVisibleClass = isMobile ? (isVisible ? 'mobile-visible' : 'mobile-hidden') : '';
-    $: chatName = selectedChat ? (selectedChat.name || `Чат #${selectedChat.id}`) : 'Выберите чат';
     $: typingUsers = selectedChat ? typing.getTypingUsers(Number(selectedChat.id)) : [];
     $: statusText = typingUsers.length > 0 ? 'Печатает...' : '';
     
+    $: if (selectedChat) {
+        if (selectedChat.chat_type === ChatType.DM && selectedChat.other_user) {
+            const counterpartId = selectedChat.other_user.id as number | undefined;
+            if (counterpartId) {
+                const record = get(presence)[counterpartId];
+                isOnline = Boolean(record?.online);
+                lastSeenText = isOnline ? 'в сети' : formatLastSeen(record?.lastSeenAt ?? record?.updatedAt ?? null);
+            } else {
+                isOnline = false;
+                lastSeenText = null;
+            }
+        } else if (selectedChat.chat_type === ChatType.GROUP) {
+            const memberCount = selectedChat.member_count ?? 0;
+            lastSeenText = `${memberCount} участников`;
+        } else {
+            const memberCount = selectedChat.member_count ?? 0;
+            lastSeenText = `${memberCount} подписчиков`;
+        }
+    }
+    
+    // TODO: so much todos
     function handleReply(event: CustomEvent) {
         replyToMessage = event.detail.message || null;
+    }
+    
+    function handleMenu() {
+        // TODO: Implement menu functionality
+        console.log('Menu clicked');
     }
     
     function handleClearReply() {
@@ -54,24 +85,18 @@
 
 <div id="right-layout" class={`right-layout ${layoutVisibleClass}`} bind:this={rightLayoutElement} tabindex="-1">
     <Bar noCenter={true}>
-        <div class="chat-bar">
-            {#if isMobile}
-                <button class="back-button" on:click={handleBackClick} aria-label="Назад к списку чатов">
-                    <ArrowLeft size={18} />
-                </button>
-            {/if}
-            <div class="chat-bar-text">
-                <span id="chat-bar-name">{chatName}</span>
-                {#if statusText}
-                    <span id="chat-bar-status">{statusText}</span>
-                {/if}
-            </div>
-        </div>
+        <ChatHeader
+            chatPreview={selectedChat}
+            isOnline={isOnline}
+            isMobile={isMobile}
+            lastSeenText={statusText || lastSeenText}
+            on:back={handleBackClick}
+            on:menu={handleMenu}
+        />
     </Bar>
     
     <MessageList 
         chatId={selectedChat ? Number(selectedChat.id) : null}
-        on:reply={handleReply}
     />
     
     {#if selectedChat}
@@ -84,45 +109,6 @@
 </div>
 
 <style>
-    .chat-bar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        width: 100%;
-    }
-
-    .chat-bar-text {
-        display: flex;
-        flex-direction: column;
-        max-width: 100%;
-        overflow: hidden;
-        line-height: 1.5;
-    }
-
-    .chat-bar-text span:not(:first-child) {
-        color: var(--primary-color);
-        font-size: 0.8em;
-    }
-
-    .back-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 34px;
-        border: none;
-        border-radius: var(--radius-sm);
-        background: transparent;
-        color: rgba(255, 255, 255, 0.6);
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .back-button:hover {
-        background: var(--glass);
-        color: rgba(255, 255, 255, 0.9);
-    }
-
     .right-layout {
         display: flex;
         flex-direction: column;

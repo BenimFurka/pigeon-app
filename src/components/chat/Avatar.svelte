@@ -2,12 +2,26 @@
     import { onMount } from 'svelte';
     import { useAvatar } from '../../queries/avatar';
 
-    export let id: number;
-    export let size: number = 40;
+    export let avatarUrl: string | null = null;
+    export let size: number | 'small' | 'medium' | 'large' | 'xlarge' = 40;
+    export let className: string = '';
 
-    let avatarUrl: string | null = null;
+    const fallbackImage: string = './assets/image/default.png';
+    
     let isVisible = false;
     let container: HTMLDivElement;
+    let imageError = false;
+
+    const avatarSource = avatarUrl;
+    $: resolvedSize = typeof size === 'number'
+        ? size
+        : size === 'small'
+            ? 32
+            : size === 'medium'
+                ? 44
+                : size === 'large'
+                    ? 60
+                    : 90;
 
     onMount(() => {
         const observer = new IntersectionObserver(
@@ -23,17 +37,45 @@
         return () => observer.disconnect();
     });
 
-    $: avatarQuery = isVisible && id ? useAvatar(id) : null
-    $: if (avatarQuery && $avatarQuery?.data) {
-        avatarUrl = $avatarQuery.data;
+    type AvatarQuery = ReturnType<typeof useAvatar>;
+    let avatarQuery: AvatarQuery | null = null;
+    let avatarData: any = null;
+    $: avatarQuery = isVisible && avatarSource ? useAvatar(avatarSource) : null;
+    $: avatarData = avatarQuery ? $avatarQuery : null;
+    
+    $: if (avatarData) {
+        if (avatarData.data) {
+            imageError = false;
+        } else if (avatarData.isError) {
+            console.error('Error loading avatar:', avatarData.error);
+            imageError = true;
+        }
+    }
+    function handleImageError() {
+        imageError = true;
     }
 </script>
 
-<div bind:this={container} class="avatar-container" style="width: {size}px; height: {size}px;">
-    {#if isVisible && avatarUrl}
-        <img src={avatarUrl} alt="" class="avatar" />
-    {:else if isVisible }
-        <img src="./assets/image/default.png" alt="" class="avatar"/>
+<div 
+    bind:this={container} 
+    class={className}
+    style="width: {resolvedSize}px; height: {resolvedSize}px;"
+>
+    {#if isVisible && avatarData?.data && !imageError}
+        <img 
+            src={avatarData.data} 
+            alt="" 
+            class="avatar"
+            on:error={handleImageError}
+            style="width: 100%; height: 100%;"
+        />
+    {:else}
+        <img 
+            src={fallbackImage} 
+            alt="" 
+            class="avatar fallback"
+            style="width: 100%; height: 100%;"
+        />
     {/if}
 </div>
 
@@ -48,12 +90,16 @@
 		outline: none;
 		border: none;
 		flex-shrink: 0;
-		background-color: var(--glass-color);
+		background-color: var(--glass);
 	}
-
+ 
 	.avatar-container { 
 		object-fit: cover;
 		position: relative; 
 		overflow: hidden;
+        -moz-user-select: none;
+        -khtml-user-select: none;
+        -webkit-user-select: none;
+        user-select: none;
 	}
 </style>

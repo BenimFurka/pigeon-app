@@ -6,15 +6,18 @@
     import RightLayout from '../layouts/RightLayout.svelte';
     import SettingsLayout from '../layouts/SettingsLayout.svelte';
     import Sidebar from '../layouts/Sidebar.svelte';
-    import type { Chat } from '../types/models';
+    import type { ChatPreview } from '../types/models';
     import { ChatType } from '../types/models';
     import { session } from '../lib/session';
     import '../stores/window';
     import Modal from '../components/ui/Modal.svelte';
     import CreateChatForm from '../components/chat/CreateChatForm.svelte';
+    import ChatInfoModal from '../components/chat/ChatInfoModal.svelte';
     
     let inSettings: boolean = false;
-    let selectedChat: Chat | null = null;
+    let isChatInfoOpen = false;
+    let selectedChatForInfo: ChatPreview | null = null;
+    let selectedChat: ChatPreview | null = null;
     let isMobile = false;
     let leftVisible = true;
     let rightVisible = true;
@@ -44,7 +47,19 @@
         }
     }
 
+    function handleOpenChatInfo(event: CustomEvent) {
+        selectedChatForInfo = event.detail.chat;
+        isChatInfoOpen = true;
+    }
+    
+    function closeChatInfo() {
+        isChatInfoOpen = false;
+        selectedChatForInfo = null;
+    }
+    
     onMount(() => {
+        window.addEventListener('openChatInfo', handleOpenChatInfo as EventListener);
+        
         updateViewportState();
         const handleResize = () => {
             const wasMobile = isMobile;
@@ -56,13 +71,14 @@
         window.addEventListener('resize', handleResize);
         return () => {
             window.removeEventListener('resize', handleResize);
+            window.removeEventListener('openChatInfo', handleOpenChatInfo as EventListener);
         };
     });
 
     $: leftVisible = isMobile ? (!selectedChat && !inSettings) : true;
     $: rightVisible = isMobile ? (Boolean(selectedChat) && !inSettings) : true;
 
-    function handleChatSelect(event: CustomEvent<{ chat: Chat }>) {
+    function handleChatSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
         selectedChat = chat;
         if (isMobile) {
@@ -95,7 +111,7 @@
         isCreateChatOpen = false;
     }
 
-    function handleChatCreated(event: CustomEvent<{ chat: Chat }>) {
+    function handleChatCreated(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
         selectedChat = chat;
         isCreateChatOpen = false;
@@ -139,6 +155,15 @@
         on:created={handleChatCreated}
     />
 </Modal>
+
+{#if selectedChatForInfo}
+    <!-- TODO: i see alcgeymer -->
+    <ChatInfoModal 
+        chatPreview={selectedChatForInfo} 
+        isOpen={isChatInfoOpen}
+        on:close={closeChatInfo}
+    />
+{/if}
 {:else}
 <main class="auth">
     <AuthLayout></AuthLayout>

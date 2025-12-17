@@ -1,6 +1,6 @@
-import { Profile } from "../queries/profile";
+import type { Profile } from "../queries/profile";
 import type { Message } from "./models";
-import { ChatType } from "./models";
+import type { ChatType } from "./models";
 
 export type InputItem = 
   | {
