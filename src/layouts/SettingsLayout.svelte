@@ -4,6 +4,7 @@
     import { useCurrentProfile } from "../queries/profile";
     import { logout } from "../stores/auth";
     import { ArrowLeft } from 'lucide-svelte';
+    import { theme, type Theme } from "../stores/theme";
 
     export let inSettings: boolean = false;
     export let isMobile: boolean = false;
@@ -11,6 +12,7 @@
 
     const profileQuery = useCurrentProfile();
     $: currentProfile = $profileQuery?.data || null;
+    $: currentTheme = $theme as Theme;
 
     $: layoutStateClass = isMobile
         ? (inSettings ? 'mobile-visible' : 'mobile-hidden')
@@ -24,6 +26,10 @@
 
     function handleClose() {
         onClose();
+    }
+
+    function handleToggleTheme() {
+        theme.toggle();
     }
 </script>
 
@@ -63,12 +69,14 @@
         
         <div class="settings-section">
             <h3 class="section-title">Внешний вид</h3>
-            <ClickText>Тема</ClickText>
+            <ClickText onClick={handleToggleTheme}>
+                Тема: {currentTheme === 'dark' ? 'Тёмная' : 'Светлая'}
+            </ClickText>
         </div>
         
         <div class="settings-section">
             <h3 class="section-title">Аккаунт</h3>
-            <ClickText onClick={handleLogout} style="color: #ff4d4d;">
+            <ClickText onClick={handleLogout} style="color: var(--color-danger);">
                 Выйти из аккаунта
             </ClickText>
         </div>
@@ -91,8 +99,8 @@
         z-index: 3;
         overflow: hidden;
         background-image: 
-            linear-gradient(var(--glass), var(--glass)),
-            linear-gradient(var(--secondary-color), var(--secondary-color));
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
 
         transition: var(--transition);	
     }
@@ -112,14 +120,14 @@
         border: none;
         border-radius: var(--radius-sm);
         background: transparent;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--color-text-muted);
         cursor: pointer;
         transition: var(--transition);
     }
 
     .settings-back:hover {
-        background: var(--glass);
-        color: rgba(255, 255, 255, 0.9);
+        background: var(--surface-glass);
+        color: var(--color-text);
     }
 
     .settings-content {
@@ -140,7 +148,7 @@
     .section-title {
         font-size: 0.9em;
         font-weight: 600;
-        color: var(--primary-color);
+        color: var(--color-accent);
         margin: 0;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -165,7 +173,7 @@
 
     .profile-item .value {
         font-size: 0.95em;
-        color: var(--text-color);
+        color: var(--color-text);
     }
 
     .no-settings {

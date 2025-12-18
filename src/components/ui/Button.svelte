@@ -24,8 +24,8 @@
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 		font-size: 14px;
 		font-weight: 500;
-		color: #FAFAFA;
-		background-color: var(--primary-color);
+		color: var(--color-text);
+		background-color: var(--color-accent);
 		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
@@ -43,16 +43,16 @@
 	}
 
 	.btn:hover {
-		filter: var(--hover);
+		filter: var(--hover-filter);
 	}
 
 	.btn:active {
-		background-color: var(--primary-color);
+		background-color: var(--color-accent);
 	}
 
 	.btn.outline {
 		background: transparent;
-		border: 1px solid var(--border-color, rgba(255,255,255,0.2));
+		border: 1px solid var(--color-border, rgba(255,255,255,0.2));
 	}
 
 	.btn.ghost {
@@ -61,7 +61,7 @@
 	}
 
 	.btn.danger {
-		background: #d64545;
+		background: var(--color-danger);
 	}
 
 	.btn.text {

@@ -45,7 +45,7 @@
         flex-direction: column-reverse;
         align-items: center;
         justify-content: space-between;
-        background-color: hsl(var(--hue), 12%, 7%);
+        background-color: var(--color-bg-elevated);
         width: 42px;
         min-width: 0;
         height: 100%;
@@ -77,12 +77,12 @@
     }
     
     .sidebar-button:hover {
-        background: var(--glass);
+        background: var(--surface-glass);
         color: rgba(255, 255, 255, 0.7);
     }
     
     .sidebar-button.active {
-        background: var(--primary-color);
-        color: var(--text-color);
+        background: var(--color-accent);
+        color: var(--color-text);
     }
 </style>

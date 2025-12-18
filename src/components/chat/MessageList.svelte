@@ -150,7 +150,7 @@
         font-size: 0.85em;
         opacity: 0.7;
         font-style: italic;
-        color: var(--primary-color);
+        color: var(--color-accent);
     }
 
     .no-text-select {

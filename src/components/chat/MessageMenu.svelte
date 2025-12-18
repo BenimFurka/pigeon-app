@@ -47,8 +47,8 @@
     .menu {
         position: fixed;
         z-index: 1000;
-        background: var(--secondary-color);
-        border: 1px solid var(--border-color);
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border);
         border-radius: var(--radius-sm);
         box-shadow: 0 8px 24px rgba(0,0,0,0.25);
         overflow: hidden;
@@ -61,7 +61,7 @@
         width: 100%;
         background: transparent;
         border: none;
-        color: var(--text-color);
+        color: var(--color-text);
         text-align: left;
         padding: 10px 12px;
         cursor: pointer;
@@ -69,9 +69,9 @@
         font-size: 14px;
     }
 
-    .item:hover { background: var(--glass); }
-    .item.danger { color: #ff6b6b; }
-    .item.danger:hover { filter: var(--hover); }
+    .item:hover { background: var(--surface-glass); }
+    .item.danger { color: var(--color-danger); }
+    .item.danger:hover { filter: var(--hover-filter); }
 
     @keyframes fadeInScale {
         from { opacity: 0; transform: scale(0.98); }

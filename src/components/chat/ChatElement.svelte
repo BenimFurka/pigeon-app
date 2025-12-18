@@ -117,7 +117,7 @@
         max-width: 100%;
         overflow: hidden;
         outline: none;
-        background: var(--secondary-color);
+        background: var(--color-bg-elevated);
     }
 
     .avatar-wrapper {
@@ -132,9 +132,8 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        /* TODO: var */
-        background: #2ecc71;
-        border: 2px solid var(--secondary-color);
+        background: var(--color-online);
+        border: 2px solid var(--color-bg-elevated);
     }
 
     .sender-name {
@@ -143,12 +142,12 @@
 
     .chat-element:hover {
         opacity: 1;
-        background: var(--glass);
+        backdrop-filter: var(--hover-filter);
     }
     
     .chat-element.selected {
         opacity: 1;
-        background: var(--primary-color);
+        background: var(--color-accent);
     }
 
     .chat-info {
@@ -161,7 +160,7 @@
     }
         
     .chat-name {
-        color: var(--text-color);
+        color: var(--color-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -169,7 +168,7 @@
     }
     
     .last-message {
-        color: var(--text-color);
+        color: var(--color-text-muted);
         opacity: 0.7;
         font-size: 0.8em;
         white-space: nowrap;

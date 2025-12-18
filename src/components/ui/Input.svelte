@@ -83,7 +83,7 @@
         display: block;
         margin: 12px 0px 2px 6px;
         font-size: 0.8rem;
-        color: var(--primary-color);
+        color: var(--color-accent);
     }
 
     .toggle-label {
@@ -95,10 +95,10 @@
 
     select, input:not([type="checkbox"]) {
   		box-sizing: border-box;
-        background: var(--secondary-color);
+        background: var(--color-bg-elevated);
         border: none;
         border-radius: var(--radius-sm);
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 14px;
         outline: none;
         padding-left: 8px;
@@ -109,13 +109,14 @@
 
     select:focus, input:focus {
         outline: none;
-        box-shadow: 0 0 0 2px var(--primary-color);
-        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px var(--color-accent-soft);
+        border-color: var(--color-accent);
     }
 
     input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--color-text-muted);
     }
+    
 	.input-group:has(input[type="checkbox"]) .toggle-label {
 		box-sizing: border-box;
 		display: flex;
@@ -138,7 +139,7 @@
     <style>
         .input-group {
             display: flex;
-            height: 72px;
+            height: 40px;
             flex-direction: column;
             gap: auto;
             flex: 1;

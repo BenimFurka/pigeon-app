@@ -18,9 +18,9 @@
         gap: 8px;
         padding: 6px;
         background-image: 
-          linear-gradient(var(--glass), var(--glass)),
-          linear-gradient(var(--secondary-color), var(--secondary-color));
-        color: var(--text-color);
+          linear-gradient(var(--surface-glass), var(--surface-glass)),
+          linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
+        color: var(--color-text);
         height: 45px;
         align-items: center;
         justify-content: space-between;

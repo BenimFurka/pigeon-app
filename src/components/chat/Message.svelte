@@ -214,7 +214,7 @@
     }
     
     .message:hover {
-        background: rgba(0, 0, 0, 0.02);
+        background: rgba(0, 0, 0, 0.08);
     }
     
     .message.own { flex-direction: row-reverse; }
@@ -233,7 +233,7 @@
     .sender {
         font-weight: 600;
         font-size: 0.85em;
-        color: var(--text-color);
+        color: var(--color-text);
         margin-bottom: 2px;
     }
     
@@ -261,7 +261,7 @@
         width: 100%;
         box-sizing: border-box;
         height: 3.0em;
-        line-height: 1.3em;
+        line-height: 1.2em;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -275,7 +275,7 @@
     }
     
     .reply-indicator {
-        color: var(--text-color);
+        color: var(--color-muted);
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
@@ -283,7 +283,7 @@
     }
     
     .reply-content {
-        color: var(--text-color);
+        color: var(--color-text-muted);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -300,7 +300,7 @@
     }
     
     .other .bubble { --bubble-bg: rgba(255,255,255,0.06); }
-    .own .bubble { --bubble-bg: var(--primary-color); }
+    .own .bubble { --bubble-bg: var(--color-accent); }
     
     .other .bubble { margin-right: auto; }
     .own .bubble { margin-left: auto; }
@@ -321,7 +321,7 @@
         align-items: center;
         margin-top: 4px;
         font-size: 0.75em;
-        color: var(--text-color);
+        color: var(--color-text-muted);
         opacity: 0.8;
     }
     
@@ -355,11 +355,11 @@
     }
     
     .edit-input {
-        background: var(--secondary-color);
-        border: 1px solid var(--primary-color);
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-accent);
         border-radius: 4px;
         padding: 8px;
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 14px;
     }
     
@@ -377,13 +377,13 @@
     }
     
     .edit-btn.save {
-        background: var(--primary-color);
-        color: var(--text-color);
+        background: var(--color-accent);
+        color: var(--color-text);
     }
     
     .edit-btn.cancel {
         background: transparent;
-        color: var(--text-color);
-        border: 1px solid var(--border-color);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
     }
 </style>

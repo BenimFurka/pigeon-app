@@ -215,9 +215,8 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        /* TODO: var */
-        background: #2ecc71;
-        border: 2px solid var(--secondary-color);
+        background: var(--color-online);
+        border: 2px solid var(--color-bg-elevated);
     }
     
     .chat-info-section {
@@ -231,13 +230,13 @@
     }
     
     .status-text {
-        color: var(--text-color);
+        color: var(--color-accent);
         margin-bottom: 24px;
         font-size: 0.95rem;
     }
     
     .status-text.online {
-        color: #2ecc71;
+        color: var(--color-online);
     }
     
     .bio,
@@ -258,24 +257,24 @@
         margin: 0 0 8px;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--text-color);
+        color: var(--color-text);
     }
     
     p {
         margin: 0;
-        color: var(--text-color);
+        color: var(--color-text);
         line-height: 1.5;
     }
     
     .members-list {
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--color-border);
         border-radius: 8px;
         overflow: hidden;
     }
     
     .member-count,
     .subscriber-count {
-        color: var(--text-color);
+        color: var(--color-text-muted);
         margin-bottom: 16px;
         font-size: 0.95rem;
     }

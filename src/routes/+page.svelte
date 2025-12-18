@@ -156,14 +156,6 @@
     />
 </Modal>
 
-{#if selectedChatForInfo}
-    <!-- TODO: i see alcgeymer -->
-    <ChatInfoModal 
-        chatPreview={selectedChatForInfo} 
-        isOpen={isChatInfoOpen}
-        on:close={closeChatInfo}
-    />
-{/if}
 {:else}
 <main class="auth">
     <AuthLayout></AuthLayout>
@@ -173,28 +165,91 @@
 <style>
 	:global(:root) {
 		--hue: 235;
-		
-		--primary-color: hsl(var(--hue), 35%, 50%);
-		--secondary-color: hsl(var(--hue), 15%, 6%);
-
-		--border-color: #333333;
-		--text-color: #FAFAFA;
-
-		--glass: rgba(255, 255, 255, 0.03);
-
-		--hover: brightness(0.90);
-
-		--transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		
 		--radius-sm: 8px;
 		--radius-md: 12px;
+		--transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+		color-scheme: dark;
+		--color-bg: hsl(var(--hue), 15%, 6%);
+		--color-bg-elevated: hsl(var(--hue), 18%, 10%);
+		--color-surface: hsl(var(--hue), 20%, 13%);
+
+		--color-border: #333333;
+
+		--color-text: #FAFAFA;
+		--color-text-muted: rgba(250, 250, 250, 0.65);
+
+		--color-accent: hsl(var(--hue), 45%, 52%);
+		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
+
+		--color-danger: #ff4d4d;
+		--color-danger-soft: rgba(255, 77, 77, 0.1);
+
+		--color-success: #2ecc71;
+		--color-online: var(--color-success);
+
+		--surface-glass: rgba(255, 255, 255, 0.03);
+
+		--hover-filter: brightness(0.9);
+	}
+
+	:global(:root[data-theme='dark']) {
+		color-scheme: dark;
+
+		--color-bg: hsl(var(--hue), 15%, 6%);
+		--color-bg-elevated: hsl(var(--hue), 18%, 10%);
+		--color-surface: hsl(var(--hue), 20%, 13%);
+
+		--color-border: #333333;
+
+		--color-text: #FAFAFA;
+		--color-text-muted: rgba(250, 250, 250, 0.65);
+
+		--color-accent: hsl(var(--hue), 45%, 52%);
+		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
+
+		--color-danger: #ff4d4d;
+		--color-danger-soft: rgba(255, 77, 77, 0.1);
+
+		--color-success: #2ecc71;
+		--color-online: var(--color-success);
+
+		--surface-glass: rgba(255, 255, 255, 0.03);
+
+		--hover-filter: brightness(0.9);
+	}
+
+	:global(:root[data-theme='light']) {
+		color-scheme: light;
+
+		--color-bg: #f3f4f6;
+		--color-bg-elevated: #ffffff;
+		--color-surface: #ffffff;
+
+		--color-border: #e5e7eb;
+
+		--color-text: #111827;
+		--color-text-muted: #6b7280;
+
+		--color-accent: hsl(var(--hue), 45%, 58%);
+		--color-accent-soft: hsla(var(--hue), 45%, 58%, 0.14);
+
+		--color-danger: #dc2626;
+		--color-danger-soft: rgba(220, 38, 38, 0.08);
+
+		--color-success: #16a34a;
+		--color-online: var(--color-success);
+
+		--surface-glass: rgba(15, 23, 42, 0.04);
+
+		--hover-filter: brightness(0.96);
 	}
 	
 	:global(body) {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 		display: flex;
-		color: var(--text-color);
-		background: var(--secondary-color);
+		color: var(--color-text);
+		background: var(--color-bg);
 		overflow: hidden; 
 		transition: var(--transition);
 	}

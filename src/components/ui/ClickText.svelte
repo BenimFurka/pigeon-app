@@ -11,7 +11,7 @@
 <style>
     button {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        color: var(--primary-color);
+        color: var(--color-accent);
         background: none;
         border: none;
         cursor: pointer;
@@ -22,11 +22,11 @@
     }
 
     button:hover {
-        filter: var(--hover);
+        filter: var(--hover-filter);
     }
 
     button:active {
-        color: var(--primary-color);
+        color: var(--color-accent);
         background: none;
     }
 </style>

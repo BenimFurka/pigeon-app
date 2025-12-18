@@ -130,8 +130,6 @@
     .message-input-container {
         display: flex;
         flex-direction: column;
-        /* border-top: 1px solid var(--border-color); */
-        background: var(--glass);
     }
     
     .reply-preview {
@@ -139,7 +137,6 @@
         align-items: center;
         justify-content: space-between;
         padding: 8px 12px;
-        background: var(--glass);
     }
     
     .reply-info {
@@ -165,7 +162,7 @@
     .cancel-reply {
         background: none;
         border: none;
-        color: var(--text-color);
+        color: var(--color-text);
         cursor: pointer;
         font-size: 20px;
         padding: 0 8px;
@@ -187,11 +184,11 @@
     .message-input {
         flex: 1;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        background: var(--secondary-color);
+        background: var(--color-bg-elevated);
         border: none;
         border-radius: var(--radius-sm);
         padding: 10px 10px;
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 14px;
         outline: none;
         transition: var(--transition);
@@ -203,13 +200,13 @@
     }
     
     .message-input:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(var(--primary-color), 0.2);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 2px var(--color-accent-soft);
     }
     
     .send-button {
-        background: var(--primary-color);
         border: none;
+        background: none;
         border-radius: var(--radius-sm);
         padding: 10px;
         width: 40px;
@@ -217,14 +214,14 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--text-color);
+        color: var(--color-text);
         cursor: pointer;
         transition: var(--transition);
         flex-shrink: 0;
     }
     
     .send-button:hover:not(:disabled) {
-        filter: var(--hover);
+        filter: var(--hover-filter);
         transform: scale(1.05);
     }
     
@@ -232,6 +229,10 @@
         transform: scale(0.95);
     }
     
+    .send-button:not(:disabled) {
+        background: var(--color-accent);
+    }
+
     .send-button:disabled {
         opacity: 0.4;
         cursor: not-allowed;

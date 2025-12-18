@@ -161,7 +161,7 @@
         margin: 0 0 12px;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--text-color);
+        color: var(--color-text);
     }
     
     .search-box {
@@ -171,7 +171,7 @@
     }
     
     .search-results {
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--color-border);
         border-radius: 8px;
         max-height: 200px;
         overflow-y: auto;
@@ -184,7 +184,7 @@
         padding: 10px 12px;
         cursor: pointer;
         transition: background-color 0.2s;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--color-border);
         gap: 12px;
     }
     
@@ -193,7 +193,7 @@
     }
     
     .search-result-item:hover {
-        background-color: var(--secondary-color);
+        background-color: var(--color-bg-elevated);
     }
     
     .user-info {
@@ -210,20 +210,19 @@
     
     .full-name {
         font-size: 0.85rem;
-        color: var(--text-color);
+        color: var(--color-text);
     }
     
     .no-results,
     .no-members {
         padding: 16px;
         text-align: center;
-        color: var(--text-color);
+        color: var(--color-text-muted);
         font-size: 0.95rem;
     }
     
     .error-message {
-        /* TODO: var */
-        color: #ff4d4d;
+        color: var(--color-danger);
         padding: 10px 12px;
         border-radius: 4px;
         margin-top: 8px;
@@ -233,7 +232,7 @@
     .loading {
         padding: 16px;
         text-align: center;
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 0.95rem;
     }
 </style>

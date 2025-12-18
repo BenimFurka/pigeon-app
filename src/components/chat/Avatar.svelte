@@ -90,7 +90,7 @@
 		outline: none;
 		border: none;
 		flex-shrink: 0;
-		background-color: var(--glass);
+		background-color: var(--surface-glass);
 	}
  
 	.avatar-container { 

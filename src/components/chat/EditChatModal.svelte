@@ -189,18 +189,18 @@
         gap: 6px;
         margin-top: 12px;
         padding: 6px 12px;
-        background: var(--secondary-color);
-        border: 1px solid var(--border-color);
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border);
         border-radius: 4px;
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 0.9rem;
         cursor: pointer;
         transition: background-color 0.2s, border-color 0.2s;
     }
     
     .change-avatar:hover:not(:disabled) {
-        background: var(--hover);
-        border-color: var(--border-hover);
+        background: var(--surface-glass);
+        border-color: var(--color-accent);
     }
     
     .change-avatar:disabled {
@@ -216,16 +216,16 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 500;
-        color: var(--text-color);
+        color: var(--color-text);
     }
     
     textarea {
         width: 100%;
         padding: 10px;
         border-radius: var(--radius-sm);
-        border: 1px solid var(--border-color);
-        background: var(--secondary-color);
-        color: var(--text-color);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg-elevated);
+        color: var(--color-text);
         font-family: inherit;
         font-size: 0.95rem;
         resize: vertical;
@@ -237,8 +237,7 @@
     }
     
     .error-message {
-        /* TODO: var */
-        color: #ff4d4d;
+        color: var(--color-danger);
         padding: 10px 12px;
         border-radius: 4px;
         margin-top: 16px;

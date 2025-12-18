@@ -16,22 +16,22 @@
         padding: 12px;
         text-align: center;
         cursor: pointer;
-        color: var(--primary-color);
+        color: var(--color-accent);
         transition: var(--transition);
         background: none;
         border: none;
         outline: none;
         font: inherit;
-        border-bottom: 2px solid var(--glass);
+        border-bottom: 2px solid var(--surface-glass);
     }
         
     .tab.active {
-        color: var(--primary-color);
-        background: hsla(var(--hue), 45%, 52%, 0.1);
-        border-bottom: 2px solid hsla(var(--hue), 45%, 52%, 0.8);
+        color: var(--color-accent);
+        background: var(--color-accent-soft);
+        border-bottom: 2px solid var(--color-accent);
     }
 
     .tab:hover:not(.active) {
-        background-color: var(--glass);
+        background-color: var(--surface-glass);
     }
 </style>

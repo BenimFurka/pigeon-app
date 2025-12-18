@@ -97,6 +97,7 @@
     
     <MessageList 
         chatId={selectedChat ? Number(selectedChat.id) : null}
+        on:reply={handleReply}
     />
     
     {#if selectedChat}
@@ -118,6 +119,7 @@
         min-width: 0;
         outline: none;
         transition: var(--transition);
+        background: var(--color-bg)
     }
     
     .right-layout:focus {

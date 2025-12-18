@@ -248,7 +248,9 @@
 	.container {
 		display: flex;
 		flex-direction: column;
-		background: var(--glass);
+        background-image: 
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
 		padding: 26px;
 		border-radius: 12px;
 		width: min(90%, 240px);
@@ -257,12 +259,12 @@
 	}
 
 	.error {
-		color: #ff4d4d;
+		color: var(--color-danger);
 		margin-bottom: 15px;
-		background: rgba(255, 77, 77, 0.1);
+		background: var(--color-danger-soft);
 		padding: 10px;
 		border-radius: 4px;
-		border-left: 3px solid #ff4d4d;
+		border-left: 3px solid var(--color-danger);
 		transition: opacity 0.5s;
 	}
 		

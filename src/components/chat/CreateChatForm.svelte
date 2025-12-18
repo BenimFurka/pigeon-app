@@ -215,7 +215,7 @@
 
 <style>
     .error {
-        color: #ff4d4d;
+        color: var(--color-danger);
         font-size: 0.9rem;
         opacity: 0.85;
         text-align: right;
@@ -233,33 +233,33 @@
         display: block;
         margin: 0 0 2px 6px;
         font-size: 0.8rem;
-        color: var(--primary-color);
+        color: var(--color-accent);
     }
 
     .member-search {
         box-sizing: border-box;
-        background: var(--secondary-color);
+        background: var(--color-bg-elevated);
         border: none;
         border-radius: var(--radius-sm);
-        color: var(--text-color);
+        color: var(--color-text);
         font-size: 14px;
         outline: none;
-        padding: 8px 12px;
+        padding-left: 8px;
         width: 100%;
+        margin: auto;
         transition: var(--transition);
         display: flex;
-        gap: auto;
-        flex: 1;
+        height: 40px;
     }
 
     .member-search:focus {
         outline: none;
-        box-shadow: 0 0 0 2px var(--primary-color);
-        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px var(--color-accent-soft);
+        border-color: var(--color-accent);
     }
 
     .member-search::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--color-text-muted);
     }
 
     .search-results {
@@ -274,18 +274,18 @@
         justify-content: space-between;
         align-items: center;
         padding: 8px 12px;
-        background: var(--secondary-color);
+        background: var(--color-bg-elevated);
         border-radius: var(--radius-sm);
         cursor: pointer;
         transition: background-color 0.2s;
         border: none;
-        color: var(--text-color);
+        color: var(--color-text);
         text-align: left;
         font-size: 0.9rem;
     }
 
     .search-result:hover {
-        background-color: var(--primary-color);
+        background-color: var(--color-accent);
     }
 
     .search-result .username {
@@ -303,7 +303,7 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: var(--glass);
+        background: var(--surface-glass);
         border-radius: var(--radius-sm);
         padding: 8px 10px;
     }

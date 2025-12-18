@@ -143,8 +143,8 @@
 
     .modal-panel {
         background-image: 
-            linear-gradient(var(--glass), var(--glass)),
-            linear-gradient(var(--secondary-color), var(--secondary-color));
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
         border-radius: 8px;
         width: 100%;
         max-height: 90vh;
@@ -156,11 +156,11 @@
 
     .modal-header {
         padding: 16px;
-        border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
         display: flex;
         align-items: center;
         position: relative;
-        color: var(--text-color, #fff);
+        color: var(--color-text);
     }
 
     .modal-actions {
@@ -182,8 +182,7 @@
         border: none;
         padding: 8px;
         margin: -8px;
-        /* TODO: var (maybe rgba(255, 255, 255, 0.7))? */
-        color: var(--text-color);
+        color: var(--color-text);
         cursor: pointer;
         border-radius: 4px;
         display: flex;
@@ -193,8 +192,8 @@
     }
 
     .icon-button:hover:not(:disabled) {
-        background-color: var(--hover);
-        color: var(--text-color);
+        background-color: var(--surface-glass);
+        color: var(--color-text);
     }
 
     .icon-button:disabled {
@@ -206,12 +205,12 @@
         padding: 24px;
         overflow-y: auto;
         flex: 1;
-        color: var(--text-color, #fff);
+        color: var(--color-text, #fff);
     }
 
     .modal-footer {
         padding: 16px;
-        border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        border-top: 1px solid var(--color-border);
         display: flex;
         flex-direction: column;
         gap: 8px;

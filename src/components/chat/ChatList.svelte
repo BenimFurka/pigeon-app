@@ -103,7 +103,7 @@
                             on:click={() => handleSearchChatSelect(item.chat)}
                         >
                             <div class="card-header">
-                                <span class="card-title">{item.chat.name || `Чат #${item.chat.id}`}</span>
+                                <span class="card-title">{item.chat.name || item.chat.other_user?.name}</span>
                                 <span class="badge">{new Date(item.message.created_at).toLocaleString()}</span>
                             </div>
                             <div class="card-subtitle muted">
@@ -142,7 +142,7 @@
         overflow-y: auto;
         overflow-x: hidden;
         margin: 10px;
-        color: var(--text-color);
+        color: var(--color-text);
         padding: 5px;
     }
     
@@ -173,8 +173,8 @@
     .search-card {
         border: none;
         border-radius: var(--radius-md);
-        background: rgba(0, 0, 0, 0.18);
-        color: var(--text-color);
+        background: var(--color-bg-elevated);
+        color: var(--color-text);
         padding: 12px;
         text-align: left;
         display: flex;
@@ -184,9 +184,8 @@
         transition: var(--transition);
     }
 
-    .search-card:hover,
-    .search-card.active {
-        background: var(--glass);
+    .search-card:hover {
+        filter: var(--hover-filter)
     }
 
     .search-card.active {
@@ -238,6 +237,6 @@
     }
     
     .error {
-        color: #ff4d4d;
+        color: var(--color-danger);
     }
 </style>

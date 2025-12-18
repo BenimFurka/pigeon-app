@@ -116,8 +116,8 @@
         overflow: hidden;
 
         background-image: 
-            linear-gradient(var(--glass), var(--glass)),
-            linear-gradient(var(--secondary-color), var(--secondary-color));
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
                 
         transition: var(--transition);
     }
@@ -153,7 +153,7 @@
     }
 
     .settings-button:hover {
-        background: var(--glass);
+        background: var(--surface-glass);
         color: rgba(255, 255, 255, 0.9);
     }
 
@@ -173,8 +173,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--primary-color);
-        color: var(--text-color);
+        background: var(--color-accent);
+        color: var(--color-text);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
         cursor: pointer;
         transition: var(--transition);
@@ -182,7 +182,7 @@
     }
 
     .floating-create:hover {
-        filter: var(--hover);
+        filter: var(--hover-filter);
     }
 
     @media (max-width: 576px) {

@@ -207,9 +207,8 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        /* TODO: var */
-        background: #2ecc71;
-        border: 2px solid var(--secondary-color);
+        background: var(--color-online);
+        border: 2px solid var(--color-bg-elevated);
     }
     
     .chat-details {
@@ -225,14 +224,12 @@
     
     .chat-status {
         font-size: 0.8rem;
-        /* TODO: muted text */
-        color: var(--text);
+        color: var(--color-text-muted);
         line-height: 1.3;
     }
     
     .chat-status.online {
-        /* TODO: var */
-        color: #2ecc71;
+        color: var(--color-online);
     }
     
     .back-button {
@@ -250,7 +247,7 @@
     }
 
     .back-button:hover {
-        background: var(--glass);
+        background: var(--surface-glass);
         color: rgba(255, 255, 255, 0.9);
     }
 
