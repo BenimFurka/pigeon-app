@@ -3,9 +3,9 @@
     import { ChatType, type ChatPreview, type Chat } from '../../types/models';
     import { subscribeToPresence } from '$lib/presence';
     import Avatar from './Avatar.svelte';
-    import ChatInfoModal from './ChatInfoModal.svelte';
-    import EditChatModal from './EditChatModal.svelte';
-    import ManageMembersModal from './ManageMembersModal.svelte';
+    import ChatInfoModal from './modals/ChatInfoModal.svelte';
+    import EditChatModal from './modals/EditChatModal.svelte';
+    import ManageMembersModal from './modals/ManageMembersModal.svelte';
     import { ArrowLeft } from 'lucide-svelte';
     import { useChat } from '../../queries/chats';
     import { type CreateQueryResult } from '@tanstack/svelte-query';

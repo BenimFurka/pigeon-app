@@ -1,17 +1,14 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import { get } from 'svelte/store';
-    import Avatar from './Avatar.svelte';
-    import Button from '../ui/Button.svelte';
-    import Input from '../ui/Input.svelte';
-    import Modal from '../ui/Modal.svelte';
-    import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-    import { makeRequest } from '../../lib/api';
-    import { useSearch } from '../../queries/search';
-    import { presence } from '../../stores/presence';
+    import Avatar from './../Avatar.svelte';
+    import Button from '../../ui/Button.svelte';
+    import Input from '../../ui/Input.svelte';
+    import Modal from '../../ui/Modal.svelte';
+    import { useQueryClient } from '@tanstack/svelte-query';
+    import { useSearch } from '../../../queries/search';
+    import { presence } from '../../../stores/presence';
     import { writable } from 'svelte/store';
-    import type { Chat } from '../../types/models';
-    import { useProfile } from '../../queries/profile';
+    import type { Chat } from '../../../types/models';
 
     export let chat: Chat;
     export let isOpen = false;

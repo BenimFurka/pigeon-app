@@ -2,13 +2,13 @@
     import { createEventDispatcher } from 'svelte';
     import { get } from 'svelte/store';
     import { Edit, MessageSquare, Trash2 } from 'lucide-svelte';
-    import { type Chat, type ChatPreview, type ChatMember, ChatType } from '../../types/models';
-    import { presence } from '../../stores/presence';
-    import { formatLastSeen } from '../../lib/datetime';
-    import Avatar from './Avatar.svelte';
-    import Button from '../ui/Button.svelte';
-    import Modal from '../ui/Modal.svelte';
-    import { useCurrentProfile } from '../../queries/profile';
+    import { type Chat, type ChatPreview, type ChatMember, ChatType } from '../../../types/models';
+    import { presence } from '../../../stores/presence';
+    import { formatLastSeen } from '../../../lib/datetime';
+    import Avatar from '../Avatar.svelte';
+    import Button from '../../ui/Button.svelte';
+    import Modal from '../../ui/Modal.svelte';
+    import { useCurrentProfile } from '../../../queries/profile';
 
     export let chat: Chat; // TODO: maybe doesn't work?
     export let chatPreview: ChatPreview;

@@ -1,13 +1,12 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import Form from '../ui/Form.svelte';
-    import { ChatType, type Chat } from '../../types/models';
-    import { useCreateChat } from '../../queries/chats';
-    import type { InputItem } from '../../types/components';
+    import Form from '../../ui/Form.svelte';
+    import { ChatType, type ChatPreview, type UserPublic } from '../../../types/models';
+    import { useCreateChat } from '../../../queries/chats';
+    import type { InputItem } from '../../../types/components';
     import { writable, derived } from 'svelte/store';
-    import { useSearch } from '../../queries/search';
-    import type { ChatPreview, UserPublic } from '../../types/models';
-
+    import { useSearch } from '../../../queries/search';
+    
     export let initialChatType: ChatType = ChatType.GROUP;
     export let initialName: string = '';
     export let initialDescription: string = '';

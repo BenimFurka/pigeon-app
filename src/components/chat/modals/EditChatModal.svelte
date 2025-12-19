@@ -1,12 +1,12 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import { ChatType, type ChatPreview } from '../../types/models';
-    import Avatar from './Avatar.svelte';
-    import Button from '../ui/Button.svelte';
-    import Input from '../ui/Input.svelte';
-    import Modal from '../ui/Modal.svelte';
+    import { ChatType, type ChatPreview } from '../../../types/models';
+    import Avatar from '../Avatar.svelte';
+    import Button from '../../ui/Button.svelte';
+    import Input from '../../ui/Input.svelte';
+    import Modal from '../../ui/Modal.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-    import { makeRequest } from '../../lib/api';
+    import { makeRequest } from '../../../lib/api';
 
     export let chat: ChatPreview;
     export let isOpen = false;

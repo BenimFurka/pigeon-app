@@ -1,4 +1,3 @@
-<!-- TODO: for all modals: mobile -->
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
@@ -205,7 +204,7 @@
         padding: 24px;
         overflow-y: auto;
         flex: 1;
-        color: var(--color-text, #fff);
+        color: var(--color-text);
     }
 
     .modal-footer {
@@ -214,5 +213,21 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+    }
+
+    @media (max-width: 576px) {
+        .modal-backdrop {
+            padding: 0;
+            background-image: 
+                linear-gradient(var(--surface-glass), var(--surface-glass)),
+                linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
+        }
+
+        .modal-panel {
+            max-width: 100%;
+            max-height: var(--window-height);
+            border-radius: 0;
+            box-shadow: none;
+        }
     }
 </style>

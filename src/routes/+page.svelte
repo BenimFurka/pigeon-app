@@ -11,8 +11,7 @@
     import { session } from '../lib/session';
     import '../stores/window';
     import Modal from '../components/ui/Modal.svelte';
-    import CreateChatForm from '../components/chat/CreateChatForm.svelte';
-    import ChatInfoModal from '../components/chat/ChatInfoModal.svelte';
+    import CreateChatForm from '../components/chat/modals/CreateChatForm.svelte';
     
     let inSettings: boolean = false;
     let isChatInfoOpen = false;
@@ -122,44 +121,44 @@
 </script>
 
 {#if initialized && $loggedIn}
-<main class={`app ${isMobile ? 'mobile' : ''}`}>
-    {#if !isMobile}
-        <Sidebar inSettings={inSettings} onToggleSettings={toggleSettings} onOpenCreateChat={openCreateChat} />
-    {/if}
-    <LeftLayout
-        onToggleSettings={toggleSettings}
-        inSettings={inSettings}
-        isMobile={isMobile}
-        isVisible={leftVisible}
-        on:select={handleChatSelect}
-        onOpenCreateChat={openCreateChat}
-    />
-    {#if !isMobile || selectedChat}
-        <RightLayout
-            selectedChat={selectedChat}
-            onBack={handleBackToList}
+    <main class={`app ${isMobile ? 'mobile' : ''}`}>
+        {#if !isMobile}
+            <Sidebar inSettings={inSettings} onToggleSettings={toggleSettings} onOpenCreateChat={openCreateChat} />
+        {/if}
+        <LeftLayout
+            onToggleSettings={toggleSettings}
+            inSettings={inSettings}
             isMobile={isMobile}
-            isVisible={rightVisible}
+            isVisible={leftVisible}
+            on:select={handleChatSelect}
+            onOpenCreateChat={openCreateChat}
         />
-    {/if}
-    <SettingsLayout
-        inSettings={inSettings}
-        isMobile={isMobile}
-        onClose={closeSettings}
-    />
-</main>
-<Modal open={isCreateChatOpen} title="Создать чат" on:close={closeCreateChat} zIndex={1200}>
-    <CreateChatForm
-        initialChatType={createChatPreset.chatType ?? ChatType.GROUP}
-        initialMemberIds={createChatPreset.memberIds ?? []}
-        on:created={handleChatCreated}
-    />
-</Modal>
+        {#if !isMobile || selectedChat}
+            <RightLayout
+                selectedChat={selectedChat}
+                onBack={handleBackToList}
+                isMobile={isMobile}
+                isVisible={rightVisible}
+            />
+        {/if}
+        <SettingsLayout
+            inSettings={inSettings}
+            isMobile={isMobile}
+            onClose={closeSettings}
+        />
+    </main>
 
+    <Modal open={isCreateChatOpen} title="Создать чат" on:close={closeCreateChat} zIndex={1200}>
+        <CreateChatForm
+            initialChatType={createChatPreset.chatType ?? ChatType.GROUP}
+            initialMemberIds={createChatPreset.memberIds ?? []}
+            on:created={handleChatCreated}
+        />
+    </Modal>
 {:else}
-<main class="auth">
-    <AuthLayout></AuthLayout>
-</main>
+    <main class="auth">
+        <AuthLayout></AuthLayout>
+    </main>
 {/if}
 
 <style>
