@@ -106,14 +106,14 @@ function startStatusChecks() {
     }, STATUS_CHECK_INTERVAL);
 }
 
+// TODO: r
+
 function stopStatusChecks() {
     if (statusCheckInterval) {
         clearInterval(statusCheckInterval);
         statusCheckInterval = null;
     }
 }
-
-startStatusChecks();
 
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', stopStatusChecks);

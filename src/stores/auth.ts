@@ -59,7 +59,7 @@ export async function verifyPasswordReset(email: string, code: string, new_passw
         authError.set('New password must be at least 6 characters long.');
         return false;
     }
-    const { response } = await makeAuthRequest<AuthResponse>('auth/reset-verify', { data: { email, code, new_password } });
+    const { response } = await makeAuthRequest<AuthResponse>('auth/password/reset/confirm', { data: { email, code, new_password } });
     if (response && response.data) {
         const { access_token, refresh_token, user } = response.data;
         localStorage.setItem('access_token', access_token);
@@ -92,8 +92,8 @@ export async function register(username: string, email: string, password: string
     return !!response && !response.error;
 }
 
-export async function requestPasswordReset(email: string) {
-    const { response } = await makeAuthRequest('auth/reset', { data: { email } });
+export async function requestPasswordReset(login: string) {
+    const { response } = await makeAuthRequest('auth/password/reset/request', { data: { login } });
     return !!response && !response.error;
 }
 
