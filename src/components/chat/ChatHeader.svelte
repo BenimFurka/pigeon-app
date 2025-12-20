@@ -30,7 +30,7 @@
     }
     
     export let isOnline = false;
-    export let lastSeenText: string | null = null;
+    export let chatStatus: string | null = null;
     export let isMobile: boolean = false;
     
     let unsubscribePresence: (() => void) | null = null;
@@ -54,13 +54,13 @@
         if (chatPreview?.chat_type === ChatType.DM && chatPreview.other_user?.id) {
             unsubscribePresence = subscribeToPresence(
                 chatPreview.other_user.id,
-                (_, lastSeen) => {
-                    console.log(lastSeen)
-                    lastSeenText = lastSeen;
+                (online, lastSeen) => {
+                    isOnline = online;
+                    chatStatus = lastSeen;
                 }
             );
         } else {
-            lastSeenText = "fuck";
+            chatStatus = chatPreview?.chat_type == ChatType.GROUP ? `${chatPreview.member_count} участников` : `${chatPreview?.member_count} подписчиков`;
         }
     }
     
@@ -104,8 +104,6 @@
     }
     
     function handleChatUpdated(updatedChat: any) {
-        console.log(updatedChat);
-        console.log("meow");
         chatPreview = { ...chatPreview, ...updatedChat };
         showEditChat = false;
         showChatInfo = true;
@@ -130,9 +128,9 @@
             </div> 
             <div class="chat-details">
                 <span class="chat-name">{chatPreview.other_user && chatPreview.chat_type === "DM" ? chatPreview.other_user.name : chatPreview.name}</span>
-                {#if lastSeenText}
+                {#if chatStatus}
                     <div class="chat-status" class:online={isOnline}>
-                        {lastSeenText}
+                        {chatStatus}
                     </div>
                 {/if}
             </div>

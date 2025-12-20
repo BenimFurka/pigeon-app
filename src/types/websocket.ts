@@ -152,7 +152,7 @@ export interface UserOfflineMessage {
 export interface OnlineListMessage {
     type: 'online_list';
     data: {
-        list: number[];
+        users: number[];
     };
 }
 

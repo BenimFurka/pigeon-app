@@ -59,9 +59,9 @@ export function subscribeToPresence(
         if (isOnline) {
             lastSeenText = 'В сети';
         } else if (presenceData.lastSeenAt) {
-            lastSeenText = `Был(а) ${formatLastSeen(presenceData.lastSeenAt)}`;
+            lastSeenText = formatLastSeen(presenceData.lastSeenAt);
         } else if (presenceData.updatedAt) {
-            lastSeenText = `Был(а) ${formatLastSeen(presenceData.updatedAt)}`;
+            lastSeenText = formatLastSeen(presenceData.updatedAt);
         } else {
             lastSeenText = "не в сети";
         }

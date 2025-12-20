@@ -296,8 +296,8 @@ export class WSClient {
 
     private handleOnlineList(event: WsMessageEvent): void {
         const data = event.data as OnlineListMessage['data'];
-        if (Array.isArray(data.list)) {
-            presence.setManyOnline(data.list);
+        if (Array.isArray(data.users)) {
+            presence.setManyOnline(data.users);
         }
     }
 
