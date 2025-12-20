@@ -1,5 +1,7 @@
 import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { get } from 'svelte/store';
 import { makeRequest } from '../lib/api';
+import { presence } from '../stores/presence';
 import type { UserPublic } from '../types/models';
 
 export type Profile = UserPublic;
@@ -19,6 +21,17 @@ export function useProfile(id: number, options?: { enabled?: boolean }) {
     queryFn: async (): Promise<Profile> => {
       const req = await makeRequest<Profile>(`users/${id}`, null, true, 'GET');
       if (!req.data) throw new Error('No profile data in response');
+      
+      if (req.data.last_seen_at) {
+        const currentPresence = get(presence)[id];
+      
+        if (currentPresence?.online) {
+            presence.setOnline(id, req.data.last_seen_at);
+        } else {
+            presence.setOffline(id, req.data.last_seen_at);
+        }
+      }
+      
       return req.data;
     },
     staleTime: 5 * 60 * 1000,

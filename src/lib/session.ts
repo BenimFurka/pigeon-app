@@ -287,8 +287,8 @@ export class Session {
         }
 
         currentUser.set(null);
-        // TODO: presence.clear?.(); 
-        // TODO: typing.clear?.();
+        presence.clear?.(); 
+        typing.clear?.();
         
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');

@@ -4,20 +4,20 @@ import { formatLastSeen } from './datetime';
 
 export function getUserPresence(userId: number | null | undefined) {
     if (!userId) {
-        return { isOnline: false, lastSeenText: null };
+        return { isOnline: false, lastSeenText: "не в сети" };
     }
     
     const presenceData = get(presence)[userId];
     const isOnline = Boolean(presenceData?.online);
     
-    let lastSeenText = null;
+    let lastSeenText = "не в сети";
     if (presenceData) {
         if (isOnline) {
-            lastSeenText = 'В сети';
+            lastSeenText = 'в сети';
         } else if (presenceData.lastSeenAt) {
-            lastSeenText = `Был(а) ${formatLastSeen(presenceData.lastSeenAt)}`;
+            lastSeenText = formatLastSeen(presenceData.lastSeenAt) || "не в сети";
         } else if (presenceData.updatedAt) {
-            lastSeenText = `Был(а) ${formatLastSeen(presenceData.updatedAt)}`;
+            lastSeenText = formatLastSeen(presenceData.updatedAt) || "не в сети";
         }
     }
     
@@ -36,10 +36,9 @@ export function getMultipleUserPresence(userIds: (number | null | undefined)[]) 
     return result;
 }
 
-// TODO: ...
 export function subscribeToPresence(
     userId: number | null | undefined, 
-    callback: (isOnline: boolean, lastSeenText: string | null) => void
+    callback: (isOnline: boolean, lastSeenText: string) => void
 ) {
     if (!userId) {
         return () => {};
@@ -49,7 +48,7 @@ export function subscribeToPresence(
         console.log($presence)
         const presenceData = $presence[userId];
         if (!presenceData) {
-            callback(false, null);
+            callback(false, "не в сети");
             return;
         }
         
@@ -57,13 +56,11 @@ export function subscribeToPresence(
         let lastSeenText = "не в сети";
         
         if (isOnline) {
-            lastSeenText = 'В сети';
+            lastSeenText = 'в сети';
         } else if (presenceData.lastSeenAt) {
-            lastSeenText = formatLastSeen(presenceData.lastSeenAt);
+            lastSeenText = formatLastSeen(presenceData.lastSeenAt) || "не в сети";
         } else if (presenceData.updatedAt) {
-            lastSeenText = formatLastSeen(presenceData.updatedAt);
-        } else {
-            lastSeenText = "не в сети";
+            lastSeenText = formatLastSeen(presenceData.updatedAt) || "не в сети";
         }
         
         callback(isOnline, lastSeenText);

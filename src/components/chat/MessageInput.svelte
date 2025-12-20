@@ -52,24 +52,34 @@
         }
     }
     
+    let isTyping = false;
+    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+    
     function handleInput() {
-        if (chatId) {
+        if (!chatId) return;
+        
+        if (!isTyping) {
             sendTyping(true);
+            isTyping = true;
         }
+        
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
+        
+        typingTimeout = setTimeout(() => {
+            sendTyping(false);
+            isTyping = false;
+        }, 2000);
+        
         adjustTextareaHeight();
     }
-    
-    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
     
     function sendTyping(isTyping: boolean) {
         if (!chatId) return;
         
         const ws = session.getWebSocket();
         if (!ws) return;
-        
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
         
         ws.send({
             type: 'typing',
@@ -78,10 +88,6 @@
                 is_typing: isTyping
             }
         });
-        
-        if (isTyping) {
-            typingTimeout = setTimeout(() => sendTyping(false), 3000);
-        }
     }
     
     function handleCancelReply() {

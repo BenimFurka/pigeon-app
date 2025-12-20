@@ -10,28 +10,7 @@ const initialState: TypingState = {};
 
 const { subscribe, set, update } = writable<TypingState>(initialState);
 
-const TYPING_TIMEOUT = 3000;
-
-function cleanupTyping(chatId: number, userId: number) {
-    update(state => {
-        const chatState = state[chatId];
-        if (!chatState) return state;
-        
-        const newChatState = { ...chatState };
-        delete newChatState[userId];
-        
-        if (Object.keys(newChatState).length === 0) {
-            const newState = { ...state };
-            delete newState[chatId];
-            return newState;
-        }
-        
-        return {
-            ...state,
-            [chatId]: newChatState
-        };
-    });
-}
+const TYPING_TIMEOUT = 15000;
 
 export function setTyping(chatId: number, userId: number, isTyping: boolean) {
     update(state => {
@@ -66,7 +45,7 @@ export function setTyping(chatId: number, userId: number, isTyping: boolean) {
     
     if (isTyping) {
         setTimeout(() => {
-            cleanupTyping(chatId, userId);
+            setTyping(chatId, userId, false);
         }, TYPING_TIMEOUT);
     }
 }
@@ -82,18 +61,14 @@ export function getTypingUsers(chatId: number): number[] {
         .map(([userId, _]) => Number(userId));
 }
 
-export function clearTyping(chatId: number) {
-    update(state => {
-        const newState = { ...state };
-        delete newState[chatId];
-        return newState;
-    });
+export function clearTyping() {
+    set({});
 }
 
 export const typing = {
     subscribe,
     setTyping,
     getTypingUsers,
-    clearTyping
+    clear: clearTyping
 };
 
