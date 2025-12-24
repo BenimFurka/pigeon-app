@@ -34,7 +34,7 @@
     }
 
     function handleBackdropKeydown(event: KeyboardEvent) {
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (event.key === 'Escape') {
             event.preventDefault();
             if (closeOnBackdrop && !disabled) {
                 close();

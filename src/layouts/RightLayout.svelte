@@ -89,7 +89,7 @@
             chatPreview={selectedChat}
             isOnline={isOnline}
             isMobile={isMobile}
-            lastSeenText={statusText || lastSeenText}
+            chatStatus={statusText || lastSeenText}
             on:back={handleBackClick}
             on:menu={handleMenu}
         />
@@ -104,6 +104,7 @@
         <MessageInput 
             chatId={Number(selectedChat.id)}
             replyToMessage={replyToMessage}
+            isMobile={isMobile}
             on:clearReply={handleClearReply}
         />
     {/if}

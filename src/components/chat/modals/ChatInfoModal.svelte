@@ -84,9 +84,11 @@
     open={isOpen}
     title={modalTitle}
     showBack={true}
+    showEdit={isAdmin || isCreator}
     maxWidth="500px"
     on:close={handleClose}
     on:back={handleBack}
+    on:edit={handleEdit}
 >
     <div class="content">
         <div class="chat-avatar-container">
@@ -157,33 +159,14 @@
     </div>
     
     <div slot="footer">
-        {#if isAdmin || isCreator}
-            <div class="footer-field"> 
-                <Edit size={16} class="icon" />
-                
-                <Button on:click={handleEdit} variant="outline" fullWidth>
-                    Редактировать
-                </Button>
-            </div>
-        {/if}
-        
         {#if chat.chat_type === ChatType.DM}
             <div class="footer-field"> 
                 <MessageSquare size={16} class="icon" />
                 
                 <Button variant="outline" fullWidth>
-                    Написать сообщение
+                    Написать
                 </Button>
             </div>
-        {/if}
-        
-        {#if isCreator && chat.chat_type !== ChatType.DM}
-            <div class="footer-field"> 
-                <Button variant="danger" fullWidth>
-                    <Trash2 size={16} class="icon" />
-                    Удалить {chat.chat_type === ChatType.GROUP ? 'группу' : 'канал'}
-                </Button> 
-            </div> 
         {/if}
     </div>
 </Modal>

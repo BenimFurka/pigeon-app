@@ -80,3 +80,54 @@ export function isApiError<T>(response: ApiResponse<T>): response is ApiResponse
 export function isApiSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { data: T } {
     return response.data !== undefined && response.error === undefined;
 }
+
+export async function uploadAttachment(
+    chatId: number,
+    file: File
+): Promise<ApiResponse<import("../types/models").ChatAttachment>> {
+    try {
+        const MAX_FILE_SIZE = 8 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            throw new Error('Файл слишком большой. Максимальный размер: 8MB');
+        }
+
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('Необходима авторизация');
+        }
+
+        const isTauri = await getIsTauriEnvironment();
+
+        if (isTauri) {
+            // TODO: tauri
+            throw new Error('sorry no desktop');
+        } else {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(getApiUrl(`/chats/${chatId}/attachments`), {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: formData
+            });
+
+            const data: ApiResponse<import("../types/models").ChatAttachment> = await res.json();
+
+            if (isApiError(data)) {
+                throw new Error(data.error.message || 'Request failed');
+            }
+
+            if (!res.ok) {
+                throw new Error(data.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+            }
+
+            return data;
+        }
+    } catch (err) {
+        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Request failed';
+        throw new Error(errorMessage);
+    }
+}

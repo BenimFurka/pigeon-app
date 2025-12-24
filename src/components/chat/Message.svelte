@@ -2,6 +2,7 @@
     import type { Message } from '../../types/models';
     import Avatar from './Avatar.svelte';
     import MessageMenu from './MessageMenu.svelte';
+    import AttachmentList from './AttachmentList.svelte';
     import { session } from '../../lib/session';
     import { useProfile } from '../../queries/profile';
     import { createEventDispatcher } from 'svelte';
@@ -173,16 +174,24 @@
                         on:keydown={(e) => e.key === 'Enter' && dispatch('scrollTo', { messageId: replyToMessage.id })}
                         type="button"
                     >
-                        <div class="reply-indicator">↶ {replyToMessage.sender_id === currentUserId ? 'Вы' : senderName}</div>
+                        <div class="reply-indicator">{replyToMessage.sender_id === currentUserId ? 'Вы' : senderName}</div>
                         <div class="reply-content">{replyToMessage.content}</div>
                     </button>
                 {/if}
-                {message.content}
+                
+                {#if message.attachments && message.attachments.length > 0}
+                    <AttachmentList attachments={message.attachments} />
+                {/if}
+                
+                {#if message.content}
+                    <div class="message-text">{message.content}</div>
+                {/if}
+                
                 <div class="bubble-footer">
                     <span class="time">{timeStr}</span>
                     {#if message.is_edited && message.edited_at}
                         <span class="edited-time" title="Отредактировано {new Date(message.edited_at).toLocaleString()}">
-                            (ред.)
+                            изменено
                         </span>
                     {/if}
                 </div>
@@ -385,5 +394,10 @@
         background: transparent;
         color: var(--color-text);
         border: 1px solid var(--color-border);
+    }
+
+    .message-text {
+        word-wrap: break-word;
+        line-height: 1.4;
     }
 </style>

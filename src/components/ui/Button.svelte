@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+	
 	export let disabled: boolean = false;
 	export let style: string = '';
 	export let type: 'button' | 'reset' | 'submit' | null | undefined = 'button';
@@ -7,6 +9,8 @@
 	export let fullWidth: boolean = false;
 	export let className: string = '';
 	export let ariaLabel: string | undefined = undefined;
+
+	const dispatch = createEventDispatcher();
 </script>
 
 <button
@@ -15,6 +19,11 @@
 	style={style}
 	aria-label={ariaLabel}
 	class={`btn ${variant} ${size} ${fullWidth ? 'full' : ''} ${className}`.trim()}
+	on:click={(e) => {
+		if (!disabled) {
+			dispatch('click', e);
+		}
+	}}
 >
 	<slot></slot>
 </button>

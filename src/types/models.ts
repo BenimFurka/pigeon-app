@@ -86,9 +86,26 @@ export interface ChatMember {
     last_read_message_id: number | null;
 }
 
+export interface ChatAttachment {
+    id: number;
+    chat_id: number;
+    uploaded_by: number;
+    file_type: string;
+    file_url: string;
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    thumbnail_url: string | null;
+    width: number | null;
+    height: number | null;
+    duration: number | null;
+    created_at: string;
+}
+
 export interface MessageAttachment {
     id: number;
-    message_id: number;
+    chat_id: number;
+    uploaded_by: number;
     file_type: string;
     file_url: string;
     file_name: string;

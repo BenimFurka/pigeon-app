@@ -22,7 +22,7 @@ export function useAvatar(avatarUrl: string | undefined | null, options?: { enab
       
       const baseUrl = getServerUrl();
       const cleanPath = avatarUrl.startsWith('/') ? avatarUrl.slice(1) : avatarUrl;
-      const url = `${baseUrl}/files/${cleanPath}`;
+      const url = `${baseUrl}/${cleanPath}`;
       
       try {
         const res = await fetch(url, {

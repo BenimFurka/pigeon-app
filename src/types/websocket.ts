@@ -11,6 +11,7 @@ export interface SendMessageMessage {
         chat_id: number;
         content: string;
         reply_to?: number;
+        attachment_ids?: number[];
     };
 }
 

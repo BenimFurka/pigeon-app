@@ -2,15 +2,18 @@
     import { session } from '../../lib/session';
     import type { Message } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
-    import { Send } from 'lucide-svelte';
+    import { Send, Paperclip } from 'lucide-svelte';
+    import AttachmentModal from './modals/AttachmentModal.svelte';
     
     export let chatId: number | null = null;
     export let replyToMessage: Message | null = null;
+    export let isMobile: boolean = false;
     
     const dispatch = createEventDispatcher();
     
     let inputValue = '';
     let inputElement: HTMLTextAreaElement;
+    let attachmentModalOpen = false;
 
     function adjustTextareaHeight() {
         if (!inputElement) return;
@@ -20,8 +23,8 @@
         inputElement.style.height = `${newHeight}px`
     }
     
-    function handleSubmit() {
-        if (!chatId || !inputValue.trim()) return;
+    function handleSubmit(attachmentIds?: number[]) {
+        if (!chatId || (!inputValue.trim() && !attachmentIds?.length)) return;
         
         const ws = session.getWebSocket();
         if (!ws) {
@@ -34,7 +37,8 @@
             data: {
                 chat_id: chatId,
                 content: inputValue.trim(),
-                reply_to: replyToMessage?.id
+                reply_to: replyToMessage?.id,
+                attachment_ids: attachmentIds?.length ? attachmentIds : undefined
             }
         });
         
@@ -43,6 +47,18 @@
         dispatch('clearReply');
         
         sendTyping(false);
+    }
+
+    function handleAttachmentSent(event: CustomEvent<{ content: string; attachmentIds: number[] }>) {
+        const { content, attachmentIds } = event.detail;
+        inputValue = content;
+        handleSubmit(attachmentIds);
+    }
+
+    function openAttachmentModal() {
+        if (chatId) {
+            attachmentModalOpen = true;
+        }
     }
     
     function handleKeyDown(event: KeyboardEvent) {
@@ -111,6 +127,16 @@
     {/if}
     
     <div class="input-wrapper">
+        <button
+            class="attachment-button"
+            on:click={openAttachmentModal}
+            disabled={!chatId}
+            title="Прикрепить файл"
+            aria-label="Прикрепить файл"
+            type="button"
+        >
+            <Paperclip size={18} />
+        </button>
         <textarea
             bind:this={inputElement}
             bind:value={inputValue}
@@ -122,7 +148,7 @@
         ></textarea>
         <button 
             class="send-button" 
-            on:click={handleSubmit}
+            on:click={() => handleSubmit()}
             disabled={!inputValue.trim() || !chatId}
             title="Отправить (Enter)"
             aria-label="Отправить сообщение"
@@ -130,6 +156,16 @@
             <Send size={18} />
         </button>
     </div>
+
+    {#if chatId}
+        <AttachmentModal
+            chatId={chatId}
+            isOpen={attachmentModalOpen}
+            isMobile={isMobile}
+            on:close={() => attachmentModalOpen = false}
+            on:sent={handleAttachmentSent}
+        />
+    {/if}
 </div>
 
 <style>
@@ -185,6 +221,39 @@
         gap: 8px;
         padding: 12px;
         align-items: flex-end;
+    }
+
+    .attachment-button {
+        border: none;
+        background: none;
+        border-radius: var(--radius-sm);
+        padding: 10px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text);
+        cursor: pointer;
+        transition: var(--transition);
+        flex-shrink: 0;
+        opacity: 0.7;
+    }
+
+    .attachment-button:hover:not(:disabled) {
+        filter: var(--hover-filter);
+        transform: scale(1.05);
+        opacity: 1;
+    }
+
+    .attachment-button:active:not(:disabled) {
+        transform: scale(0.95);
+    }
+
+    .attachment-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
     }
     
     .message-input {
