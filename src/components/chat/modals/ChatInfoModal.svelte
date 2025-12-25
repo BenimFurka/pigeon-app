@@ -10,7 +10,7 @@
     import Modal from '../../ui/Modal.svelte';
     import { useCurrentProfile } from '../../../queries/profile';
 
-    export let chat: Chat; // TODO: maybe doesn't work?
+    export let chat: Chat;
     export let chatPreview: ChatPreview;
     export let isOpen = false;
     
@@ -29,16 +29,25 @@
     let members: ChatMember[] = [];
     let onlineCount = 0;
     
-    
-    // TODO: members
     const currentUserQuery = useCurrentProfile();
-    $: currentUser = $currentUserQuery?.data || null;
-    $: members = [];
-    
-    $: if (chat) {
-        isAdmin = false; // TODO: currentUser ? chat.members[currentUser?.id].role == "admin" || false : false;
-        isCreator = chat.owner_id === currentUser?.id;
+    $: currentUser = $currentUserQuery?.data || null; 
+
+    $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
+        ? chatPreview.other_user?.avatar_url 
+        : chatPreview?.avatar_url;
         
+    $: displayName = chatPreview?.chat_type === ChatType.DM
+        ? chatPreview.other_user?.name
+        : chatPreview?.name;
+
+    $: if (chat) {
+        members = chat.members;
+        
+        isAdmin = currentUser 
+  ? members.find(member => member.user_id === currentUser.id)?.role === "admin" || false 
+  : false;
+        isCreator = chat.owner_id === currentUser?.id;
+
         if (members) {
             onlineCount = members.filter(m => {
                 const presenceData = get(presenceStore)[m.user_id];
@@ -51,7 +60,7 @@
             if (counterpartId) {
                 const presenceData = get(presenceStore)[counterpartId];
                 isOnline = Boolean(presenceData?.online);
-                lastSeenText = isOnline ? 'В сети' : `Был(а) ${formatLastSeen(presenceData?.lastSeenAt || presenceData?.updatedAt || chatPreview.other_user.last_seen_at)}`;
+                lastSeenText = formatLastSeen(presenceData?.lastSeenAt || presenceData?.updatedAt || chatPreview.other_user.last_seen_at);
             }
         }
     }
@@ -92,16 +101,16 @@
 >
     <div class="content">
         <div class="chat-avatar-container">
-            <Avatar avatarUrl={chat.avatar_url} size="xlarge" />
+            <Avatar avatarUrl={avatarUrl} size="xlarge" />
             {#if chat.chat_type === ChatType.DM && isOnline}
                 <span class="online-dot" title="В сети" />
             {/if}
         </div>
         
         <div class="chat-info-section">
-            <h3 class="chat-name">{chat.name || 'Безымянный чат'}</h3>
+            <h3 class="chat-name">{displayName}</h3>
             
-            <!-- TODO: custom modal -->
+            <!-- TODO: custom modal for DM -->
             {#if chat.chat_type === ChatType.DM}
                 {#if lastSeenText}
                     <div class="status-text" class:online={isOnline}>
@@ -109,7 +118,7 @@
                     </div>
                 {/if}
                 
-                {#if chatPreview.other_user}
+                {#if chatPreview.other_user?.bio}
                     <div class="bio">
                         <h4>О себе</h4>
                         <p>{chatPreview.other_user.bio}</p>
