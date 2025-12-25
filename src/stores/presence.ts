@@ -33,8 +33,6 @@ function setOnline(userId: number, lastSeenAt?: string | null) {
         const prev = state[userId];
         const now = new Date().toISOString();
         
-        if (prev?.online) return state;
-        
         const next = createPresenceRecord({ 
             online: true, 
             lastSeenAt: lastSeenAt ?? prev?.lastSeenAt ?? now,
@@ -51,8 +49,6 @@ function setOffline(userId: number, lastSeenAt?: string | null) {
     const timestamp = new Date().toISOString();
     update((state) => {
         const prev = state[userId];
-        
-        if (!prev?.online) return state;
         
         const next = createPresenceRecord({ 
             online: false, 

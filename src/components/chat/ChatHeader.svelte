@@ -15,6 +15,14 @@
     let chatQuery: CreateQueryResult<Chat, Error> | null = null;
     let chat: Chat | null = null;
 
+    $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
+        ? chatPreview.other_user?.avatar_url 
+        : chatPreview?.avatar_url;
+    
+    $: displayName = chatPreview?.chat_type === ChatType.DM
+        ? chatPreview.other_user?.name
+        : chatPreview?.name;
+    
     $: {
         if (chatPreview?.id) {
             const query = useChat(chatPreview.id, {
@@ -29,10 +37,10 @@
         }
     }
     
-    export let isOnline = false;
-    export let chatStatus: string | null = null;
     export let isMobile: boolean = false;
     
+    let isOnline = false;
+    let chatStatus: string | null = null;
     let unsubscribePresence: (() => void) | null = null;
     
     const dispatch = createEventDispatcher<{
@@ -46,6 +54,9 @@
     let showManageMembers = false;
     
     $: {
+        isOnline = false;
+        chatStatus = null;
+        
         if (unsubscribePresence) {
             unsubscribePresence();
             unsubscribePresence = null;
@@ -59,8 +70,10 @@
                     chatStatus = lastSeen;
                 }
             );
-        } else {
-            chatStatus = chatPreview?.chat_type == ChatType.GROUP ? `${chatPreview.member_count} участников` : `${chatPreview?.member_count} подписчиков`;
+        } else if (chatPreview) {
+            chatStatus = chatPreview.chat_type === ChatType.GROUP 
+                ? `${chatPreview.member_count} участников` 
+                : `${chatPreview.member_count} подписчиков`;
         }
     }
     
@@ -76,7 +89,6 @@
     
     function handleOpenChatInfo() {
         showChatInfo = true;
-        console.log("123");
     }
     
     function handleCloseChatInfo() {
@@ -112,7 +124,6 @@
 
 <div class="chat-header">
     <div class="header-left">
-
         {#if isMobile}
             <button class="back-button" on:click={handleBack} aria-label="Назад к списку чатов">
                 <ArrowLeft size={18} />
@@ -121,13 +132,13 @@
         {#if chatPreview}
         <div class="chat-info" role="button" tabindex="0" on:click={handleOpenChatInfo} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenChatInfo(); } }}>
             <div class="avatar-container">
-                <Avatar avatarUrl={chatPreview.other_user && chatPreview.chat_type === "DM" ? chatPreview.other_user.avatar_url : chatPreview.avatar_url} />
+                <Avatar {avatarUrl} />
                 {#if chatPreview.chat_type === ChatType.DM && isOnline}
                     <span class="online-dot" title="В сети" />
                 {/if}
             </div> 
             <div class="chat-details">
-                <span class="chat-name">{chatPreview.other_user && chatPreview.chat_type === "DM" ? chatPreview.other_user.name : chatPreview.name}</span>
+                <span class="chat-name">{displayName}</span>
                 {#if chatStatus}
                     <div class="chat-status" class:online={isOnline}>
                         {chatStatus}

@@ -15,37 +15,11 @@
     export let isMobile: boolean = false;
     export let isVisible: boolean = true;
     
-    let isOnline = false;
-    let lastSeenText: string | null = null;
-    
     let replyToMessage: import("../types/models").Message | null = null;
     let rightLayoutElement: HTMLDivElement;
     
     $: layoutVisibleClass = isMobile ? (isVisible ? 'mobile-visible' : 'mobile-hidden') : '';
-    $: typingUsers = selectedChat ? typing.getTypingUsers(Number(selectedChat.id)) : [];
-    $: statusText = typingUsers.length > 0 ? 'Печатает...' : '';
     
-    $: if (selectedChat) {
-        if (selectedChat.chat_type === ChatType.DM && selectedChat.other_user) {
-            const counterpartId = selectedChat.other_user.id as number | undefined;
-            if (counterpartId) {
-                const record = get(presence)[counterpartId];
-                isOnline = Boolean(record?.online);
-                lastSeenText = isOnline ? 'в сети' : formatLastSeen(record?.lastSeenAt ?? record?.updatedAt ?? null);
-            } else {
-                isOnline = false;
-                lastSeenText = null;
-            }
-        } else if (selectedChat.chat_type === ChatType.GROUP) {
-            const memberCount = selectedChat.member_count ?? 0;
-            lastSeenText = `${memberCount} участников`;
-        } else {
-            const memberCount = selectedChat.member_count ?? 0;
-            lastSeenText = `${memberCount} подписчиков`;
-        }
-    }
-    
-    // TODO: so much todos
     function handleReply(event: CustomEvent) {
         replyToMessage = event.detail.message || null;
     }
@@ -87,9 +61,7 @@
     <Bar noCenter={true}>
         <ChatHeader
             chatPreview={selectedChat}
-            isOnline={isOnline}
             isMobile={isMobile}
-            chatStatus={statusText || lastSeenText}
             on:back={handleBackClick}
             on:menu={handleMenu}
         />

@@ -12,7 +12,8 @@
     let container: HTMLDivElement;
     let imageError = false;
 
-    const avatarSource = avatarUrl;
+    $: currentAvatarUrl = avatarUrl;
+    
     $: resolvedSize = typeof size === 'number'
         ? size
         : size === 'small'
@@ -40,17 +41,25 @@
     type AvatarQuery = ReturnType<typeof useAvatar>;
     let avatarQuery: AvatarQuery | null = null;
     let avatarData: any = null;
-    $: avatarQuery = isVisible && avatarSource ? useAvatar(avatarSource) : null;
+    
+    $: avatarQuery = isVisible && currentAvatarUrl ? useAvatar(currentAvatarUrl) : null;
     $: avatarData = avatarQuery ? $avatarQuery : null;
     
-    $: if (avatarData) {
-        if (avatarData.data) {
+    $: {
+        if (currentAvatarUrl) {
             imageError = false;
-        } else if (avatarData.isError) {
-            console.error('Error loading avatar:', avatarData.error);
-            imageError = true;
+        }
+        
+        if (avatarData) {
+            if (avatarData.data) {
+                imageError = false;
+            } else if (avatarData.isError) {
+                console.error('Error loading avatar:', avatarData.error);
+                imageError = true;
+            }
         }
     }
+    
     function handleImageError() {
         imageError = true;
     }
@@ -58,7 +67,7 @@
 
 <div 
     bind:this={container} 
-    class={className}
+    class="avatar-container {className}"
     style="width: {resolvedSize}px; height: {resolvedSize}px;"
 >
     {#if isVisible && avatarData?.data && !imageError}

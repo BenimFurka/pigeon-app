@@ -279,11 +279,13 @@
     }
 
     .error-message {
-        padding: 12px;
-        background-color: rgba(255, 0, 0, 0.1);
-        border-radius: 4px;
-        color: var(--color-danger);
-        font-size: 0.9rem;
+		color: var(--color-danger);
+		margin-bottom: 15px;
+		background: var(--color-danger-soft);
+		padding: 10px;
+		border-radius: 4px;
+		border-left: 3px solid var(--color-danger);
+		transition: opacity 0.5s;
     }
 
     .file-upload-area {

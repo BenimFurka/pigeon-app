@@ -1,4 +1,4 @@
-import { getWebSocketUrl } from "../config";
+import config, { getWebSocketUrl } from "../config";
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getIsTauriEnvironment } from "./tauri-env";
 import { presence } from '../stores/presence';
@@ -25,8 +25,7 @@ interface EventListener {
     unlisten?: UnlistenFn;
 }
 
-const RECONNECT_BASE_DELAY = 1000;
-const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY = config.websocket.reconnectDelay;
 const ONLINE_STATUS_INTERVAL = 5 * 60 * 1000;
 const AUTH_DELAY = 500;
 
@@ -360,11 +359,6 @@ export class WSClient {
         );
         
         this.reconnectAttempts++;
-        
-        if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
-            console.warn('Max reconnection attempts reached');
-            return;
-        }
 
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;

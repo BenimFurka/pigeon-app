@@ -1,6 +1,8 @@
 import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 import { makeRequest } from '../lib/api';
 import type { Chat, ChatPreview } from '../types/models';
+import { presence } from '../stores/presence';
+import { get } from 'svelte/store';
 
 export const chatKeys = {
   all: ['chats'] as const,
@@ -15,6 +17,19 @@ export function useChats(options?: { enabled?: boolean }) {
     queryFn: async (): Promise<ChatPreview[]> => {
       const res = await makeRequest<ChatPreview[]>('/chats', null, true, 'GET');
       if (!res.data) throw new Error('No chats in response');
+      
+      for (const data of res.data) {
+        if (data.other_user?.last_seen_at) {
+          const currentPresence = get(presence)[data.other_user.id];
+        
+          if (currentPresence?.online) {
+            presence.setOnline(data.other_user.id, data.other_user.last_seen_at);
+          } else {
+            presence.setOffline(data.other_user.id, data.other_user.last_seen_at);
+          }
+        }
+        
+      }
       return res.data;
     },
     staleTime: 60_000,

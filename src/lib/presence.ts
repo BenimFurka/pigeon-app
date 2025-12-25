@@ -45,7 +45,6 @@ export function subscribeToPresence(
     }
     
     return presence.subscribe(($presence) => {
-        console.log($presence)
         const presenceData = $presence[userId];
         if (!presenceData) {
             callback(false, "не в сети");

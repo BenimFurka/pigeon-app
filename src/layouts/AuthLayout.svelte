@@ -114,8 +114,6 @@
 	];
 
 	function updateFormData(formData: FormData, dataStore: any) {
-		console.log(formData);
-		console.log(dataStore);
 		for (const key in dataStore) {
 			const value = formData.get(key);
 			if (value !== null) {
