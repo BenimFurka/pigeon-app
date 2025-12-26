@@ -4,7 +4,7 @@ const initialConfig = {
   server: {
     secure: false,
     host: window.location.hostname,
-    port: 80,
+    port: 8443,
     apiPath: '/api',
     apiVer: 'v1'
   },
