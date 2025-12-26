@@ -12,6 +12,7 @@
     import '../stores/window';
     import Modal from '../components/ui/Modal.svelte';
     import CreateChatForm from '../components/chat/modals/CreateChatForm.svelte';
+    import ConfigModal from '../components/chat/modals/ConfigModal.svelte';
     
     let inSettings: boolean = false;
     let isChatInfoOpen = false;
@@ -23,7 +24,9 @@
     let isCreateChatOpen = false;
     let createChatPreset: { chatType?: ChatType; memberIds?: number[] } = {};
     let createChatFormKey = 0;
-
+    
+    let showConfigModal = false;
+    
     let initialized = false;
 
     if (!initialized) {
@@ -68,9 +71,20 @@
             }
         };
         window.addEventListener('resize', handleResize);
+
+        const handleKeyDown = (event: { ctrlKey: any; code: string; key: string; preventDefault: () => void; }) => {
+        if (event.ctrlKey && (event.code === 'Backquote' || event.key === '`')) {
+            event.preventDefault();
+            showConfigModal = !showConfigModal;
+        }
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        
         return () => {
             window.removeEventListener('resize', handleResize);
-            window.removeEventListener('openChatInfo', handleOpenChatInfo as EventListener);
+            window.removeEventListener('openChatInfo', handleOpenChatInfo as EventListener);    
+            window.removeEventListener('keydown', handleKeyDown);
         };
     });
 
@@ -160,6 +174,12 @@
         <AuthLayout></AuthLayout>
     </main>
 {/if}
+
+<ConfigModal
+  open={showConfigModal}
+  on:close={() => showConfigModal = false}
+  on:save={() => { console.log("Config updated") }}
+/>
 
 <style>
 	:global(:root) {

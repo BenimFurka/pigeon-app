@@ -10,6 +10,7 @@ import type {
     AuthenticateMessage
 } from '../types/websocket';
 import type { Chat, ChatMember } from "../types/models";
+import { get } from "svelte/store";
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'closing' | 'closed';
 
@@ -25,7 +26,7 @@ interface EventListener {
     unlisten?: UnlistenFn;
 }
 
-const RECONNECT_BASE_DELAY = config.websocket.reconnectDelay;
+const RECONNECT_BASE_DELAY = get(config).websocket.reconnectDelay;
 const ONLINE_STATUS_INTERVAL = 5 * 60 * 1000;
 const AUTH_DELAY = 500;
 

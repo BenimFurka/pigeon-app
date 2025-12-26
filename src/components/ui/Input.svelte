@@ -105,6 +105,7 @@
         margin: auto;
         transition: var(--transition);
         width: 100%;
+        height: 40px;
     }
 
     select:focus, input:focus {
@@ -139,7 +140,6 @@
     <style>
         .input-group {
             display: flex;
-            height: 40px;
             flex-direction: column;
             gap: auto;
             flex: 1;
