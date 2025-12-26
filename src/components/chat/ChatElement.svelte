@@ -17,6 +17,29 @@
     const presenceStore = { subscribe: presence.subscribe };
 
     let isOnline = false;
+    let lastMessageTime = '';
+
+    function formatLastMessageTime(timestamp: string): string {
+        const messageDate = new Date(timestamp);
+        const today = new Date();
+        
+        const isToday = 
+            messageDate.getDate() === today.getDate() &&
+            messageDate.getMonth() === today.getMonth() &&
+            messageDate.getFullYear() === today.getFullYear();
+        
+        if (isToday) {
+            return messageDate.toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        } else {
+            return messageDate.toLocaleDateString('ru-RU', { 
+                day: 'numeric', 
+                month: 'short' 
+            });
+        }
+    }
 
     // TODO: change last_message on update from ws
 
@@ -31,6 +54,12 @@
                     });
                 }
             }
+        }
+        
+        if (chat.last_message?.created_at) {
+            lastMessageTime = formatLastMessageTime(chat.last_message.created_at);
+        } else {
+            lastMessageTime = '';
         }
     }
 
@@ -84,7 +113,12 @@
         {/if}
     </div>
     <div class="chat-info">
-        <span class="chat-name">{chat.other_user && chat.chat_type === "DM" ? chat.other_user.name : chat.name}</span>
+        <div class="chat-header">
+            <span class="chat-name">{chat.other_user && chat.chat_type === "DM" ? chat.other_user.name : chat.name}</span>
+            {#if lastMessageTime}
+                <span class="timestamp">{lastMessageTime}</span>
+            {/if}
+        </div>
         <div class="last-message">
             {#if chat.last_message}
                 {#if chat.last_user}
@@ -157,6 +191,15 @@
         overflow: hidden;
         flex: 1;
         min-width: 0;
+        position: relative;
+    }
+    
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        min-width: 0;
     }
         
     .chat-name {
@@ -165,6 +208,17 @@
         overflow: hidden;
         text-overflow: ellipsis;
         font-weight: 500;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .timestamp {
+        color: var(--color-text-muted);
+        opacity: 0.7;
+        font-size: 0.75em;
+        white-space: nowrap;
+        margin-left: 8px;
+        flex-shrink: 0;
     }
     
     .last-message {
@@ -176,6 +230,7 @@
         text-overflow: ellipsis;
         max-width: 100%;
         box-sizing: border-box;
+        margin-top: 2px;
     }
     
     .last-message.empty {
