@@ -1,5 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
+    import { Reply, Copy, Pencil, Trash2 } from 'lucide-svelte';
 
     export let x: number = 0;
     export let y: number = 0;
@@ -7,7 +8,6 @@
     export let canEdit: boolean = false;
 
     const dispatch = createEventDispatcher();
-
     let menuEl: HTMLDivElement | null = null;
 
     function handleOutsideClick(e: MouseEvent) {
@@ -34,11 +34,24 @@
 
 {#if isOpen}
 <div class="menu" bind:this={menuEl} style={`left:${x}px; top:${y}px`}>
-    <button class="item" on:click={() => onAction('reply')}>Ответить</button>
-    <button class="item" on:click={() => onAction('copy')}>Копировать</button>
+    <button class="item" on:click={() => onAction('reply')}>
+        <Reply size={16} class="icon" />
+        <span>Ответить</span>
+    </button>
+    <button class="item" on:click={() => onAction('copy')}>
+        <Copy size={16} class="icon" />
+        <span>Копировать</span>
+    </button>
     {#if canEdit}
-        <button class="item" on:click={() => onAction('edit')}>Редактировать</button>
-        <button class="item danger" on:click={() => onAction('delete')}>Удалить</button>
+        <div class="divider"></div>
+        <button class="item edit" on:click={() => onAction('edit')}>
+            <Pencil size={16} class="icon" />
+            <span>Редактировать</span>
+        </button>
+        <button class="item danger" on:click={() => onAction('delete')}>
+            <Trash2 size={16} class="icon" />
+            <span>Удалить</span>
+        </button>
     {/if}
 </div>
 {/if}
@@ -48,33 +61,65 @@
         position: fixed;
         z-index: 1000;
         background: var(--color-bg-elevated);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-sm);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        border: none;
+        border-radius: var(--radius-sm, 6px);
+        backdrop-filter: blur(12px);
         overflow: hidden;
-        animation: fadeInScale 240ms ease-out;
+        animation: fadeInScale 240ms cubic-bezier(0.16, 1, 0.3, 1);
         min-width: 180px;
+        padding: 4px;
     }
 
     .item {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         width: 100%;
         background: transparent;
         border: none;
         color: var(--color-text);
         text-align: left;
-        padding: 10px 12px;
+        padding: 8px 12px;
+        border-radius: var(--radius-sm, 6px);
         cursor: pointer;
         transition: var(--transition);
         font-size: 14px;
+        line-height: 1.4;
+        font-weight: 450;
     }
 
-    .item:hover { background: var(--surface-glass); }
-    .item.danger { color: var(--color-danger); }
-    .item.danger:hover { filter: var(--hover-filter); }
+    .item:hover {
+        background: var(--surface-glass);
+    }
+
+    .item:active {
+        transform: translateX(1px);
+        filter: brightness(0.95);
+    }
+
+    .item.edit:hover {
+        background: var(--color-accent-soft);
+        color: var(--color-accent);
+    }
+
+    .item.danger:hover {
+        background: var(--color-danger-soft);
+        color: var(--color-danger);
+    }
+
+    .divider {
+        height: 1px;
+        background: var(--color-border);
+        margin: 4px 0;
+        border: none;
+    }
 
     @keyframes fadeInScale {
-        from { opacity: 0; transform: scale(0.98); }
-        to { opacity: 1; transform: scale(1); }
+        from { 
+            opacity: 0; 
+        }
+        to { 
+            opacity: 1; 
+        }
     }
 </style>
