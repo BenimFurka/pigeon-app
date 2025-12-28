@@ -8,6 +8,8 @@ import type { Chat, Message as ChatMessage, ChatPreview } from '../types/models'
 import { queryClient } from './query';
 import { messageKeys } from '../queries/messages';
 import { chatKeys } from '../queries/chats';
+import { profileKeys } from '../queries/profile';
+import { makeRequest } from './api';
 
 const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
 
@@ -138,11 +140,7 @@ export class Session {
     private handleMessageDeleted(data: any): void {
         const chatId = data.chat_id as number;
         this.updateMessageList(chatId, prev => 
-            prev.map(m => m.id === data.message_id ? { 
-                ...m, 
-                is_deleted: true, 
-                deleted_at: new Date().toISOString() 
-            } : m)
+            prev.filter(m => m.id !== data.message_id)
         );
     }
 
@@ -210,9 +208,40 @@ export class Session {
             
             if (index === -1) return prev;
 
+            let resolvedLastUser = chats[index].last_user || null;
+            const senderId = (lastMessage as any)?.sender_id as number | undefined;
+            if (senderId) {
+                const cachedProfile = queryClient.getQueryData<any>(profileKeys.detail(senderId));
+                if (cachedProfile) {
+                    resolvedLastUser = cachedProfile;
+                } else {
+                    void queryClient
+                        .fetchQuery({
+                            queryKey: profileKeys.detail(senderId),
+                            queryFn: async () => {
+                                const res = await makeRequest<any>(`users/${senderId}`, null, true, 'GET');
+                                if (!res.data) throw new Error('No profile data in response');
+                                return res.data;
+                            },
+                        })
+                        .then((profile) => {
+                            queryClient.setQueryData<ChatPreview[] | undefined>(chatKeys.previews(), (current) => {
+                                if (!current) return current;
+                                const copy = [...current];
+                                const idx = copy.findIndex(c => Number(c.id) === Number(chatId));
+                                if (idx === -1) return current;
+                                copy[idx] = { ...copy[idx], last_user: profile } as ChatPreview;
+                                return copy;
+                            });
+                        })
+                        .catch(() => {});
+                }
+            }
+
             const updatedChat = {
                 ...chats[index],
                 last_message: lastMessage,
+                last_user: resolvedLastUser,
                 updated_at: lastMessage.created_at,
             };
 
