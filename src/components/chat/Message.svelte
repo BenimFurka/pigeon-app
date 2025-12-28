@@ -6,6 +6,7 @@
     import { session } from '../../lib/session';
     import { useProfile } from '../../queries/profile';
     import { createEventDispatcher } from 'svelte';
+    import type { UserPublic } from '../../types/models';
     
     export let message: Message;
     export let showSender: boolean = true;
@@ -15,7 +16,8 @@
 
     const dispatch = createEventDispatcher();
 
-    let senderName = '';
+    let sender: UserPublic | null = null;
+    let replyToUser: UserPublic | null = null;
     let isEditing = false;
     let editContent = '';
     let menuOpen = false;
@@ -24,8 +26,14 @@
 
     $: senderQuery = message.sender_id && !isOwn ? useProfile(message.sender_id, { enabled: !!message.sender_id && !isOwn }) : null;
     $: if (senderQuery && $senderQuery?.data) {
-        const p = $senderQuery.data;
-        senderName = p.name || p.username || '';
+        sender = $senderQuery.data;
+    }
+    
+    $: replyToUserQuery = replyToMessage?.sender_id ? useProfile(replyToMessage.sender_id, { 
+        enabled: !!replyToMessage?.sender_id 
+    }) : null;
+    $: if (replyToUserQuery && $replyToUserQuery?.data) {
+        replyToUser = $replyToUserQuery.data;
     }
 
     $: timeStr = formatTime(message.created_at);
@@ -141,7 +149,7 @@
     <div class="message-content">
         {#if showSender}
             <div class="sender">
-                {senderName}
+                {sender?.name || sender?.username || ''}
             </div>
         {/if}
         
@@ -174,7 +182,9 @@
                         on:keydown={(e) => e.key === 'Enter' && dispatch('scrollTo', { messageId: replyToMessage.id })}
                         type="button"
                     >
-                        <div class="reply-indicator">{replyToMessage.sender_id === currentUserId ? 'Вы' : senderName}</div>
+                        <div class="reply-indicator">
+                            {replyToMessage.sender_id === currentUserId ? 'Вы' : (replyToUser?.name || replyToUser?.username || 'Пользователь')}
+                        </div>
                         <div class="reply-content">{replyToMessage.content}</div>
                     </button>
                 {/if}
@@ -339,11 +349,10 @@
         position: absolute;
         width: 8px;
         height: 8px;
-        bottom: 0;
+        top: calc(100% - 8px);
         left: 100%;
         background-color: inherit;
         clip-path: polygon(100% 100%, 0% 0%, 0% 100%);
-        
     }
 
    .message.other:is(.single, .end) .message-content .content.bubble::before {
@@ -351,7 +360,7 @@
         position: absolute;
         width: 8px;
         height: 8px;
-        bottom: 0;
+        top: calc(100% - 8px);
         right: 100%;
         background-color: inherit;
         clip-path: polygon(100% 0%, 0% 100%, 100% 100%);
