@@ -41,8 +41,6 @@
         }
     }
 
-    // TODO: change last_message on update from ws
-
     $: if (chat) {
         if (chat.chat_type === ChatType.DM) {
             const counterpartId = chat.other_user?.id as number | undefined ?? null;

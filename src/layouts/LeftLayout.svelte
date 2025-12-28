@@ -91,15 +91,14 @@
         isSearchLoading={searchIsLoading}
         searchError={searchError}
     />
-    {#if isMobile}
-        <button 
-            class="floating-create" 
-            on:click={handleCreateChatClick}
-            aria-label="Создать чат"
-        >
-            <Plus size={22} />
-        </button>
-    {/if}
+    <button 
+        class="floating-create" 
+        class:hidden={!isMobile || searchActive}
+        on:click={handleCreateChatClick}
+        aria-label="Создать чат"
+    >
+        <Plus size={22} />
+    </button>
 </div>
 
 <style>
@@ -163,25 +162,34 @@
     }
 
     .floating-create {
-        position: absolute;
-        right: 20px;
+        position: fixed;
         bottom: 20px;
-        width: 54px;
-        height: 54px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
         border-radius: 50%;
+        background-color: var(--color-accent);
+        color: var(--color-text);
         border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--color-accent);
-        color: var(--color-text);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-        cursor: pointer;
+        z-index: 1000;
         transition: var(--transition);
-        z-index: 4;
+        transform: scale(1);
+        opacity: 1;
     }
 
+    .floating-create.hidden {
+        transform: scale(0);
+        opacity: 0;
+        pointer-events: none;
+    }
+    
     .floating-create:hover {
+        transform: scale(1.1);
         filter: var(--hover-filter);
     }
 
