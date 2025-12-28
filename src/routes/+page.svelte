@@ -4,7 +4,6 @@
     import LeftLayout from '../layouts/LeftLayout.svelte';
     import { loggedIn } from '../stores/auth';
     import RightLayout from '../layouts/RightLayout.svelte';
-    import SettingsLayout from '../layouts/SettingsLayout.svelte';
     import Sidebar from '../layouts/Sidebar.svelte';
     import type { ChatPreview } from '../types/models';
     import { ChatType } from '../types/models';
@@ -12,9 +11,7 @@
     import '../stores/window';
     import Modal from '../components/ui/Modal.svelte';
     import CreateChatForm from '../components/chat/modals/CreateChatForm.svelte';
-    import ConfigModal from '../components/chat/modals/ConfigModal.svelte';
-    
-    let inSettings: boolean = false;
+    import SettingsModal from '../components/chat/modals/SettingsModal.svelte';
     let isChatInfoOpen = false;
     let selectedChatForInfo: ChatPreview | null = null;
     let selectedChat: ChatPreview | null = null;
@@ -23,15 +20,15 @@
     let rightVisible = true;
     let isCreateChatOpen = false;
     let createChatPreset: { chatType?: ChatType; memberIds?: number[] } = {};
-    let createChatFormKey = 0;
-    
-    let showConfigModal = false;
-    
+
+    let showSettingsModal = false;
+
     let initialized = false;
 
     if (!initialized) {
         initializeApp();
     }
+
     
     async function initializeApp() {
         try {
@@ -66,16 +63,13 @@
         const handleResize = () => {
             const wasMobile = isMobile;
             updateViewportState();
-            if (!isMobile && wasMobile) {
-                inSettings = false;
-            }
         };
         window.addEventListener('resize', handleResize);
 
         const handleKeyDown = (event: { ctrlKey: any; code: string; key: string; preventDefault: () => void; }) => {
         if (event.ctrlKey && (event.code === 'Backquote' || event.key === '`')) {
             event.preventDefault();
-            showConfigModal = !showConfigModal;
+            showSettingsModal = !showSettingsModal;
         }
         };
         
@@ -88,35 +82,28 @@
         };
     });
 
-    $: leftVisible = isMobile ? (!selectedChat && !inSettings) : true;
-    $: rightVisible = isMobile ? (Boolean(selectedChat) && !inSettings) : true;
+    $: leftVisible = isMobile ? !selectedChat : true;
+    $: rightVisible = isMobile ? Boolean(selectedChat) : true;
 
     function handleChatSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
         selectedChat = chat;
-        if (isMobile) {
-            inSettings = false;
-        }
     }
 
     function handleBackToList() {
         selectedChat = null;
     }
 
-    function toggleSettings() {
-        inSettings = !inSettings;
-        if (isMobile && inSettings) {
-            selectedChat = null;
-        }
+    function openSettings() {
+        showSettingsModal = true;
     }
 
-    function closeSettings() {
-        inSettings = false;
+    function closeSettingsModal() {
+        showSettingsModal = false;
     }
 
     function openCreateChat(preset?: { chatType?: ChatType; memberIds?: number[] }) {
         createChatPreset = preset ? { ...preset } : {};
-        createChatFormKey += 1;
         isCreateChatOpen = true;
     }
 
@@ -128,20 +115,21 @@
         const { chat } = event.detail;
         selectedChat = chat;
         isCreateChatOpen = false;
-        if (isMobile) {
-            inSettings = false;
-        }
     }
 </script>
 
 {#if initialized && $loggedIn}
     <main class={`app ${isMobile ? 'mobile' : ''}`}>
         {#if !isMobile}
-            <Sidebar inSettings={inSettings} onToggleSettings={toggleSettings} onOpenCreateChat={openCreateChat} />
+            <Sidebar
+                isSettingsOpen={showSettingsModal}
+                onOpenSettings={openSettings}
+                onOpenCreateChat={openCreateChat}
+            />
         {/if}
         <LeftLayout
-            onToggleSettings={toggleSettings}
-            inSettings={inSettings}
+            onOpenSettings={openSettings}
+            isSettingsOpen={showSettingsModal}
             isMobile={isMobile}
             isVisible={leftVisible}
             on:select={handleChatSelect}
@@ -155,11 +143,6 @@
                 isVisible={rightVisible}
             />
         {/if}
-        <SettingsLayout
-            inSettings={inSettings}
-            isMobile={isMobile}
-            onClose={closeSettings}
-        />
     </main>
 
     <Modal open={isCreateChatOpen} title="Создать чат" on:close={closeCreateChat} zIndex={1200}>
@@ -175,10 +158,10 @@
     </main>
 {/if}
 
-<ConfigModal
-  open={showConfigModal}
-  on:close={() => showConfigModal = false}
-  on:save={() => { console.log("Config updated") }}
+<SettingsModal
+  open={showSettingsModal}
+  on:close={closeSettingsModal}
+  zIndex={1300}
 />
 
 <style>

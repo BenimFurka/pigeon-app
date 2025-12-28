@@ -11,8 +11,8 @@
 
     const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
     
-    export let onToggleSettings: () => void = () => {};
-    export let inSettings: boolean = false;
+    export let onOpenSettings: () => void = () => {};
+    export let isSettingsOpen: boolean = false;
     export let isMobile: boolean = false;
     export let isVisible: boolean = true;
     export let onOpenCreateChat: (preset?: { chatType?: ChatType; memberIds?: number[] }) => void = () => {};
@@ -46,8 +46,8 @@
         dispatch('select', { chat });
     }
 
-    function handleToggleSettings() {
-        onToggleSettings();
+    function handleOpenSettings() {
+        onOpenSettings();
     }
 
     function handleStartDm(event: CustomEvent<{ user: UserPublic }>) {
@@ -68,8 +68,8 @@
         <div class="search-header">
             {#if isMobile}
                 <button
-                    class={`settings-button ${inSettings ? 'active' : ''}`}
-                    on:click={handleToggleSettings}
+                    class={`settings-button ${isSettingsOpen ? 'active' : ''}`}
+                    on:click={handleOpenSettings}
                     title="Настройки"
                     aria-label="Настройки"
                 >
@@ -147,14 +147,14 @@
         border: none;
         border-radius: var(--radius-sm);
         background: transparent;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--color-text);
         cursor: pointer;
         transition: var(--transition);
     }
 
     .settings-button:hover {
         background: var(--surface-glass);
-        color: rgba(255, 255, 255, 0.9);
+        filter: var(--hover-filter);
     }
 
     .settings-button.active {

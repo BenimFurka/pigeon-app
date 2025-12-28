@@ -1,18 +1,12 @@
 <script lang="ts">
     import { Settings, Plus } from "lucide-svelte";
-    import { currentUser } from "../stores/auth";
-    import { useCurrentProfile } from "../queries/profile";
-    import Avatar from "../components/chat/Avatar.svelte";
 
-    export let inSettings: boolean = false;
-    export let onToggleSettings: () => void = () => {};
+    export let isSettingsOpen: boolean = false;
+    export let onOpenSettings: () => void = () => {};
     export let onOpenCreateChat: () => void = () => {};
 
-    const profileQuery = useCurrentProfile();
-    $: currentProfile = $profileQuery?.data || null;
-
     function handleToggle() {
-        onToggleSettings();
+        onOpenSettings();
     }
 </script>    
 
@@ -27,7 +21,7 @@
             <Plus size={20} />
         </button>
         <button
-            class="sidebar-button {inSettings ? 'active' : ''}"
+            class="sidebar-button {isSettingsOpen ? 'active' : ''}"
             on:click={handleToggle}
             title="Настройки"
             aria-label="Настройки"
@@ -64,7 +58,7 @@
     .sidebar-button {
         background: transparent;
         border: none;
-        color: rgba(255, 255, 255, 0.4);
+        color: var(--color-text);
         cursor: pointer;
         padding: 6px;
         border-radius: var(--radius-sm);
@@ -78,7 +72,7 @@
     
     .sidebar-button:hover {
         background: var(--surface-glass);
-        color: rgba(255, 255, 255, 0.7);
+        filter: var(--hover-filter)
     }
     
     .sidebar-button.active {

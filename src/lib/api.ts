@@ -1,4 +1,4 @@
-import type { ApiResponse, ApiError } from "../types/models";
+import type { ApiResponse, ApiError, UserPublic } from "../types/models";
 import { getApiUrl } from "../config";
 import { getIsTauriEnvironment } from "./tauri-env";
 
@@ -79,6 +79,55 @@ export function isApiError<T>(response: ApiResponse<T>): response is ApiResponse
 
 export function isApiSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { data: T } {
     return response.data !== undefined && response.error === undefined;
+}
+
+export async function uploadUserAvatar(
+    file: File
+): Promise<ApiResponse<UserPublic>> {
+    try {
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            throw new Error('Файл слишком большой. Максимальный размер: 5MB');
+        }
+
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('Необходима авторизация');
+        }
+
+        const isTauri = await getIsTauriEnvironment();
+
+        if (isTauri) {
+            throw new Error('Загрузка аватара в настольной версии пока не поддерживается');
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        const res = await fetch(getApiUrl('/users/me/avatar'), {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: formData
+        });
+
+        const data: ApiResponse<UserPublic> = await res.json();
+
+        if (isApiError(data)) {
+            throw new Error(data.error.message || 'Request failed');
+        }
+
+        if (!res.ok) {
+            throw new Error(data.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        return data;
+    } catch (err) {
+        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Request failed';
+        throw new Error(errorMessage);
+    }
 }
 
 export async function uploadAttachment(

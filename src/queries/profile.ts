@@ -1,8 +1,9 @@
-import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 import { get } from 'svelte/store';
-import { makeRequest } from '../lib/api';
+import { makeRequest, uploadUserAvatar } from '../lib/api';
 import { presence } from '../stores/presence';
 import type { UserPublic } from '../types/models';
+import { avatarKeys } from './avatar';
 
 export type Profile = UserPublic;
 
@@ -60,4 +61,41 @@ export function useProfileInvalidations() {
     invalidateCurrentProfile: () => queryClient.invalidateQueries({ queryKey: profileKeys.current() }),
     invalidateAllProfiles: () => queryClient.invalidateQueries({ queryKey: profileKeys.all }),
   };
+}
+
+export function useUpdateCurrentProfile() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async (payload: { name?: string | null; bio?: string | null }) => {
+      const res = await makeRequest<UserPublic>('users/me', { data: payload }, true, 'PUT');
+      if (!res.data) {
+        throw new Error('Failed to update profile');
+      }
+      return res.data;
+    },
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(profileKeys.current(), updatedProfile);
+      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async (file: File) => {
+      const res = await uploadUserAvatar(file);
+      if (!res.data) {
+        throw new Error('Failed to upload avatar');
+      }
+      return res.data;
+    },
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(profileKeys.current(), updatedProfile);
+      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      queryClient.invalidateQueries({ queryKey: avatarKeys.all });
+    },
+  });
 }
