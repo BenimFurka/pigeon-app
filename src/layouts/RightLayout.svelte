@@ -24,11 +24,6 @@
         replyToMessage = event.detail.message || null;
     }
     
-    function handleMenu() {
-        // TODO: Implement menu functionality
-        console.log('Menu clicked');
-    }
-    
     function handleClearReply() {
         replyToMessage = null;
     }
@@ -63,7 +58,6 @@
             chatPreview={selectedChat}
             isMobile={isMobile}
             on:back={handleBackClick}
-            on:menu={handleMenu}
         />
     </Bar>
     
