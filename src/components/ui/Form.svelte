@@ -8,10 +8,19 @@
     export let fields: InputItem[] = [];
     export let onSubmit: (e: SubmitEvent) => void = (e) => {};
     export let active = false;
+    export let disabled = false;
+
+    function handleSubmit(e: SubmitEvent) {
+        if (!disabled) {
+            onSubmit(e);
+        } else {
+            e.preventDefault();
+        }
+    }
 </script>
 
 <div>
-    <form on:submit|preventDefault={onSubmit} class={`${active ? 'active' : ''}`}>
+    <form on:submit|preventDefault={handleSubmit} class={`${active ? 'active' : ''}`} class:disabled={disabled}>
         {#if title}
             <h2>{title}</h2>
         {/if}
@@ -50,10 +59,19 @@
 <style>
     .active {
         display: flex;
-		flex-direction: column;
+        flex-direction: column;
     }
 
     form {
         display: none;
+    }
+
+    form.disabled {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+    
+    form.disabled * {
+        cursor: not-allowed;
     }
 </style>

@@ -10,7 +10,10 @@
 		verifyPasswordReset,
 		authError
 	} from '../stores/auth';
-    import type { InputItem } from '../types/components';
+	import { writable } from 'svelte/store';
+	import type { InputItem } from '../types/components';
+
+	const isLoading = writable(false);
 
 	let view = 'login';
 
@@ -123,45 +126,75 @@
 	}
 
 	async function handleLogin(event: SubmitEvent) {
-		const formData = new FormData(event.target as HTMLFormElement);
-		updateFormData(formData, loginData);
-		await login(loginData.login, loginData.password);
+		if ($isLoading) return;
+		isLoading.set(true);
+		try {
+			const formData = new FormData(event.target as HTMLFormElement);
+			updateFormData(formData, loginData);
+			await login(loginData.login, loginData.password);
+		} finally {
+			isLoading.set(false);
+		}
 	}
 
 	async function handleRegister(event: SubmitEvent) {
-		const formData = new FormData(event.target as HTMLFormElement);
-		updateFormData(formData, registerData);
-		const success = await register(
-			registerData.username,
-			registerData.email,
-			registerData.password,
-			registerData.display
-		);
-		if (success) switchView('verifyEmail');
+		if ($isLoading) return;
+		isLoading.set(true);
+		try {
+			const formData = new FormData(event.target as HTMLFormElement);
+			updateFormData(formData, registerData);
+			const success = await register(
+				registerData.username,
+				registerData.email,
+				registerData.password,
+				registerData.display
+			);
+			if (success) switchView('verifyEmail');
+		} finally {
+			isLoading.set(false);
+		}
 	}
 
 	async function handleVerify(event: SubmitEvent) {
-		const formData = new FormData(event.target as HTMLFormElement);
-		updateFormData(formData, verifyData);
-		await verifyEmail(registerData.email, verifyData.code);
+		if ($isLoading) return;
+		isLoading.set(true);
+		try {
+			const formData = new FormData(event.target as HTMLFormElement);
+			updateFormData(formData, verifyData);
+			await verifyEmail(registerData.email, verifyData.code);
+		} finally {
+			isLoading.set(false);
+		}
 	}
 
 	async function handleRequestReset(event: SubmitEvent) {
-		const formData = new FormData(event.target as HTMLFormElement);
-		updateFormData(formData, forgotPasswordData);
-		const success = await requestPasswordReset(forgotPasswordData.email);
-		if (success) switchView('resetPassword');
+		if ($isLoading) return;
+		isLoading.set(true);
+		try {
+			const formData = new FormData(event.target as HTMLFormElement);
+			updateFormData(formData, forgotPasswordData);
+			const success = await requestPasswordReset(forgotPasswordData.email);
+			if (success) switchView('resetPassword');
+		} finally {
+			isLoading.set(false);
+		}
 	}
 
 	async function handleResetPassword(event: SubmitEvent) {
-		const formData = new FormData(event.target as HTMLFormElement);
-		updateFormData(formData, resetPasswordData);
-		await verifyPasswordReset(
-			forgotPasswordData.email, 
-			resetPasswordData.code, 
-			resetPasswordData.new_password
-		);
-		if (!$authError) switchView('login');
+		if ($isLoading) return;
+		isLoading.set(true);
+		try {
+			const formData = new FormData(event.target as HTMLFormElement);
+			updateFormData(formData, resetPasswordData);
+			await verifyPasswordReset(
+				forgotPasswordData.email, 
+				resetPasswordData.code, 
+				resetPasswordData.new_password
+			);
+			if (!$authError) switchView('login');
+		} finally {
+			isLoading.set(false);
+		}
 	}
 
 	function switchView(newView: string) {
@@ -191,14 +224,16 @@
 		active={view === 'login'}
 		fields={loginFields}
 		onSubmit={handleLogin}
-		submit="Войти"
+		submit={$isLoading ? 'Загрузка...' : 'Войти'}
+		disabled={$isLoading}
 	/>
 
 	<Form
 		active={view === 'register'}
 		fields={registerFields}
 		onSubmit={handleRegister}
-		submit="Зарегистрироваться"
+		submit={$isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
+		disabled={$isLoading}
 	/>
 
 	<Form
@@ -206,7 +241,8 @@
 		active={view === 'verifyEmail'}
 		fields={verifyFields}
 		onSubmit={handleVerify}
-		submit="Подтвердить"
+		submit={$isLoading ? 'Проверка...' : 'Подтвердить'}
+		disabled={$isLoading}
 	/>
 
 	<Form
@@ -214,7 +250,8 @@
 		active={view === 'forgotPassword'}
 		fields={forgotPasswordFields}
 		onSubmit={handleRequestReset}
-		submit="Отправить код"
+		submit={$isLoading ? 'Отправка...' : 'Отправить код'}
+		disabled={$isLoading}
 	/>
 
 	<Form
@@ -222,7 +259,8 @@
 		active={view === 'resetPassword'}
 		fields={resetPasswordFields}
 		onSubmit={handleResetPassword}
-		submit="Сбросить пароль"
+		submit={$isLoading ? 'Обновление...' : 'Сбросить пароль'}
+		disabled={$isLoading}
 	/>
 
 	{#if view === 'forgotPassword' || view === 'resetPassword'}
