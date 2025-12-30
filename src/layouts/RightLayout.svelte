@@ -116,7 +116,7 @@
         on:reply={handleReply}
     />
     
-    {#if selectedChat}
+    {#if selectedChat && myMembership?.can_send_messages}
         <MessageInput 
             chatId={Number(selectedChat.id)}
             replyToMessage={replyToMessage}
