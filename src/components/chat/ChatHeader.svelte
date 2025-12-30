@@ -1,19 +1,18 @@
 <script lang="ts">
     import { createEventDispatcher, onDestroy } from 'svelte';
-    import { ChatType, type ChatPreview, type Chat } from '../../types/models';
+    import { ChatType, type ChatPreview, type Chat, type ChatMember } from '../../types/models';
     import { subscribeToPresence } from '$lib/presence';
     import Avatar from './Avatar.svelte';
     import ChatInfoModal from './modals/ChatInfoModal.svelte';
     import EditChatModal from './modals/EditChatModal.svelte';
     import ManageMembersModal from './modals/ManageMembersModal.svelte';
     import { ArrowLeft } from 'lucide-svelte';
-    import { useChat } from '../../queries/chats';
-    import { type CreateQueryResult } from '@tanstack/svelte-query';
+    import ProfileModal from './modals/ProfileModal.svelte';
 
     export let chatPreview: ChatPreview | null = null;
-    
-    let chatQuery: CreateQueryResult<Chat, Error> | null = null;
-    let chat: Chat | null = null;
+    export let chat: Chat | null = null;
+    export let isCreator = false;
+    export let myMembership: ChatMember | undefined;
 
     $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
         ? chatPreview.other_user?.avatar_url 
@@ -23,19 +22,6 @@
         ? chatPreview.other_user?.name
         : chatPreview?.name;
     
-    $: {
-        if (chatPreview?.id) {
-            const query = useChat(chatPreview.id, {
-                enabled: !!chatPreview,
-            }) as CreateQueryResult<Chat, Error>;
-            chatQuery = query;
-            // @ts-expect-error - TypeScript cannot correctly infer the type of $chatQuery
-            chat = $chatQuery?.data ?? null;
-        } else {
-            chatQuery = null;
-            chat = null;
-        }
-    }
     
     export let isMobile: boolean = false;
     
@@ -47,6 +33,7 @@
         back: void;
         search: void;
         menu: void;
+        userClick: { user: any };
     }>();
     
     let showChatInfo = false;
@@ -120,6 +107,15 @@
         showEditChat = false;
         showChatInfo = true;
     }
+    
+    function handleUserClick(event: CustomEvent) {
+        dispatch('userClick', event.detail);
+    }
+    
+    function handleMessageToUser() {
+        // TODO: navigate to DM or open message inputs
+        console.log('Message to user from profile');
+    }
 </script>
 
 <div class="chat-header">
@@ -152,22 +148,37 @@
 
 {#if chatPreview && chat}
     {#if showChatInfo}
-        <ChatInfoModal 
-            chat={chat}
-            chatPreview={chatPreview} 
-            isOpen={showChatInfo} 
-            on:close={handleCloseChatInfo}
-            on:edit={handleEditChat}
-            on:manageMembers={handleManageMembers}
-        />
+        {#if chatPreview.chat_type === ChatType.DM}
+            {#if chatPreview.other_user}
+                <ProfileModal 
+                    user={chatPreview.other_user}
+                    isOpen={showChatInfo}
+                    on:close={handleCloseChatInfo}
+                    on:message={handleMessageToUser}
+                />
+            {/if}
+        {:else}
+            <ChatInfoModal 
+                chat={chat}
+                chatPreview={chatPreview} 
+                isOpen={showChatInfo} 
+                on:close={handleCloseChatInfo}
+                on:edit={handleEditChat}
+                on:manageMembers={handleManageMembers}
+                on:userClick={handleUserClick}
+            />
+        {/if}
     {/if}
 
     {#if showEditChat}
         <EditChatModal 
             chat={chatPreview} 
             isOpen={showEditChat} 
+            isCreator={isCreator}
+            myMembership={myMembership}
             on:close={handleCloseEditChat}
             on:save={({ detail }) => handleChatUpdated(detail.chat)}
+            on:back={handleCloseEditChat}
         />
     {/if}
 
@@ -176,6 +187,8 @@
             chat={chat} 
             isOpen={showManageMembers} 
             on:close={handleCloseManageMembers}
+            on:back={handleCloseManageMembers}
+            on:userClick={handleUserClick}
         />
     {/if}
 {/if}

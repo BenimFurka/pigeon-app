@@ -7,9 +7,13 @@
     import Modal from '../../ui/Modal.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { makeRequest } from '../../../lib/api';
+    import { chatKeys } from '../../../queries/chats';
+    import type { ChatMember } from '../../../types/models';
 
     export let chat: ChatPreview;
     export let isOpen = false;
+    export let isCreator = false;
+    export let myMembership: ChatMember | undefined;
     
     const dispatch = createEventDispatcher<{
         close: void;
@@ -18,6 +22,8 @@
     }>();
 
     const queryClient = useQueryClient();
+    
+    $: canEditChat = Boolean(isCreator || myMembership?.can_manage_chat);
     
     let name = chat?.name || '';
     let description = chat?.description || '';
@@ -33,19 +39,21 @@
     
     const updateChatMutation = createMutation({
         mutationFn: async (data: { name?: string; description?: string }) => {
-            const response = await makeRequest(`chats/${chat.id}`, data, true, 'PATCH');
+            const response = await makeRequest(`/chats/${chat.id}`, { data }, true, 'PATCH');
             if (!response.data) {
                 throw new Error('Failed to update chat');
             }
             return response.data;
         },
         onSuccess: (updatedChat: any) => {
-            queryClient.invalidateQueries({ queryKey: ['chats'] });
-            queryClient.invalidateQueries({ queryKey: ['chat', chat.id] });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+            queryClient.setQueryData(chatKeys.detail(chat.id), updatedChat);
             dispatch('save', { chat: updatedChat });
         },
         onError: (err: any) => {
             error = err?.message || 'Failed to update chat';
+        },
+        onSettled: () => {
             isSubmitting = false;
         }
     });
@@ -65,7 +73,7 @@
     function handleSubmit(e: Event) {
         e.preventDefault();
         
-        if (isSubmitting) return;
+        if (isSubmitting || !canEditChat) return;
         
         error = null;
         isSubmitting = true;
@@ -107,7 +115,7 @@
             <div class="avatar-upload">
                 <div class="avatar-preview">
                     <Avatar avatarUrl={chat.avatar_url} size="xlarge" />
-                    <button type="button" class="change-avatar" disabled={isSubmitting}>
+                    <button type="button" class="change-avatar" disabled={isSubmitting || !canEditChat}>
                         Изменить
                     </button>
                 </div>
@@ -121,7 +129,7 @@
                     id="chat-name"
                     bind:value={name}
                     placeholder={chat.chat_type === ChatType.GROUP ? 'Название группы' : 'Название канала'}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !canEditChat}
                     required
                 />
             </div>
@@ -134,7 +142,7 @@
                     id="chat-description"
                     bind:value={description}
                     placeholder={chat.chat_type === ChatType.GROUP ? 'Расскажите о группе' : 'Расскажите о канале'}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !canEditChat}
                     rows={3}
                 />
             </div>
@@ -147,11 +155,11 @@
         </div>
         
         <div>
-            <Button type="submit" fullWidth disabled={isSubmitting}>
+            <Button type="submit" fullWidth disabled={isSubmitting || !canEditChat}>
                 {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
             </Button>
             
-            {#if chat.chat_type !== ChatType.DM}
+            {#if chat.chat_type !== ChatType.DM && isCreator}
                 <Button 
                     type="button" 
                     variant="danger" 

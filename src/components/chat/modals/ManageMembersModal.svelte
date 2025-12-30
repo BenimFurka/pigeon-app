@@ -4,11 +4,16 @@
     import Button from '../../ui/Button.svelte';
     import Input from '../../ui/Input.svelte';
     import Modal from '../../ui/Modal.svelte';
-    import { useQueryClient } from '@tanstack/svelte-query';
+    import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { useSearch } from '../../../queries/search';
-    import { presence } from '../../../stores/presence';
+    import { presence, type PresenceRecord } from '../../../stores/presence';
     import { writable } from 'svelte/store';
     import type { Chat } from '../../../types/models';
+    import { useCurrentProfile } from '../../../queries/profile';
+    import { chatKeys } from '../../../queries/chats';
+    import MemberListItem from '../MemberListItem.svelte';
+    import { formatLastSeen } from '../../../lib/datetime';
+    import type { UserPublic } from '../../../types/models';
 
     export let chat: Chat;
     export let isOpen = false;
@@ -16,6 +21,7 @@
     const dispatch = createEventDispatcher<{
         close: void;
         back: void;
+        userClick: { user: UserPublic };
     }>();
 
     const queryClient = useQueryClient();
@@ -26,14 +32,30 @@
     let isSubmitting = false;
     let error: string | null = null;
     
-    // TODO: members
-    $: members = [];
-    // TODO: profiles
+    $: members = chat?.members || [];
+    const currentUserQuery = useCurrentProfile();
+    $: currentUser = $currentUserQuery?.data || null;
+    $: myMembership = currentUser ? members.find(m => m.user_id === currentUser.id) : null;
+    $: canManageMembers = Boolean(myMembership?.can_manage_members || chat?.owner_id === currentUser?.id);
+
+    let presenceState: Record<number, PresenceRecord> = {};
+    $: presenceState = $presenceStore ?? {};
+
+    function getPresenceRecord(userId: number) {
+        return presenceState?.[userId];
+    }
+
+    function getStatusText(userId: number) {
+        const record = getPresenceRecord(userId);
+        if (record?.online) {
+            return 'в сети';
+        }
+        return formatLastSeen(record?.lastSeenAt) ?? 'не в сети';
+    }
 
     const searchQueryStore = writable('');
     const searchResults = useSearch(searchQueryStore, {
         scope: 'users',
-        enabled: false
     });
     
     $: filteredSearchResults = ($searchResults.data?.users || []).filter((user: any) => 
@@ -71,7 +93,62 @@
         }
     }
     
-    // TODO: add and remove
+    const addMembersMutation = createMutation({
+        mutationFn: async (userIds: number[]) => {
+            const { makeRequest } = await import('../../../lib/api');
+            const promises = userIds.map(userId =>
+                makeRequest(`/chats/${chat.id}/members`, { data: { user_id: userId } }, true, 'POST')
+            );
+            const responses = await Promise.all(promises);
+            if (responses.some(res => !res.data)) throw new Error('Не удалось добавить участников');
+            return responses.map(res => res.data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+            selectedUsers = [];
+        },
+        onError: (e: any) => {
+            error = e?.message || 'Ошибка добавления участников';
+        },
+        onSettled: () => {
+            isSubmitting = false;
+        }
+    });
+
+    function handleAddSelected() {
+        if (!canManageMembers || selectedUsers.length === 0) return;
+        error = null;
+        isSubmitting = true;
+        const ids = selectedUsers.map(u => u.id);
+        $addMembersMutation.mutate(ids);
+    }
+
+    const removeMemberMutation = createMutation({
+        mutationFn: async (userId: number) => {
+            const { makeRequest } = await import('../../../lib/api');
+            const res = await makeRequest(`/chats/${chat.id}/members/${userId}`, null, true, 'DELETE');
+            if ((res as any).error) throw new Error((res as any).error.message || 'Не удалось удалить участника');
+            return true;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+        },
+        onError: (e: any) => {
+            error = e?.message || 'Ошибка удаления участника';
+        }
+    });
+
+    function handleRemoveMember(userId: number) {
+        if (!canManageMembers || userId === chat.owner_id) return;
+        error = null;
+        $removeMemberMutation.mutate(userId);
+    }
+    
+    function handleUserClick(event: CustomEvent) {
+        dispatch('userClick', event.detail);
+    }
 </script>
 
 <Modal
@@ -94,13 +171,21 @@
                     disabled={isSubmitting}
                 />
             </div>
+            {#if selectedUsers.length > 0}
+                <Button on:click={handleAddSelected} disabled={!canManageMembers || isSubmitting}>
+                    Добавить выбранных ({selectedUsers.length})
+                </Button>
+            {/if}
             
             {#if $searchResults.isLoading}
                 <div class="loading">Поиск...</div>
             {:else if filteredSearchResults.length > 0}
                 <div class="search-results">
                     {#each filteredSearchResults as user (user.id)}
-                        <div class="search-result-item" on:click={() => handleSelectUser(user)}>
+                        <div
+                            class={`search-result-item ${selectedUsers.some(u => u.id === user.id) ? 'selected' : ''}`}
+                            on:click={() => handleSelectUser(user)}
+                        >
                             <Avatar avatarUrl={user.avatar_url} size="small" />
                             <div class="user-info">
                                 <div class="username">{user.username}</div>
@@ -124,7 +209,28 @@
                     В этом чате пока нет участников
                 </div>
             {:else}
-                <!-- TODO: normalnaya realizatia -->
+                <div class="members-list">
+                    {#each members as m (m.user_id)}
+                        <MemberListItem
+                            userId={m.user_id}
+                            role={m.role}
+                            isOnline={Boolean(getPresenceRecord(m.user_id)?.online)}
+                            statusText={getStatusText(m.user_id)}
+                            on:userClick={handleUserClick}
+                        >
+                            {#if canManageMembers && m.user_id !== chat.owner_id}
+                                <Button
+                                    slot="actions"
+                                    variant="danger"
+                                    size="small"
+                                    on:click={() => handleRemoveMember(m.user_id)}
+                                >
+                                    Удалить
+                                </Button>
+                            {/if}
+                        </MemberListItem>
+                    {/each}
+                </div>
             {/if}
         </div>
         
@@ -185,19 +291,6 @@
         gap: 12px;
     }
     
-    .search-result-item:last-child {
-        border-bottom: none;
-    }
-    
-    .search-result-item:hover {
-        background-color: var(--color-bg-elevated);
-    }
-    
-    .user-info {
-        flex: 1;
-        min-width: 0;
-    }
-    
     .username {
         font-weight: 500;
         white-space: nowrap;
@@ -216,6 +309,17 @@
         text-align: center;
         color: var(--color-text-muted);
         font-size: 0.95rem;
+    }
+
+    .members-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        padding: 14px;
+        overflow: hidden;
+        border: 1px solid var(--color-border);
     }
     
     .error-message {

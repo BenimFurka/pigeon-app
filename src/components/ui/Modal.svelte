@@ -165,7 +165,7 @@
     .modal-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 20px;
     }
 
     .modal-header h2 {
@@ -225,8 +225,7 @@
 
         .modal-panel {
             max-width: 100%;
-            max-height: var(--window-height);
-            border-radius: 0;
+            height: var(--window-height);
             box-shadow: none;
         }
     }
