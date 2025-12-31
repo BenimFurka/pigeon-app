@@ -25,6 +25,8 @@
     let hasMoreOlder = true;
     let didInitialScroll = false;
     let lastChatId: number | null = null;
+    let lastMessageCount = 0;
+    let isUserAtBottom = true;
     
     $: messagesQuery = chatId ? useMessages(chatId, { enabled: !!chatId, params: { limit: PAGE_SIZE } }) : null;
     
@@ -37,7 +39,14 @@
             didInitialScroll = false;
             hasMoreOlder = true;
             replyToMap = new Map();
+            lastMessageCount = 0;
         }
+
+        if (messageList.length > lastMessageCount && lastMessageCount > 0 && isUserAtBottom) {
+            setTimeout(() => scrollToBottom(), 0);
+        }
+        
+        lastMessageCount = messageList.length;
 
         messageList.forEach(msg => {
             if (msg.reply_to_message_id && !replyToMap.has(msg.reply_to_message_id)) {
@@ -62,6 +71,12 @@
         if (messagesContainer) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
+    }
+
+    function isAtBottom(): boolean {
+        if (!messagesContainer) return true;
+        const threshold = 50;
+        return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight <= threshold;
     }
 
     function mergeMessages(prev: MessageType[], incoming: MessageType[]): MessageType[] {
@@ -111,6 +126,9 @@
 
     function handleScroll() {
         if (!messagesContainer) return;
+        
+        isUserAtBottom = isAtBottom();
+        
         if (messagesContainer.scrollTop <= SCROLL_TOP_THRESHOLD_PX) {
             void loadOlderMessages();
         }
