@@ -22,7 +22,8 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.0.0-rc.17", features = [] }
 tauri-plugin-log = "2.0.0-rc"
-reqwest = { version = "0.12", features = ["json"] }
+tauri-plugin-fs = "2.0.0-rc"
+reqwest = { version = "0.12", features = ["json", "multipart"] }
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
@@ -30,3 +31,4 @@ url = "2.4"
 thiserror = "1.0"
 lazy_static = "1.4"
 env_logger = "0.10"
+mime_guess = "2.0"

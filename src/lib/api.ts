@@ -198,8 +198,43 @@ export async function uploadAttachment(
         const isTauri = await getIsTauriEnvironment();
 
         if (isTauri) {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const { writeFile, remove } = await import('@tauri-apps/plugin-fs');
+            
             // TODO: tauri
-            throw new Error('sorry no desktop');
+            const tempDir = '/tmp';
+            const tempFilePath = `${tempDir}/${file.name}`;
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            await writeFile(tempFilePath, uint8Array);
+            
+            const options = {
+                url: getApiUrl(`/chats/${chatId}/attachments`),
+                file_path: tempFilePath,
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            };
+
+            try {
+                const res: ApiResponse<import("../types/models").ChatAttachment> = await invoke('upload_attachment', {
+                    options
+                });
+
+                if (isApiError(res)) {
+                    throw new Error(res.error.message || 'Upload failed');
+                }
+
+                return res;
+            } finally {
+                try {
+                    const { remove } = await import('@tauri-apps/plugin-fs');
+                    await remove(tempFilePath);
+                } catch (e) {
+                    console.warn('Failed to clean up temporary file:', e);
+                }
+            }
         } else {
             const formData = new FormData();
             formData.append('file', file);

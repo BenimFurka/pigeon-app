@@ -18,6 +18,7 @@ lazy_static! {
 pub fn run() {
   tauri::Builder::default()
     .setup(|app| {
+      app.handle().plugin(tauri_plugin_fs::init())?;
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -30,6 +31,7 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
       make_request,
+      upload_attachment,
       init_websocket,
       send_websocket_message,
       disconnect_websocket
@@ -156,6 +158,91 @@ async fn send_websocket_message(message: String) -> Result<(), String> {
     warn!("WebSocket client is not initialized when trying to send message");
     Err("WebSocket client is not initialized".to_string())
   }
+}
+
+#[derive(Debug, Deserialize)]
+struct UploadOptions {
+  url: String,
+  file_path: String,
+  headers: Option<serde_json::Value>,
+}
+
+#[tauri::command]
+async fn upload_attachment(options: UploadOptions) -> Result<ApiResponse, String> {
+  info!("Uploading attachment to: {}", options.url);
+  debug!("Upload options: {:?}", options);
+
+  let client = Client::new();
+  let mut headers = HeaderMap::new();
+
+  if let Some(custom_headers) = options.headers {
+    if let serde_json::Value::Object(headers_map) = custom_headers {
+      for (key, value) in headers_map {
+        if let serde_json::Value::String(value_str) = value {
+          if let Ok(header_name) = HeaderName::from_bytes(key.as_bytes()) {
+            if let Ok(header_value) = HeaderValue::from_str(&value_str) {
+              headers.insert(header_name, header_value);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let file_content = std::fs::read(&options.file_path)
+    .map_err(|e| format!("Failed to read file: {}", e))?;
+
+  let file_name = std::path::Path::new(&options.file_path)
+    .file_name()
+    .and_then(|n| n.to_str())
+    .unwrap_or("file");
+
+  let mime_type = mime_guess::from_path(&options.file_path)
+    .first_or_octet_stream()
+    .to_string();
+
+  let part = reqwest::multipart::Part::bytes(file_content)
+    .file_name(file_name.to_string())
+    .mime_str(&mime_type)
+    .map_err(|e| format!("Failed to set MIME type: {}", e))?;
+
+  let form = reqwest::multipart::Form::new()
+    .part("file", part);
+
+  let response = match client.post(&options.url)
+    .headers(headers)
+    .multipart(form)
+    .send()
+    .await {
+      Ok(resp) => { info!("Upload successful, status: {}", resp.status()); resp },
+      Err(e) => { error!("Upload failed: {}", e); return Err(e.to_string()); }
+    };
+
+  let status = response.status();
+  let response_text = match response.text().await {
+    Ok(text) => { debug!("Response text: {}", text); text },
+    Err(e) => { error!("Failed to read response text: {}", e); return Err(e.to_string()); }
+  };
+
+  let response_data = if !response_text.is_empty() {
+    match serde_json::from_str(&response_text) { 
+      Ok(data) => data, 
+      Err(_) => { 
+        warn!("Failed to parse response as JSON, using null"); 
+        serde_json::Value::Null 
+      } 
+    }
+  } else { 
+    debug!("Empty response received"); 
+    serde_json::Value::Null 
+  };
+
+  let success = status.is_success();
+  let message = response_data.get("message").and_then(|m| m.as_str()).map(|s| s.to_string());
+  let data = response_data.get("data").cloned();
+
+  info!("Upload completed with success: {}", success);
+  Ok(ApiResponse { success, message, data })
 }
 
 #[tauri::command]
