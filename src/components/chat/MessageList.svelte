@@ -7,6 +7,7 @@
     import { createEventDispatcher } from 'svelte';
     import { queryClient } from '../../lib/query';
     import { formatDateHeader } from '../../lib/datetime';
+    import { ChevronDown } from 'lucide-svelte';
     
     const dispatch = createEventDispatcher();
     
@@ -249,6 +250,12 @@
     {/if}-->
 </div>
 
+{#if !isUserAtBottom && messageList.length > 0}
+    <button class="scroll-to-bottom-btn" on:click={scrollToBottom} title="Вниз">
+        <ChevronDown size={20} />
+    </button>
+{/if}
+
 <style>
     .message-list {
         flex: 1;
@@ -258,6 +265,7 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
+        position: relative;
     }
     
     .empty-state {
@@ -300,6 +308,53 @@
         font-weight: 500;
         opacity: 0.8;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .scroll-to-bottom-btn {
+        position: absolute;
+        bottom: 80px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+
+        background-image: 
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
+                
+        color: var(--color-text);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 10;
+        transform: translateX(0);
+        opacity: 1;
+        animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .scroll-to-bottom-btn:hover {
+        filter: var(--hover-filter);
+        transform: translateX(-4px) scale(1.05);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+    
+    .scroll-to-bottom-btn:active {
+        transform: translateX(-2px) scale(1.02);
     }
 </style>
 
