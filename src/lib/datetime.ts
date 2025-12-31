@@ -64,3 +64,25 @@ export function isOlderThan(
     
     return targetDate < compareDate;
 }
+
+export function formatDateHeader(timestamp: string): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    if (date.toDateString() === now.toDateString()) {
+        return 'Сегодня';
+    }
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+        return 'Вчера';
+    }
+    
+    const formatter = new Intl.DateTimeFormat('ru-RU', {
+        day: 'numeric',
+        month: 'long'
+    });
+    
+    return formatter.format(date);
+}

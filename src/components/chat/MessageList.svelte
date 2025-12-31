@@ -6,6 +6,7 @@
     import type { Message as MessageType, ChatMember } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
     import { queryClient } from '../../lib/query';
+    import { formatDateHeader } from '../../lib/datetime';
     
     const dispatch = createEventDispatcher();
     
@@ -139,6 +140,27 @@
     } else {
         typingNames = typingUsers.map(num => num.toString());
     }
+
+    $: groupedMessages = messageList.reduce((groups, message, index) => {
+        const messageDate = new Date(message.created_at).toDateString();
+        const prevMessage = index > 0 ? messageList[index - 1] : null;
+        
+        const isNewDay = !prevMessage || new Date(prevMessage.created_at).toDateString() !== messageDate;
+        
+        if (isNewDay) {
+            groups.push({
+                dateHeader: formatDateHeader(message.created_at),
+                messages: [message]
+            });
+        } else {
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup) {
+                lastGroup.messages.push(message);
+            }
+        }
+        
+        return groups;
+    }, [] as { dateHeader: string; messages: MessageType[] }[]);
 </script>
 
 <div class="message-list" bind:this={messagesContainer} on:scroll={handleScroll}>
@@ -158,32 +180,38 @@
             <p class="hint">Начните общение, отправив первое сообщение</p>
         </div>
     {:else if !(messagesQuery && $messagesQuery?.isLoading) && !(chatId === null) && !(messageList.length === 0)}
-        {#each messageList as message, index (message.id)}
-            {@const prevMessage = index > 0 ? messageList[index - 1] : null}
-            {@const nextMessage = index < messageList.length - 1 ? messageList[index + 1] : null}
+        {#each groupedMessages as group (group.dateHeader)}
+            <div class="date-header">
+                <span class="date-text">{group.dateHeader}</span>
+            </div>
             
-            {@const groupPosition = 
-                (!prevMessage || prevMessage.sender_id !== message.sender_id || new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() >= 480000) &&
-                (!nextMessage || nextMessage.sender_id !== message.sender_id || new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime() >= 480000)
-                    ? 'single'
-                : (!prevMessage || prevMessage.sender_id !== message.sender_id || new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() >= 480000)
-                    ? 'start'
-                : (!nextMessage || nextMessage.sender_id !== message.sender_id || new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime() >= 480000)
-                    ? 'end'
-                    : 'middle'}
-            
-            {@const replyTo = message.reply_to_message_id ? replyToMap.get(message.reply_to_message_id) : null}
+            {#each group.messages as message, index (message.id)}
+                {@const prevMessage = index > 0 ? group.messages[index - 1] : null}
+                {@const nextMessage = index < group.messages.length - 1 ? group.messages[index + 1] : null}
+                
+                {@const groupPosition = 
+                    (!prevMessage || prevMessage.sender_id !== message.sender_id || new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() >= 480000) &&
+                    (!nextMessage || nextMessage.sender_id !== message.sender_id || new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime() >= 480000)
+                        ? 'single'
+                    : (!prevMessage || prevMessage.sender_id !== message.sender_id || new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() >= 480000)
+                        ? 'start'
+                    : (!nextMessage || nextMessage.sender_id !== message.sender_id || new Date(nextMessage.created_at).getTime() - new Date(message.created_at).getTime() >= 480000)
+                        ? 'end'
+                        : 'middle'}
+                
+                {@const replyTo = message.reply_to_message_id ? replyToMap.get(message.reply_to_message_id) : null}
 
-            <Message
-                message={message}
-                currentUserId={$currentUser}
-                myMembership={myMembership}
-                groupPosition={groupPosition}
-                showSender={groupPosition === 'start' || groupPosition === 'single'}
-                replyToMessage={replyTo || null}
-                on:reply={handleReply}
-                on:scrollTo={handleScrollTo}
-            />
+                <Message
+                    message={message}
+                    currentUserId={$currentUser}
+                    myMembership={myMembership}
+                    groupPosition={groupPosition}
+                    showSender={groupPosition === 'start' || groupPosition === 'single'}
+                    replyToMessage={replyTo || null}
+                    on:reply={handleReply}
+                    on:scrollTo={handleScrollTo}
+                />
+            {/each}
         {/each}
     
     {:else if messagesQuery && $messagesQuery?.isLoading}
@@ -235,6 +263,25 @@
         opacity: 0.7;
         font-style: italic;
         color: var(--color-accent);
+    }
+    
+    .date-header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 16px 0 8px 0;
+        padding: 0 12px;
+    }
+    
+    .date-text {
+        background: var(--color-bg-elevated);
+        color: var(--color-text);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+        opacity: 0.8;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 </style>
 
