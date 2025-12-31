@@ -1,5 +1,5 @@
 import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-import { makeRequest } from '../lib/api';
+import { makeRequest, uploadChatAvatar } from '../lib/api';
 import type { Chat, ChatPreview } from '../types/models';
 import { presence } from '../stores/presence';
 import { get } from 'svelte/store';
@@ -86,6 +86,24 @@ export function useCreateChat() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
       queryClient.setQueryData(chatKeys.detail(data.id), data);
+    },
+  });
+}
+
+export function useUploadChatAvatar() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async ({ chatId, file }: { chatId: number; file: File }) => {
+      const res = await uploadChatAvatar(chatId, file);
+      if (!res.data) {
+        throw new Error('Failed to upload chat avatar');
+      }
+      return res.data;
+    },
+    onSuccess: (updatedChat: any, { chatId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+      queryClient.setQueryData(chatKeys.detail(chatId), updatedChat);
     },
   });
 }

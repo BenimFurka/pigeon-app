@@ -130,6 +130,56 @@ export async function uploadUserAvatar(
     }
 }
 
+export async function uploadChatAvatar(
+    chatId: number,
+    file: File
+): Promise<ApiResponse<any>> {
+    try {
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            throw new Error('Файл слишком большой. Максимальный размер: 5MB');
+        }
+
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('Необходима авторизация');
+        }
+
+        const isTauri = await getIsTauriEnvironment();
+
+        if (isTauri) {
+            throw new Error('Загрузка аватара в настольной версии пока не поддерживается');
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        const res = await fetch(getApiUrl(`/chats/${chatId}/avatar`), {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: formData
+        });
+
+        const data: ApiResponse<any> = await res.json();
+
+        if (isApiError(data)) {
+            throw new Error(data.error.message || 'Request failed');
+        }
+
+        if (!res.ok) {
+            throw new Error(data.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        return data;
+    } catch (err) {
+        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Request failed';
+        throw new Error(errorMessage);
+    }
+}
+
 export async function uploadAttachment(
     chatId: number,
     file: File

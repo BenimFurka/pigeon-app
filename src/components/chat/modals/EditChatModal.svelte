@@ -7,7 +7,7 @@
     import Modal from '../../ui/Modal.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { makeRequest } from '../../../lib/api';
-    import { chatKeys } from '../../../queries/chats';
+    import { chatKeys, useUploadChatAvatar } from '../../../queries/chats';
     import type { ChatMember } from '../../../types/models';
 
     export let chat: ChatPreview;
@@ -22,6 +22,7 @@
     }>();
 
     const queryClient = useQueryClient();
+    const avatarUploadMutation = useUploadChatAvatar();
     
     $: canEditChat = Boolean(isCreator || myMembership?.can_manage_chat);
     
@@ -29,6 +30,8 @@
     let description = '';
     let isSubmitting = false;
     let error: string | null = null;
+    let avatarError: string | null = null;
+    let avatarInput: HTMLInputElement | null = null;
     let isInitialized = false;
     
     $: if (isOpen && chat && !isInitialized && !isSubmitting) {
@@ -107,6 +110,26 @@
         // TODO: Implement delete functionality
         console.log('Delete chat', chat.id);
     }
+    
+    function openAvatarPicker() {
+        avatarInput?.click();
+    }
+    
+    async function handleAvatarChange(event: Event) {
+        const target = event.currentTarget as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+
+        avatarError = null;
+        try {
+            const updatedChat = await $avatarUploadMutation.mutateAsync({ chatId: chat.id, file });
+            dispatch('save', { chat: updatedChat });
+        } catch (error) {
+            avatarError = error instanceof Error ? error.message : 'Не удалось загрузить аватар';
+        } finally {
+            target.value = '';
+        }
+    }
 </script>
 
 <Modal
@@ -123,9 +146,26 @@
             <div class="avatar-upload">
                 <div class="avatar-preview">
                     <Avatar avatarUrl={chat.avatar_url} size="xlarge" />
-                    <button type="button" class="change-avatar" disabled={isSubmitting || !canEditChat}>
+                    <button 
+                        type="button" 
+                        class="change-avatar" 
+                        disabled={isSubmitting || !canEditChat}
+                        on:click={openAvatarPicker}
+                    >
                         Изменить
                     </button>
+                    <input
+                        class="file-input"
+                        type="file"
+                        accept="image/*"
+                        bind:this={avatarInput}
+                        on:change={handleAvatarChange}
+                    />
+                    {#if avatarError}
+                        <div class="avatar-error">
+                            {avatarError}
+                        </div>
+                    {/if}
                 </div>
             </div>
             
@@ -222,6 +262,17 @@
     .change-avatar:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .avatar-error {
+        color: var(--color-danger);
+        font-size: 0.85rem;
+        margin-top: 8px;
+        text-align: center;
     }
     
     .form-group {
