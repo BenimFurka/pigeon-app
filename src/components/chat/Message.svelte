@@ -123,9 +123,33 @@
     function handleCopy() {
         const text = message.content || '';
         if (!text) return;
+        
         if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(text).catch(() => {});
+            navigator.clipboard.writeText(text).catch(() => {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
         }
+    }
+    
+    function fallbackCopy(text: string) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Failed to copy text:', err);
+        }
+        
+        document.body.removeChild(textArea);
     }
 
     function openMenu(e: MouseEvent) {
