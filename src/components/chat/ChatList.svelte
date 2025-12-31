@@ -3,7 +3,8 @@
     import type { SearchResults } from '../../queries/search';
     import ChatElement from './ChatElement.svelte';
     import type { ChatPreview, UserPublic } from '../../types/models';
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
+    import { chatNavigationTarget, clearChatOpenRequest } from '../../stores/chatNavigation';
 
     export let selectedChatId: number | null = null;
     export let searchQuery: string = '';
@@ -22,6 +23,48 @@
     $: searchActive = searchQuery.trim().length >= 2;
 
     const dispatch = createEventDispatcher<{ select: { chat: ChatPreview }; startDm: { user: UserPublic } }>();
+
+    let pendingChatId: number | null = null;
+    let lastHandledRequestId = 0;
+
+    function trySelectChatById(chatId: number) {
+        const match = chatList.find((chat) => Number(chat.id) === chatId);
+        if (match) {
+            selectedChatId = Number(match.id);
+            dispatch('select', { chat: match });
+            pendingChatId = null;
+            clearChatOpenRequest();
+        }
+    }
+
+    $: if (pendingChatId !== null && chatList.length) {
+        trySelectChatById(pendingChatId);
+    }
+
+    onMount(() => {
+        const unsubscribeNavigation = chatNavigationTarget.subscribe((request) => {
+            if (!request) {
+                return;
+            }
+
+            if (request.requestId === lastHandledRequestId) {
+                return;
+            }
+
+            lastHandledRequestId = request.requestId;
+            const { chatId } = request;
+            if (typeof chatId !== 'number') {
+                console.error('[ChatList] Received chat navigation request with invalid chatId:', chatId);
+                return;
+            }
+
+            pendingChatId = chatId;
+            trySelectChatById(chatId);
+        });
+        return () => {
+            unsubscribeNavigation();
+        };
+    });
 
     function handleSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         dispatch('select', event.detail);

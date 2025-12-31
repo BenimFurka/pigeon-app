@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { page } from '$app/stores';
+    import { get } from 'svelte/store';
     import AuthLayout from '../layouts/AuthLayout.svelte';
     import LeftLayout from '../layouts/LeftLayout.svelte';
     import { loggedIn } from '../stores/auth';
@@ -12,6 +14,7 @@
     import Modal from '../components/ui/Modal.svelte';
     import CreateChatForm from '../components/chat/modals/CreateChatForm.svelte';
     import SettingsModal from '../components/chat/modals/SettingsModal.svelte';
+    import { requestChatOpen } from '../stores/chatNavigation';
     let isChatInfoOpen = false;
     let selectedChatForInfo: ChatPreview | null = null;
     let selectedChat: ChatPreview | null = null;
@@ -56,6 +59,30 @@
         selectedChatForInfo = null;
     }
     
+    function openChatFromQuery() {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        const chatParam = url.searchParams.get('chat');
+        if (!chatParam) {
+            return;
+        }
+
+        const chatId = Number(chatParam);
+        if (Number.isNaN(chatId)) {
+            console.error('[QueryChat] Invalid chat ID:', chatParam);
+            return;
+        }
+
+        requestChatOpen(chatId);
+    }
+
+    $: {
+        const queryChat = get(page).url.searchParams.get('chat');
+        if (queryChat) {
+            openChatFromQuery();
+        }
+    }
+
     onMount(() => {
         window.addEventListener('openChatInfo', handleOpenChatInfo as EventListener);
         
@@ -74,6 +101,7 @@
         };
         
         window.addEventListener('keydown', handleKeyDown);
+        openChatFromQuery();
         
         return () => {
             window.removeEventListener('resize', handleResize);

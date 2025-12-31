@@ -12,8 +12,6 @@ import type {
 import type { Chat, ChatMember } from "../types/models";
 import { get } from "svelte/store";
 
-type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'closing' | 'closed';
-
 type WsMessageEvent = { type: 'message'; data: any };
 type WsCloseEvent = { type: 'close'; code: number; reason: string };
 type WsErrorEvent = { type: 'error'; error: string };
@@ -33,7 +31,6 @@ const AUTH_DELAY = 500;
 export class WSClient {
     private authToken: string | null = null;
     private socket: WebSocket | null = null;
-    private connectionState: ConnectionState = 'disconnected';
     private listeners: EventListener[] = [];
     private shouldReconnect = true;
     private reconnectAttempts = 0;
@@ -49,7 +46,6 @@ export class WSClient {
 
     private async initialize(): Promise<void> {
         const isTauri = await getIsTauriEnvironment();
-        this.connectionState = 'connecting';
 
         if (isTauri) {
             await this.initializeTauriWebSocket();
@@ -65,11 +61,9 @@ export class WSClient {
                 url: getWebSocketUrl(),
                 token: this.authToken
             });
-            this.connectionState = 'connected';
             this.emitEvent({ type: 'open' });
         } catch (error) {
             console.error('Error initializing Tauri WebSocket:', error);
-            this.connectionState = 'disconnected';
             this.emitEvent({ type: 'error', error: String(error) });
         }
     }
@@ -86,7 +80,6 @@ export class WSClient {
     }
 
     private handleOpen(): void {
-        this.connectionState = 'connected';
         this.reconnectAttempts = 0;
         this.emitEvent({ type: 'open' });
         this.scheduleAuth();
@@ -106,7 +99,6 @@ export class WSClient {
     }
 
     private handleClose(event: CloseEvent): void {
-        this.connectionState = 'closed';
         this.emitEvent({ 
             type: 'close', 
             code: event.code, 
@@ -149,7 +141,6 @@ export class WSClient {
 
     public async close(): Promise<void> {
         this.shouldReconnect = false;
-        this.connectionState = 'closing';
 
         const isTauri = await getIsTauriEnvironment();
 
@@ -180,7 +171,6 @@ export class WSClient {
     private cleanup(): void {
         this.clearAllTimers();
         this.clearAllListeners();
-        this.connectionState = 'closed';
     }
 
     public async on(event: string, callback: Function): Promise<void> {
@@ -212,12 +202,6 @@ export class WSClient {
         const unlisten = await listen(tauriEvent, (payload) => {
             const normalized = this.normalizeTauriEvent(listener.event, payload.payload);
             if (!normalized) return;
-
-            if (normalized.type === 'close') {
-                this.connectionState = 'closed';
-            } else if (normalized.type === 'error') {
-                this.connectionState = 'disconnected';
-            }
 
             listener.callback(normalized);
 

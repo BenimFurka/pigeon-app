@@ -116,7 +116,7 @@ export class Session {
     }
 
     private handleWebSocketClose(): void {
-        this.ws = null;
+        //this.ws = null;
     }
 
     private handleWebSocketError(): void {
