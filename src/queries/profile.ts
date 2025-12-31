@@ -20,20 +20,20 @@ export function useProfile(id: number, options?: { enabled?: boolean }) {
   return createQuery({
     queryKey: profileKeys.detail(id),
     queryFn: async (): Promise<Profile> => {
-      const req = await makeRequest<Profile>(`users/${id}`, null, true, 'GET');
-      if (!req.data) throw new Error('No profile data in response');
+      const res = await makeRequest<Profile>(`users/${id}`, null, true, 'GET');
+      if (!res.data) throw new Error('No profile data in response');
       
-      if (req.data.last_seen_at) {
+      if (res.data.last_seen_at) {
         const currentPresence = get(presence)[id];
       
         if (currentPresence?.online) {
-            presence.setOnline(id, req.data.last_seen_at);
+            presence.setOnline(id, res.data.last_seen_at);
         } else {
-            presence.setOffline(id, req.data.last_seen_at);
+            presence.setOffline(id, res.data.last_seen_at);
         }
       }
       
-      return req.data;
+      return res.data;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -45,9 +45,9 @@ export function useCurrentProfile() {
   return createQuery({
     queryKey: profileKeys.current(),
     queryFn: async (): Promise<Profile> => {
-      const req = await makeRequest<Profile>('users/me', null, true, 'GET');
-      if (!req.data) throw new Error('No profile data in response');
-      return req.data;
+      const res = await makeRequest<Profile>('users/me', null, true, 'GET');
+      if (!res.data) throw new Error('No profile data in response');
+      return res.data;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -71,6 +71,15 @@ export function useUpdateCurrentProfile() {
       const res = await makeRequest<UserPublic>('users/me', { data: payload }, true, 'PUT');
       if (!res.data) {
         throw new Error('Failed to update profile');
+      }
+      if (res.data.last_seen_at) {
+        const currentPresence = get(presence)[res.data.id];
+      
+        if (currentPresence?.online) {
+            presence.setOnline(res.data.id, res.data.last_seen_at);
+        } else {
+            presence.setOffline(res.data.id, res.data.last_seen_at);
+        }
       }
       return res.data;
     },

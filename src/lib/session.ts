@@ -154,6 +154,7 @@ export class Session {
 
     private handleAuthenticated(data: any): void {
         currentUser.set(data.user_id);
+        presence.setOnline(data.user_id);
         this.ws?.send({ type: 'get_online_list', data: {} });
     }
 

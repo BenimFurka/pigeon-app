@@ -60,7 +60,6 @@
     }
     
     function handleUserClick(event: CustomEvent) {
-        console.log("2849023048234")
         profileUser = event.detail.user;
         showProfileModal = true;
     }
