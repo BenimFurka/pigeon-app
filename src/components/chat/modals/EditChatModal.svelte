@@ -25,21 +25,27 @@
     
     $: canEditChat = Boolean(isCreator || myMembership?.can_manage_chat);
     
-    let name = chat?.name || '';
-    let description = chat?.description || '';
+    let name = '';
+    let description = '';
     let isSubmitting = false;
     let error: string | null = null;
+    let isInitialized = false;
     
-    $: if (chat) {
+    $: if (isOpen && chat && !isInitialized && !isSubmitting) {
         name = chat.name || '';
         description = chat.description || '';
+        isInitialized = true;
+    }
+    
+    $: if (!isOpen) {
+        isInitialized = false;
     }
     
     $: modalTitle = chat?.chat_type === ChatType.GROUP ? 'Редактировать группу' : 'Редактировать канал';
     
     const updateChatMutation = createMutation({
         mutationFn: async (data: { name?: string; description?: string }) => {
-            const response = await makeRequest(`/chats/${chat.id}`, { data }, true, 'PATCH');
+            const response = await makeRequest(`/chats/${chat.id}`, { data }, true, 'PUT');
             if (!response.data) {
                 throw new Error('Failed to update chat');
             }
@@ -48,6 +54,8 @@
         onSuccess: (updatedChat: any) => {
             queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
             queryClient.setQueryData(chatKeys.detail(chat.id), updatedChat);
+            name = updatedChat.name || '';
+            description = updatedChat.description || '';
             dispatch('save', { chat: updatedChat });
         },
         onError: (err: any) => {
