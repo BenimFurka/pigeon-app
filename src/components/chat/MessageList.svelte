@@ -1,10 +1,11 @@
 <script lang="ts">
     import Message from './Message.svelte';
-    import { useMessages } from '../../queries/messages';
+    import { fetchMessages, messageKeys, useMessages } from '../../queries/messages';
     import { currentUser } from '../../stores/auth';
     import { typing } from '../../stores/typing';
     import type { Message as MessageType, ChatMember } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
+    import { queryClient } from '../../lib/query';
     
     const dispatch = createEventDispatcher();
     
@@ -15,12 +16,28 @@
     let replyToMessage: MessageType | null = null;
     let messagesContainer: HTMLDivElement;
     let replyToMap: Map<number, MessageType> = new Map();
+
+    const PAGE_SIZE = 50;
+    const SCROLL_TOP_THRESHOLD_PX = 120;
+
+    let isLoadingOlder = false;
+    let hasMoreOlder = true;
+    let didInitialScroll = false;
+    let lastChatId: number | null = null;
     
-    $: messagesQuery = chatId ? useMessages(chatId, { enabled: !!chatId }) : null;
+    $: messagesQuery = chatId ? useMessages(chatId, { enabled: !!chatId, params: { limit: PAGE_SIZE } }) : null;
     
     $: if (chatId && messagesQuery) {
         const data = $messagesQuery?.data || [];
         messageList = data;
+
+        if (chatId !== lastChatId) {
+            lastChatId = chatId;
+            didInitialScroll = false;
+            hasMoreOlder = true;
+            replyToMap = new Map();
+        }
+
         messageList.forEach(msg => {
             if (msg.reply_to_message_id && !replyToMap.has(msg.reply_to_message_id)) {
                 const replyTo = messageList.find(m => m.id === msg.reply_to_message_id);
@@ -29,12 +46,72 @@
                 }
             }
         });
-        setTimeout(() => scrollToBottom(), 100);
+
+        if (!didInitialScroll && messageList.length > 0 && messageList.length < PAGE_SIZE && !($messagesQuery?.isLoading)) {
+            hasMoreOlder = false;
+        }
+
+        if (!didInitialScroll && messageList.length > 0 && !($messagesQuery?.isLoading)) {
+            didInitialScroll = true;
+            setTimeout(() => scrollToBottom(), 0);
+        }
     }
     
     function scrollToBottom() {
         if (messagesContainer) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function mergeMessages(prev: MessageType[], incoming: MessageType[]): MessageType[] {
+        const byId = new Map<number, MessageType>();
+        for (const m of prev) byId.set(m.id, m);
+        for (const m of incoming) byId.set(m.id, m);
+        return Array.from(byId.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+    }
+
+    async function loadOlderMessages() {
+        if (!chatId) return;
+        if (isLoadingOlder) return;
+        if (!hasMoreOlder) return;
+        if (messageList.length === 0) return;
+
+        const oldestId = messageList[0]?.id;
+        if (!oldestId) return;
+
+        isLoadingOlder = true;
+        const prevScrollHeight = messagesContainer?.scrollHeight ?? 0;
+        const prevScrollTop = messagesContainer?.scrollTop ?? 0;
+
+        try {
+            const older = await fetchMessages(chatId, { limit: PAGE_SIZE, before_id: oldestId });
+            if (older.length < PAGE_SIZE) {
+                hasMoreOlder = false;
+            }
+
+            queryClient.setQueryData<MessageType[]>(messageKeys.list(chatId), (prev) => {
+                const base = prev || [];
+                return mergeMessages(base, older);
+            });
+
+            await Promise.resolve();
+
+            const nextScrollHeight = messagesContainer?.scrollHeight ?? 0;
+            const delta = nextScrollHeight - prevScrollHeight;
+            if (messagesContainer) {
+                messagesContainer.scrollTop = prevScrollTop + delta;
+            }
+        } finally {
+            isLoadingOlder = false;
+        }
+    }
+
+    function handleScroll() {
+        if (!messagesContainer) return;
+        if (messagesContainer.scrollTop <= SCROLL_TOP_THRESHOLD_PX) {
+            void loadOlderMessages();
         }
     }
     
@@ -64,7 +141,12 @@
     }
 </script>
 
-<div class="message-list no-text-select" bind:this={messagesContainer}>
+<div class="message-list" bind:this={messagesContainer} on:scroll={handleScroll}>
+    {#if isLoadingOlder}
+        <div class="empty-state">
+            <p>Загрузка...</p>
+        </div>
+    {/if}
     {#if chatId === null}
         <div class="empty-state">
             <p>Выберите чат для начала общения</p>
@@ -153,13 +235,6 @@
         opacity: 0.7;
         font-style: italic;
         color: var(--color-accent);
-    }
-
-    .no-text-select {
-        -moz-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        user-select: none;
     }
 </style>
 
