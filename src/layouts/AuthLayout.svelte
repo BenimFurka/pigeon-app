@@ -265,14 +265,14 @@
 
 	{#if view === 'forgotPassword' || view === 'resetPassword'}
 		<ClickText
-			style="font-size: 0.8rem; align-self: center"
+			style="font-size: 0.9rem; align-self: center"
 			onClick={() => switchView('login')}
 		>
 			Назад ко входу
 		</ClickText>
 	{:else if view !== 'verifyEmail'}
 		<ClickText
-			style="font-size: 0.8rem; align-self: center"
+			style="font-size: 0.9rem; align-self: center"
 			onClick={() => switchView('forgotPassword')}
 		>
 			Забыли пароль?

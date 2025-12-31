@@ -9,6 +9,7 @@
     import { ChatType, type ChatPreview, type Chat } from "../types/models";
     import { formatLastSeen } from "../lib/datetime";
     import ChatHeader from '../components/chat/ChatHeader.svelte';
+    import ChatAccessPrompt from '../components/chat/ChatAccessPrompt.svelte';
     import { useChat } from '../queries/chats';
     import { type CreateQueryResult } from '@tanstack/svelte-query';
     import { useCurrentProfile } from '../queries/profile';
@@ -40,6 +41,7 @@
     $: currentUser = $currentUserQuery?.data || null;
     $: isCreator = Boolean(chat?.owner_id === currentUser?.id);
     $: myMembership = currentUser && chat?.members ? chat.members.find(m => m.user_id === currentUser.id) : undefined;
+    $: isChatLoading = Boolean(chatQuery ? $chatQuery?.isLoading : false);
     
     let replyToMessage: import("../types/models").Message | null = null;
     let rightLayoutElement: HTMLDivElement;
@@ -117,14 +119,23 @@
         on:reply={handleReply}
     />
     
-    {#if selectedChat && myMembership?.can_send_messages}
-        <MessageInput 
-            chatId={Number(selectedChat.id)}
-            replyToMessage={replyToMessage}
-            isMobile={isMobile}
-            on:clearReply={handleClearReply}
-            on:userClick={handleUserClick}
-        />
+    {#if selectedChat}
+        {#if myMembership?.can_send_messages}
+            <MessageInput 
+                chatId={Number(selectedChat.id)}
+                replyToMessage={replyToMessage}
+                isMobile={isMobile}
+                on:clearReply={handleClearReply}
+                on:userClick={handleUserClick}
+            />
+        {:else}
+            <ChatAccessPrompt
+                chat={chat}
+                chatPreview={selectedChat}
+                myMembership={myMembership}
+                isChatLoading={isChatLoading}
+            />
+        {/if}
     {/if}
     
     {#if showProfileModal && profileUser}

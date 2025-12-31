@@ -38,6 +38,22 @@ export function useChats(options?: { enabled?: boolean }) {
   });
 }
 
+export function useJoinPublicChat() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async (chatId: number): Promise<Chat> => {
+      const res = await makeRequest<Chat>(`/chats/${chatId}/join`, null, true, 'POST');
+      if (!res.data) throw new Error('Не удалось присоединиться к чату');
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+      queryClient.setQueryData(chatKeys.detail(data.id), data);
+    },
+  });
+}
+
 export function useChat(chatId: number, options?: { enabled?: boolean }) {
   return createQuery({
     queryKey: chatKeys.detail(chatId),
