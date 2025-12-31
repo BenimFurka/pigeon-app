@@ -3,12 +3,13 @@
     import { useMessages } from '../../queries/messages';
     import { currentUser } from '../../stores/auth';
     import { typing } from '../../stores/typing';
-    import type { Message as MessageType } from '../../types/models';
+    import type { Message as MessageType, ChatMember } from '../../types/models';
     import { createEventDispatcher } from 'svelte';
     
     const dispatch = createEventDispatcher();
     
     export let chatId: number | null = null;
+    export let myMembership: ChatMember | undefined;
     
     let messageList: MessageType[] = [];
     let replyToMessage: MessageType | null = null;
@@ -94,6 +95,7 @@
             <Message
                 message={message}
                 currentUserId={$currentUser}
+                myMembership={myMembership}
                 groupPosition={groupPosition}
                 showSender={groupPosition === 'start' || groupPosition === 'single'}
                 replyToMessage={replyTo || null}
@@ -108,7 +110,7 @@
         </div>    
     {/if}
     
-    {#if typingUsers.length > 0}
+    <!--{#if typingUsers.length > 0}
         <div class="typing-indicator">
             {#if typingNames.length > 0}
                 <span>{typingNames.join(', ')} печатает...</span>
@@ -116,7 +118,7 @@
                 <span>Печатает...</span>
             {/if}
         </div>
-    {/if}
+    {/if}-->
 </div>
 
 <style>

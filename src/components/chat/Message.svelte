@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Message } from '../../types/models';
+    import type { Message, ChatMember } from '../../types/models';
     import Avatar from './Avatar.svelte';
     import MessageMenu from './MessageMenu.svelte';
     import AttachmentList from './AttachmentList.svelte';
@@ -12,6 +12,7 @@
     export let showSender: boolean = true;
     export let groupPosition: string | 'single' | 'start' | 'middle' | 'end' = 'single';
     export let currentUserId: number | null = null;
+    export let myMembership: ChatMember | undefined;
     export let replyToMessage: Message | null = null;
 
     const dispatch = createEventDispatcher();
@@ -46,6 +47,10 @@
     $: isOwn = message.sender_id == currentUserId;
     $: isDeleted = false;
     $: reactions = message.reactions || [];
+    
+    $: canReply = Boolean(myMembership?.can_send_messages);
+    $: canEdit = isOwn;
+    $: canDelete = isOwn || Boolean(myMembership?.can_manage_messages);
     
     function handleReplyClick() {
         dispatch('reply', { messageId: message.id, senderId: message.sender_id });
@@ -214,7 +219,9 @@
         x={menuX}
         y={menuY}
         isOpen={menuOpen && !isDeleted}
-        canEdit={isOwn}
+        canReply={canReply}
+        canEdit={canEdit}
+        canDelete={canDelete}
         on:close={closeMenu}
         on:reply={() => { closeMenu(); handleReplyClick(); }}
         on:edit={() => { closeMenu(); handleEdit(); }}

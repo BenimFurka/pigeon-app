@@ -113,6 +113,7 @@
     
     <MessageList 
         chatId={selectedChat ? Number(selectedChat.id) : null}
+        myMembership={myMembership}
         on:reply={handleReply}
     />
     

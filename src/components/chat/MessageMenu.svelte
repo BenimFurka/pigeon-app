@@ -5,7 +5,9 @@
     export let x: number = 0;
     export let y: number = 0;
     export let isOpen: boolean = false;
+    export let canReply: boolean = false;
     export let canEdit: boolean = false;
+    export let canDelete: boolean = false;
 
     const dispatch = createEventDispatcher();
     let menuEl: HTMLDivElement | null = null;
@@ -34,24 +36,30 @@
 
 {#if isOpen}
 <div class="menu" bind:this={menuEl} style={`left:${x}px; top:${y}px`}>
+    {#if canReply}
     <button class="item" on:click={() => onAction('reply')}>
         <Reply size={16} class="icon" />
         <span>Ответить</span>
     </button>
+    {/if}
     <button class="item" on:click={() => onAction('copy')}>
         <Copy size={16} class="icon" />
         <span>Копировать</span>
     </button>
-    {#if canEdit}
+    {#if canEdit || canDelete}
         <div class="divider"></div>
+        {#if canEdit}
         <button class="item edit" on:click={() => onAction('edit')}>
             <Pencil size={16} class="icon" />
             <span>Редактировать</span>
         </button>
+        {/if}
+        {#if canDelete}
         <button class="item danger" on:click={() => onAction('delete')}>
             <Trash2 size={16} class="icon" />
             <span>Удалить</span>
         </button>
+        {/if}
     {/if}
 </div>
 {/if}
