@@ -180,6 +180,7 @@
 
 		--color-text: #FAFAFA;
 		--color-text-muted: rgba(250, 250, 250, 0.65);
+		--color-button-text: #FAFAFA;
 
 		--color-accent: hsl(var(--hue), 45%, 52%);
 		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
@@ -206,6 +207,7 @@
 
 		--color-text: #FAFAFA;
 		--color-text-muted: rgba(250, 250, 250, 0.65);
+		--color-button-text: #FAFAFA;
 
 		--color-accent: hsl(var(--hue), 45%, 52%);
 		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
@@ -232,6 +234,7 @@
 
 		--color-text: #111827;
 		--color-text-muted: #6b7280;
+		--color-button-text: #FAFAFA;
 
 		--color-accent: hsl(var(--hue), 45%, 58%);
 		--color-accent-soft: hsla(var(--hue), 45%, 58%, 0.14);

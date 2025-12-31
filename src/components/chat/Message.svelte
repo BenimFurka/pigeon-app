@@ -301,7 +301,6 @@
     }
     
     .reply-indicator {
-        color: var(--color-muted);
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
@@ -309,7 +308,6 @@
     }
     
     .reply-content {
-        color: var(--color-text-muted);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -339,7 +337,6 @@
     .message.other:is(.middle) .bubble {  border-radius: 6px 12px 12px 6px;}
     .message.own:is(.middle) .bubble {  border-radius: 12px 6px 6px 12px;}
 
-
     .bubble-footer {
         display: flex;
         gap: 6px;
@@ -347,7 +344,6 @@
         align-items: center;
         margin-top: 4px;
         font-size: 0.75em;
-        color: var(--color-text-muted);
         opacity: 0.8;
     }
     
@@ -416,4 +412,12 @@
         word-wrap: break-word;
         line-height: 1.4;
     }
+
+    .own * {
+        color: var(--color-button-text);
+    }   
+
+    .other * {
+        color: var(--color-text);
+    }   
 </style>
