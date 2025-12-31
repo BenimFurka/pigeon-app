@@ -47,6 +47,12 @@
         dispatch('clearReply');
         
         sendTyping(false);
+        
+        setTimeout(() => {
+            if (inputElement) {
+                inputElement.focus();
+            }
+        }, 0);
     }
 
     function handleAttachmentSent(event: CustomEvent<{ content: string; attachmentIds: number[] }>) {
