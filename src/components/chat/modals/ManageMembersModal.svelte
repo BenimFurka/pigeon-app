@@ -8,6 +8,7 @@
     import { useSearch } from '../../../queries/search';
     import { presence, type PresenceRecord } from '../../../stores/presence';
     import { writable } from 'svelte/store';
+    import { UserMinus } from 'lucide-svelte';
     import type { Chat } from '../../../types/models';
     import { useCurrentProfile } from '../../../queries/profile';
     import { chatKeys } from '../../../queries/chats';
@@ -100,7 +101,7 @@
                 makeRequest(`/chats/${chat.id}/members`, { data: { user_id: userId } }, true, 'POST')
             );
             const responses = await Promise.all(promises);
-            if (responses.some(res => !res.data)) throw new Error('Не удалось добавить участников');
+            if (responses.some(res => res.error)) throw new Error('Не удалось добавить участников');
             return responses.map(res => res.data);
         },
         onSuccess: () => {
@@ -218,16 +219,20 @@
                             statusText={getStatusText(m.user_id)}
                             on:userClick={handleUserClick}
                         >
+                        <svelte:fragment slot="actions">
                             {#if canManageMembers && m.user_id !== chat.owner_id}
-                                <Button
-                                    slot="actions"
-                                    variant="danger"
-                                    size="small"
-                                    on:click={() => handleRemoveMember(m.user_id)}
-                                >
-                                    Удалить
-                                </Button>
+                                
+                                    <Button
+                                        variant="danger"
+                                        size="small"
+                                        style="min-width: 0; min-height: 0; padding: 0; width: 32px; height: 32px;"
+                                        on:click={() => handleRemoveMember(m.user_id)}
+                                    >
+                                        <UserMinus size="16" />
+                                    </Button>
                             {/if}
+
+                                </svelte:fragment>
                         </MemberListItem>
                     {/each}
                 </div>

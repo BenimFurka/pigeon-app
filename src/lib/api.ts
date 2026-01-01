@@ -55,6 +55,10 @@ export async function makeRequest<T = any>(
                 body: body ? JSON.stringify(body) : undefined
             });
 
+            if (res.status === 204) {
+                return { data: null } as ApiResponse<T>;
+            }
+
             const data: ApiResponse<T> = await res.json();
 
             if (isApiError(data)) {
@@ -108,7 +112,7 @@ export async function uploadUserAvatar(
         const res = await fetch(getApiUrl('/users/me/avatar'), {
             method: 'POST',
             headers: {       
-                'ngrok-skip-browser-warning': 1,
+                'ngrok-skip-browser-warning': '1',
                 'Authorization': `Bearer ${accessToken}`
             },
             body: formData
@@ -159,7 +163,7 @@ export async function uploadChatAvatar(
         const res = await fetch(getApiUrl(`/chats/${chatId}/avatar`), {
             method: 'POST',
             headers: {
-                'ngrok-skip-browser-warning': 1,
+                'ngrok-skip-browser-warning': '1',
                 'Authorization': `Bearer ${accessToken}`
             },
             body: formData
