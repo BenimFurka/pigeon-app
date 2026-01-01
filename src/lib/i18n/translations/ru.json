@@ -1,0 +1,63 @@
+{
+  "settings": {
+    "title": "Настройки",
+    "nav": {
+      "profile": "Профиль",
+      "appearance": "Внешний вид",
+      "config": "Конфигурация"
+    },
+    "profile": {
+      "sectionTitle": "Профиль",
+      "loading": "Загрузка профиля...",
+      "updateAvatar": "Обновить аватар",
+      "nameLabel": "Имя",
+      "namePlaceholder": "Ваше имя",
+      "usernameLabel": "Имя пользователя",
+      "bioLabel": "О себе",
+      "bioPlaceholder": "Расскажите о себе",
+      "saving": "Сохранение...",
+      "save": "Сохранить профиль",
+      "logout": "Выйти из аккаунта",
+      "updateError": "Не удалось обновить профиль",
+      "avatarError": "Не удалось загрузить аватар"
+    },
+    "appearance": {
+      "sectionTitle": "Внешний вид",
+      "themeTitle": "Тема интерфейса",
+      "themeCurrentDark": "Текущая тема: Тёмная",
+      "themeCurrentLight": "Текущая тема: Светлая",
+      "toggle": "Переключить"
+    },
+    "config": {
+      "sectionTitle": "Конфигурация",
+      "savePrompt": "Есть несохранённые изменения. Сохраните их, чтобы применить настройки.",
+      "saving": "Сохранение...",
+      "save": "Сохранить",
+      "api": "API",
+      "useHttps": "Использовать HTTPS/WSS",
+      "host": "Хост",
+      "hostError": "Некорректный адрес",
+      "port": "Порт",
+      "portError": "Порт должен быть от 1 до 65535",
+      "apiPath": "Путь к API",
+      "apiVersion": "Версия API",
+      "restPreview": "REST",
+      "websocket": "WebSocket",
+      "wsDelay": "Задержка переподключения (мс)",
+      "wsPreview": "WS",
+      "app": "Приложение",
+      "defaultLanguage": "Язык по умолчанию",
+      "version": "Версия",
+      "reset": "Сбросить",
+      "configUnavailable": "Конфигурация недоступна.",
+      "saveError": "Не удалось сохранить конфигурацию"
+    },
+    "confirmReset": "Сбросить конфигурацию к значениям по умолчанию?"
+  },
+  "common": {
+    "language": {
+      "en": "English",
+      "ru": "Русский"
+    }
+  }
+}

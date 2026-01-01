@@ -35,6 +35,7 @@
 		"@tanstack/svelte-query": "^5.0.0",
 		"@tauri-apps/api": "^2.8.0",
 		"@tauri-apps/plugin-fs": "^2.0.0-rc",
-		"lucide-svelte": "^0.544.0"
+		"lucide-svelte": "^0.544.0",
+		"svelte-i18n": "^4.0.1"
 	}
 }

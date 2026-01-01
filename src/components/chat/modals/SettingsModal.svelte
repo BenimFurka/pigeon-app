@@ -8,6 +8,9 @@
   import { useCurrentProfile, useUpdateCurrentProfile, useUploadAvatar } from '../../../queries/profile';
   import { theme, type Theme } from '../../../stores/theme';
   import { logout } from '../../../stores/auth';
+  import { SUPPORTED_LOCALES, changeLocale } from '$lib/i18n';
+  import { t } from 'svelte-i18n';
+  import { get } from 'svelte/store';
 
   export let open: boolean = false;
   export let zIndex: number = 1000;
@@ -35,12 +38,14 @@
   let isSavingConfig = false;
   let configError: string | null = null;
 
-  type NavItem = { id: SettingsSection; label: string; icon: ComponentType };
+  type NavItem = { id: SettingsSection; labelKey: string; icon: ComponentType };
   const navItems: NavItem[] = [
-    { id: 'profile', label: 'Профиль', icon: User },
-    { id: 'appearance', label: 'Внешний вид', icon: Palette },
-    { id: 'config', label: 'Конфигурация', icon: SettingsIcon },
+    { id: 'profile', labelKey: 'settings.nav.profile', icon: User },
+    { id: 'appearance', labelKey: 'settings.nav.appearance', icon: Palette },
+    { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
   ];
+
+  const languageOptions = SUPPORTED_LOCALES;
 
   $: currentProfile = $profileQuery?.data ?? null;
   $: profileLoading = Boolean($profileQuery?.isLoading);
@@ -122,7 +127,7 @@
       profileBaselineName = localName.trim();
       profileBaselineBio = localBio.trim();
     } catch (error) {
-      profileError = error instanceof Error ? error.message : 'Не удалось обновить профиль';
+      profileError = error instanceof Error ? error.message : get(t)('settings.profile.updateError');
     }
   }
 
@@ -139,7 +144,7 @@
     try {
       await $avatarMutation.mutateAsync(file);
     } catch (error) {
-      avatarError = error instanceof Error ? error.message : 'Не удалось загрузить аватар';
+      avatarError = error instanceof Error ? error.message : get(t)('settings.profile.avatarError');
     } finally {
       target.value = '';
     }
@@ -182,6 +187,10 @@
       },
     };
     isConfigDirty = true;
+
+    if (field === 'defaultLanguage' && typeof value === 'string') {
+      changeLocale(value);
+    }
   }
 
   function formatPort(value: string): number {
@@ -198,14 +207,14 @@
       saveConfigToStorage();
       isConfigDirty = false;
     } catch (error) {
-      configError = error instanceof Error ? error.message : 'Не удалось сохранить конфигурацию';
+      configError = error instanceof Error ? error.message : get(t)('settings.config.saveError');
     } finally {
       isSavingConfig = false;
     }
   }
 
   function handleConfigReset() {
-    if (!confirm('Сбросить конфигурацию к значениям по умолчанию?')) {
+    if (!confirm(get(t)('settings.confirmReset'))) {
       return;
     }
     resetConfig();
@@ -225,7 +234,7 @@
 
 <Modal
   open={open}
-  title="Настройки"
+  title={$t('settings.title')}
   showClose={true}
   maxWidth="720px"
   zIndex={zIndex}
@@ -239,7 +248,7 @@
           on:click={() => focusSection(item.id)}
         >
           <svelte:component this={item.icon} size={16} />
-          <span>{item.label}</span>
+          <span>{$t(item.labelKey)}</span>
         </button>
       {/each}
     </nav>
@@ -247,10 +256,10 @@
     <div class="settings-content">
       {#if activeSection === 'profile'}
         <section class="section">
-          <h3>Профиль</h3>
+          <h3>{$t('settings.profile.sectionTitle')}</h3>
 
           {#if profileLoading}
-            <div class="section-hint">Загрузка профиля...</div>
+            <div class="section-hint">{$t('settings.profile.loading')}</div>
           {:else if profileQueryError}
             <div class="section-error">{profileQueryError}</div>
           {:else if currentProfile}
@@ -263,7 +272,7 @@
                   disabled={$avatarMutation.isPending}
                   className="avatar-button"
                 >
-                  <span>Обновить аватар</span>
+                  <span>{$t('settings.profile.updateAvatar')}</span>
                 </Button>
                 <input
                   class="file-input"
@@ -278,15 +287,15 @@
               </div>
 
               <div class="profile-form">
-                <label for="profile-name" class="field-label">Имя</label>
+                <label for="profile-name" class="field-label">{$t('settings.profile.nameLabel')}</label>
                 <input
                   id="profile-name"
                   type="text"
-                  placeholder="Ваше имя"
+                  placeholder={$t('settings.profile.namePlaceholder')}
                   bind:value={localName}
                 />
 
-                <label for="profile-username" class="readonly-label">Имя пользователя</label>
+                <label for="profile-username" class="readonly-label">{$t('settings.profile.usernameLabel')}</label>
                 <input
                   id="profile-username"
                   class="readonly-input"
@@ -294,11 +303,11 @@
                   readonly
                 />
 
-                <label for="profile-bio" class="textarea-label">О себе</label>
+                <label for="profile-bio" class="textarea-label">{$t('settings.profile.bioLabel')}</label>
                 <textarea
                   id="profile-bio"
                   bind:value={localBio}
-                  placeholder="Расскажите о себе"
+                  placeholder={$t('settings.profile.bioPlaceholder')}
                   rows={4}
                 ></textarea>
 
@@ -313,9 +322,9 @@
                     disabled={!isProfileDirty || $updateProfile.isPending}
                   >
                     {#if $updateProfile.isPending}
-                      <span>Сохранение...</span>
+                      <span>{$t('settings.profile.saving')}</span>
                     {:else}
-                      <span>Сохранить профиль</span>
+                      <span>{$t('settings.profile.save')}</span>
                     {/if}
                   </Button>
                 </div>
@@ -327,23 +336,27 @@
 
           <div class="account-block">
             <Button variant="danger" on:click={handleLogout}>
-              <span>Выйти из аккаунта</span>
+              <span>{$t('settings.profile.logout')}</span>
             </Button>
           </div>
         </section>
 
       {:else if activeSection === 'appearance'}
         <section class="section">
-          <h3>Внешний вид</h3>
+          <h3>{$t('settings.appearance.sectionTitle')}</h3>
 
           <div class="appearance-block">
             <div class="appearance-row">
               <div>
-                <div class="row-title">Тема интерфейса</div>
-                <div class="row-hint">Текущая тема: {currentTheme === 'dark' ? 'Тёмная' : 'Светлая'}</div>
+                <div class="row-title">{$t('settings.appearance.themeTitle')}</div>
+                <div class="row-hint">
+                  {currentTheme === 'dark'
+                    ? $t('settings.appearance.themeCurrentDark')
+                    : $t('settings.appearance.themeCurrentLight')}
+                </div>
               </div>
               <Button variant="outline" on:click={toggleTheme}>
-                <span>Переключить</span>
+                <span>{$t('settings.appearance.toggle')}</span>
               </Button>
             </div>
           </div>
@@ -351,22 +364,22 @@
 
       {:else if activeSection === 'config'}
         <section class="section">
-          <h3>Конфигурация</h3>
+          <h3>{$t('settings.config.sectionTitle')}</h3>
 
           {#if localConfig}
             <div class="config-block">
               {#if isConfigDirty}
                 <div class="config-prompt">
-                  <div class="prompt-text">Есть несохранённые изменения. Сохраните их, чтобы применить настройки.</div>
+                  <div class="prompt-text">{$t('settings.config.savePrompt')}</div>
                   <Button
                     variant="primary"
                     on:click={handleConfigSave}
                     disabled={isSavingConfig}
                   >
                     {#if isSavingConfig}
-                      <span>Сохранение...</span>
+                      <span>{$t('settings.config.saving')}</span>
                     {:else}
-                      <span>Сохранить</span>
+                      <span>{$t('settings.config.save')}</span>
                     {/if}
                   </Button>
                 </div>
@@ -375,7 +388,7 @@
               <div class="config-group">
                 <div class="group-header">
                   <Globe size={18} />
-                  <span>API</span>
+                  <span>{$t('settings.config.api')}</span>
                 </div>
 
                 <label class="checkbox-label">
@@ -384,10 +397,10 @@
                     checked={localConfig.server.secure}
                     on:change={(e) => updateServerField('secure', e.target.checked)}
                   />
-                  Использовать HTTPS/WSS
+                  {$t('settings.config.useHttps')}
                 </label>
 
-                <label class="field-label" for="connection-host">Хост</label>
+                <label class="field-label" for="connection-host">{$t('settings.config.host')}</label>
                 <input
                   id="connection-host"
                   type="text"
@@ -396,10 +409,10 @@
                   on:input={(e) => updateServerField('host', e.target.value)}
                 />
                 {#if !validateHost(localConfig.server.host)}
-                  <div class="field-error">Некорректный адрес</div>
+                  <div class="field-error">{$t('settings.config.hostError')}</div>
                 {/if}
 
-                <label class="field-label" for="connection-port">Порт</label>
+                <label class="field-label" for="connection-port">{$t('settings.config.port')}</label>
                 <input
                   id="connection-port"
                   type="number"
@@ -410,10 +423,10 @@
                   on:input={(e) => updateServerField('port', formatPort(e.target.value))}
                 />
                 {#if !validatePort(localConfig.server.port)}
-                  <div class="field-error">Порт должен быть от 1 до 65535</div>
+                  <div class="field-error">{$t('settings.config.portError')}</div>
                 {/if}
 
-                <label class="field-label" for="connection-api-path">Путь к API</label>
+                <label class="field-label" for="connection-api-path">{$t('settings.config.apiPath')}</label>
                 <input
                   id="connection-api-path"
                   type="text"
@@ -421,7 +434,7 @@
                   on:input={(e) => updateServerField('apiPath', e.target.value)}
                 />
 
-                <label class="field-label" for="connection-api-ver">Версия API</label>
+                <label class="field-label" for="connection-api-ver">{$t('settings.config.apiVersion')}</label>
                 <input
                   id="connection-api-ver"
                   type="text"
@@ -430,17 +443,17 @@
                 />
 
                 <div class="url-preview">
-                  <strong>REST:</strong> {serverPreview}
+                  <strong>{$t('settings.config.restPreview')}:</strong> {serverPreview}
                 </div>
               </div>
 
               <div class="config-group">
                 <div class="group-header">
                   <Wifi size={18} />
-                  <span>WebSocket</span>
+                  <span>{$t('settings.config.websocket')}</span>
                 </div>
 
-                <label class="field-label" for="connection-reconnect">Задержка переподключения (мс)</label>
+                <label class="field-label" for="connection-reconnect">{$t('settings.config.wsDelay')}</label>
                 <input
                   id="connection-reconnect"
                   type="number"
@@ -451,27 +464,28 @@
                 />
 
                 <div class="url-preview">
-                  <strong>WS:</strong> {websocketPreview}
+                  <strong>{$t('settings.config.wsPreview')}:</strong> {websocketPreview}
                 </div>
               </div>
 
               <div class="config-group">
                 <div class="group-header">
                   <SettingsIcon size={18} />
-                  <span>Приложение</span>
+                  <span>{$t('settings.config.app')}</span>
                 </div>
 
-                <label class="field-label" for="connection-language">Язык по умолчанию</label>
+                <label class="field-label" for="connection-language">{$t('settings.config.defaultLanguage')}</label>
                 <select
                   id="connection-language"
                   value={localConfig.app.defaultLanguage}
                   on:change={(e) => updateAppField('defaultLanguage', e.target.value)}
                 >
-                  <option value="en">English</option>
-                  <option value="ru">Русский</option>
+                  {#each languageOptions as option}
+                    <option value={option}>{$t(`common.language.${option}`)}</option>
+                  {/each}
                 </select>
 
-                <label class="field-label" for="connection-version">Версия</label>
+                <label class="field-label" for="connection-version">{$t('settings.config.version')}</label>
                 <input id="connection-version" type="text" value={localConfig.app.version} readonly />
               </div>
 
@@ -481,12 +495,12 @@
 
               <div class="section-actions">
                 <Button variant="text" on:click={handleConfigReset} disabled={isSavingConfig}>
-                  <span>Сбросить</span>
+                  <span>{$t('settings.config.reset')}</span>
                 </Button>
               </div>
             </div>
           {:else}
-            <div class="section-hint">Конфигурация недоступна.</div>
+            <div class="section-hint">{$t('settings.config.configUnavailable')}</div>
           {/if}
         </section>
       {/if}

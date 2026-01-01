@@ -1,0 +1,63 @@
+{
+  "settings": {
+    "title": "Settings",
+    "nav": {
+      "profile": "Profile",
+      "appearance": "Appearance",
+      "config": "Configuration"
+    },
+    "profile": {
+      "sectionTitle": "Profile",
+      "loading": "Loading profile...",
+      "updateAvatar": "Update avatar",
+      "nameLabel": "Name",
+      "namePlaceholder": "Your name",
+      "usernameLabel": "Username",
+      "bioLabel": "About",
+      "bioPlaceholder": "Tell about yourself",
+      "saving": "Saving...",
+      "save": "Save profile",
+      "logout": "Log out",
+      "updateError": "Failed to update profile",
+      "avatarError": "Failed to upload avatar"
+    },
+    "appearance": {
+      "sectionTitle": "Appearance",
+      "themeTitle": "Interface theme",
+      "themeCurrentDark": "Current theme: Dark",
+      "themeCurrentLight": "Current theme: Light",
+      "toggle": "Toggle"
+    },
+    "config": {
+      "sectionTitle": "Configuration",
+      "savePrompt": "There are unsaved changes. Save them to apply settings.",
+      "saving": "Saving...",
+      "save": "Save",
+      "api": "API",
+      "useHttps": "Use HTTPS/WSS",
+      "host": "Host",
+      "hostError": "Invalid address",
+      "port": "Port",
+      "portError": "Port must be between 1 and 65535",
+      "apiPath": "API path",
+      "apiVersion": "API version",
+      "restPreview": "REST",
+      "websocket": "WebSocket",
+      "wsDelay": "Reconnect delay (ms)",
+      "wsPreview": "WS",
+      "app": "Application",
+      "defaultLanguage": "Default language",
+      "version": "Version",
+      "reset": "Reset",
+      "configUnavailable": "Configuration not available.",
+      "saveError": "Failed to save configuration"
+    },
+    "confirmReset": "Reset configuration to defaults?"
+  },
+  "common": {
+    "language": {
+      "en": "English",
+      "ru": "Russian"
+    }
+  }
+}

@@ -10,7 +10,8 @@ export async function makeRequest<T = any>(
 ): Promise<ApiResponse<T>> {
     try {
         const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': '1'
         };
 
         if (includeAuth) {
@@ -106,7 +107,8 @@ export async function uploadUserAvatar(
 
         const res = await fetch(getApiUrl('/users/me/avatar'), {
             method: 'POST',
-            headers: {
+            headers: {       
+                'ngrok-skip-browser-warning': 1,
                 'Authorization': `Bearer ${accessToken}`
             },
             body: formData
@@ -157,6 +159,7 @@ export async function uploadChatAvatar(
         const res = await fetch(getApiUrl(`/chats/${chatId}/avatar`), {
             method: 'POST',
             headers: {
+                'ngrok-skip-browser-warning': 1,
                 'Authorization': `Bearer ${accessToken}`
             },
             body: formData

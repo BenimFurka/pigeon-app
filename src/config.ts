@@ -2,7 +2,7 @@ import { writable, get, type Writable } from 'svelte/store';
 
 const initialConfig = {
   server: {
-    secure: false,
+    secure: window.location.protocol === 'https:',
     host: window.location.hostname,
     port: 8443,
     apiPath: '/api',
