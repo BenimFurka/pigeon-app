@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import { MessageSquare } from 'lucide-svelte';
+    import { MessageSquare, LogOut } from 'lucide-svelte';
     import { type Chat, type ChatPreview, type ChatMember, ChatType } from '../../../types/models';
     import { presence, type PresenceRecord } from '../../../stores/presence';
     import { formatLastSeen } from '../../../lib/datetime';
@@ -9,6 +9,8 @@
     import Modal from '../../ui/Modal.svelte';
     import { useCurrentProfile } from '../../../queries/profile';
     import MemberListItem from '../MemberListItem.svelte';
+    import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+    import { chatKeys } from '../../../queries/chats';
 
     export let chat: Chat;
     export let chatPreview: ChatPreview;
@@ -34,7 +36,26 @@
     let presenceState: Record<number, PresenceRecord> = {};
     
     const currentUserQuery = useCurrentProfile();
-    $: currentUser = $currentUserQuery?.data || null; 
+    $: currentUser = $currentUserQuery?.data || null;
+    
+    const queryClient = useQueryClient();
+    
+    const leaveChatMutation = createMutation({
+        mutationFn: async () => {
+            const { makeRequest } = await import('../../../lib/api');
+            const res = await makeRequest(`/chats/${chat.id}/members/${currentUser?.id}`, null, true, 'DELETE');
+            if ((res as any).error) throw new Error((res as any).error.message || 'Не удалось покинуть чат');
+            return true;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+            dispatch('close');
+        },
+        onError: (e: any) => {
+            console.error('Failed to leave chat:', e);
+        }
+    }); 
 
     $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
         ? chatPreview.other_user?.avatar_url 
@@ -110,6 +131,12 @@
     function handleUserClick(event: CustomEvent) {
         dispatch('userClick', event.detail);
     }
+    
+    function handleLeaveChat() {
+        if (confirm('Вы уверены, что хотите покинуть этот чат?')) {
+            $leaveChatMutation.mutate();
+        }
+    }
 </script>
 
 <Modal
@@ -157,6 +184,20 @@
                     </div>
                 {/if}
                 
+                {#if myMembership && chat.owner_id !== currentUser?.id}
+                    <div class="leave-chat-section">
+                        <Button 
+                            variant="text" 
+                            size="small" 
+                            on:click={handleLeaveChat}
+                            disabled={$leaveChatMutation.isPending}
+                            style="color: var(--color-danger);"
+                        >
+                            Покинуть группу
+                        </Button>
+                    </div>
+                {/if}
+                
                 <div class="members-section">
                     <div class="section-header">
                         <h4>Участники</h4>
@@ -189,6 +230,21 @@
                     <div class="description">
                         <h4>Описание</h4>
                         <p>{chat.description}</p>
+                    </div>
+                {/if}
+
+
+                {#if myMembership && chat.owner_id !== currentUser?.id}
+                    <div class="leave-chat-section">
+                        <Button 
+                            variant="text" 
+                            size="small" 
+                            on:click={handleLeaveChat}
+                            disabled={$leaveChatMutation.isPending}
+                            style="color: var(--color-danger);"
+                        >
+                            Покинуть канал
+                        </Button>
                     </div>
                 {/if}
             {/if}
@@ -245,9 +301,14 @@
     
     .bio,
     .description,
-    .members-section {
+    .members-section,
+    .leave-chat-section {
         text-align: left;
         margin-top: 24px;
+    }
+    
+    .leave-chat-section {
+        text-align: center;
     }
     
     .section-header {
