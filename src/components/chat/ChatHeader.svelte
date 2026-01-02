@@ -242,12 +242,18 @@
         font-weight: 600;
         font-size: 1rem;
         line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .chat-status {
         font-size: 0.8rem;
         color: var(--color-text-muted);
         line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .chat-status.online {

@@ -21,7 +21,6 @@ Pigeon App is a cross-platform messaging application that provides fast and secu
 - **File attachments**: Support for file uploads (up to 8MB)
 - **Avatar management**: User and chat avatar customization
 - **Secure authentication**: JWT-based authentication system
-- **Responsive design**: Modern UI built with Svelte and TailwindCSS
 - **Type-safe**: Full TypeScript implementation
 
 ## Technology Stack

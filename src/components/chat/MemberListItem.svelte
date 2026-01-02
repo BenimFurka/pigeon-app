@@ -116,6 +116,9 @@
         flex-direction: column;
         gap: 4px;
         min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .name {
@@ -132,7 +135,10 @@
         gap: 8px;
         font-size: 0.85rem;
         color: var(--color-text-muted);
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        overflow-y: hidden;
+        text-overflow: ellipsis;
     }
 
     .username {
@@ -141,7 +147,7 @@
 
     .chip {
         display: inline-flex;
-       align-items: center;
+        align-items: center;
         padding: 2px 8px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.06);

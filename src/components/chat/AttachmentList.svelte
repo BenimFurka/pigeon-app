@@ -3,12 +3,13 @@
     import AttachmentItem from './AttachmentItem.svelte';
 
     export let attachments: MessageAttachment[];
+    export let isOwn: boolean = false;
 </script>
 
 {#if attachments && attachments.length > 0}
     <div class="attachments-list">
         {#each attachments as attachment (attachment.id)}
-            <AttachmentItem {attachment} />
+            <AttachmentItem {attachment} {isOwn} />
         {/each}
     </div>
 {/if}

@@ -254,6 +254,9 @@
         font-size: 0.85rem;
         opacity: 0.75;
         line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .card-subtitle.muted {

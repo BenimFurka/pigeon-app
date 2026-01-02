@@ -25,7 +25,7 @@
     let menuX = 0;
     let menuY = 0;
 
-    $: senderQuery = message.sender_id && !isOwn ? useProfile(message.sender_id, { enabled: !!message.sender_id && !isOwn }) : null;
+    $: senderQuery = message.sender_id ? useProfile(message.sender_id, { enabled: !!message.sender_id && !isOwn }) : null;
     $: if (senderQuery && $senderQuery?.data) {
         sender = $senderQuery.data;
     }
@@ -171,9 +171,17 @@
      on:contextmenu={openMenu}
      role="presentation">
     
-    <!-- TODO: Avatar, {#if !isGrouped && !isOwn}
-        
-    {/if}-->
+    {#if (groupPosition === 'single' || groupPosition === 'end') && sender}
+        <div class="avatar-wrapper">
+            <Avatar 
+                avatarUrl={sender.avatar_url} 
+                size="small" 
+                className="message-avatar"
+            />
+        </div>
+    {:else if (groupPosition === 'single' || groupPosition === 'end')}
+        <div class="avatar-spacer"></div>
+    {/if}
     
     <div class="message-content">
         {#if showSender}
@@ -219,7 +227,7 @@
                 {/if}
                 
                 {#if message.attachments && message.attachments.length > 0}
-                    <AttachmentList attachments={message.attachments} />
+                    <AttachmentList attachments={message.attachments} {isOwn} />
                 {/if}
                 
                 {#if message.content}
@@ -263,6 +271,22 @@
         position: relative;
     }
     
+    .message.other {
+        padding-left: 52px;
+    }
+    
+    .message.own {
+        padding-right: 52px;
+    }
+    
+    .message.other:has(.avatar-wrapper) {
+        padding-left: 12px;
+    }
+    
+    .message.own:has(.avatar-spacer) {
+        padding-right: 12px;
+    }
+    
     .message:hover {
         background: rgba(0, 0, 0, 0.08);
     }
@@ -285,6 +309,10 @@
         font-size: 0.85em;
         color: var(--color-text);
         margin-bottom: 2px;
+        max-width: 60%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .own .sender {
@@ -443,5 +471,20 @@
 
     .other * {
         color: var(--color-text);
+    }
+    
+    .avatar-wrapper {
+        flex-shrink: 0;
+        margin-bottom: 2px;
+    }
+    
+    .avatar-spacer {
+        width: 32px;
+        flex-shrink: 0;
+    }
+    
+    .message-avatar {
+        width: 32px !important;
+        height: 32px !important;
     }   
 </style>

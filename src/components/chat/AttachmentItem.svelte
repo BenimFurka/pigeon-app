@@ -4,6 +4,7 @@
     import { Download, Music, FileText } from 'lucide-svelte';
 
     export let attachment: MessageAttachment;
+    export let isOwn: boolean = false;
 
     function getFileUrl(): string {
         const baseUrl = getServerUrl();
@@ -90,7 +91,7 @@
         </div>
     </div>
 {:else if isAudio()}
-    <div class="attachment-item attachment-audio-item">
+    <div class="attachment-item attachment-audio-item {isOwn ? 'own' : 'other'}">
         <div class="audio-player-card">
             <div class="audio-icon">
                 <Music size={32} />
@@ -111,7 +112,7 @@
         </div>
     </div>
 {:else if isDocument()}
-    <div class="attachment-item attachment-document-item">
+    <div class="attachment-item attachment-document-item {isOwn ? 'own' : 'other'}">
         <a href={fileUrl} download={attachment.file_name} class="document-link" on:click={handleDownload}>
             <div class="document-icon">
                 <FileText size={32} />
@@ -229,6 +230,10 @@
         border-radius: 8px;
         color: var(--color-text);
     }
+    
+    .attachment-audio-item.own .audio-icon {
+        background: var(--color-bg-elevated);
+    }
 
     .audio-info {
         flex: 1;
@@ -290,6 +295,10 @@
         height: 48px;
         background: var(--color-accent);
         border-radius: 8px;
+    }
+    
+    .attachment-document-item.own .document-icon {
+        background: var(--color-bg-elevated);
     }
 
     .document-info {
