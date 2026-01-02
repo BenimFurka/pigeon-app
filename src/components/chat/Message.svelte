@@ -3,8 +3,10 @@
     import Avatar from './Avatar.svelte';
     import MessageMenu from './MessageMenu.svelte';
     import AttachmentList from './AttachmentList.svelte';
+    import ReactionList from './ReactionList.svelte';
     import { session } from '../../lib/session';
     import { useProfile } from '../../queries/profile';
+    import { reactions } from '../../stores/reactions';
     import { createEventDispatcher } from 'svelte';
     import type { UserPublic } from '../../types/models';
     
@@ -46,7 +48,7 @@
     
     $: isOwn = message.sender_id == currentUserId;
     $: isDeleted = false;
-    $: reactions = message.reactions || [];
+    $: messageReactions = $reactions[message.id] || message.reactions || [];
     
     $: canReply = Boolean(myMembership?.can_send_messages);
     $: canEdit = isOwn;
@@ -179,8 +181,6 @@
                 className="message-avatar"
             />
         </div>
-    {:else if (groupPosition === 'single' || groupPosition === 'end')}
-        <div class="avatar-spacer"></div>
     {/if}
     
     <div class="message-content">
@@ -234,6 +234,10 @@
                     <div class="message-text">{message.content}</div>
                 {/if}
                 
+                {#if messageReactions && messageReactions.length > 0}
+                    <ReactionList reactions={messageReactions} {currentUserId} isOwnMessage={isOwn} />
+                {/if}
+
                 <div class="bubble-footer">
                     <span class="time">{timeStr}</span>
                     {#if message.is_edited && message.edited_at}
@@ -283,7 +287,7 @@
         padding-left: 12px;
     }
     
-    .message.own:has(.avatar-spacer) {
+    .message.own:has(.avatar-wrapper) {
         padding-right: 12px;
     }
     

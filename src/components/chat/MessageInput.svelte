@@ -32,6 +32,29 @@
             return;
         }
         
+        if (inputValue.trim().startsWith('ws-custom:')) {
+            try {
+                const jsonStr = inputValue.trim().substring('ws-custom:'.length).trim();
+                const customMessage = JSON.parse(jsonStr);
+                
+                ws.send(customMessage);
+                
+                console.log('Custom WebSocket message sent:', customMessage);
+                inputValue = '';
+                adjustTextareaHeight();
+                dispatch('clearReply');
+                
+                setTimeout(() => {
+                    if (inputElement) {
+                        inputElement.focus();
+                    }
+                }, 0);
+                return;
+            } catch (error) {
+                console.error('Failed to parse custom WebSocket message:', error);
+            }
+        }
+        
         ws.send({
             type: 'send_message',
             data: {

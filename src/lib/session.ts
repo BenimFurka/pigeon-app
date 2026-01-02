@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { loggedIn, refreshTokens, currentUser, shouldRefreshTokens } from '../stores/auth';
 import { typing } from '../stores/typing';
 import { presence } from '../stores/presence';
+import { reactions } from '../stores/reactions';
 import { WSClient } from './ws-client';
 import type { ServerMessage } from '../types/websocket';
 import type { Chat, Message as ChatMessage, ChatPreview } from '../types/models';
@@ -144,11 +145,19 @@ export class Session {
         );
     }
 
-    private handleReactionAdded(data: ReactionData): void {
+    private handleReactionAdded(data: any): void {
+        const { message_id, reaction } = data;
+        if (message_id && reaction) {
+            reactions.handleReactionAdded(message_id, reaction);
+        }
         this.updateMessageReaction(data.message_id, data.reaction, 'add');
     }
 
-    private handleReactionRemoved(data: ReactionData): void {
+    private handleReactionRemoved(data: any): void {
+        const { message_id, reaction } = data;
+        if (message_id && reaction?.id) {
+            reactions.handleReactionRemoved(message_id, reaction.id);
+        }
         this.updateMessageReaction(data.message_id, data, 'remove');
     }
 
