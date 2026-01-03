@@ -150,13 +150,17 @@ export class Session {
         if (message_id && reaction) {
             reactions.handleReactionAdded(message_id, reaction);
         }
-        this.updateMessageReaction(data.message_id, data.reaction, 'add');
+        this.updateMessageReaction(data.message_id, data, 'add');
     }
 
     private handleReactionRemoved(data: any): void {
-        const { message_id, reaction } = data;
-        if (message_id && reaction?.id) {
-            reactions.handleReactionRemoved(message_id, reaction.id);
+        const { message_id, reaction, user_id, emoji } = data;
+        if (message_id) {
+            if (reaction?.id) {
+                reactions.handleReactionRemoved(message_id, reaction.id);
+            } else if (user_id && emoji) {
+                reactions.handleReactionRemovedByData(message_id, user_id, emoji);
+            }
         }
         this.updateMessageReaction(data.message_id, data, 'remove');
     }
@@ -192,12 +196,13 @@ export class Session {
                     if (m.id !== messageId) return m;
                     
                     if (action === 'add') {
-                        return { ...m, reactions: [...(m.reactions || []), reactionData.reaction] };
+                        const reaction = reactionData.reaction || reactionData;
+                        return { ...m, reactions: [...(m.reactions || []), reaction] };
                     } else {
                         return { 
                             ...m, 
                             reactions: (m.reactions || []).filter((r: any) => 
-                                !(r.user_id === reactionData.user_id && r.emoji === reactionData.emoji)
+                                r && !(r.user_id === reactionData.user_id && r.emoji === reactionData.emoji)
                             )
                         };
                     }

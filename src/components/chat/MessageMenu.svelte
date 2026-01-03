@@ -8,9 +8,14 @@
     export let canReply: boolean = false;
     export let canEdit: boolean = false;
     export let canDelete: boolean = false;
+    export let messageId: number | null = null;
+    export let currentUserId: number | null = null;
+    export let existingReactions: any[] = [];
 
     const dispatch = createEventDispatcher();
     let menuEl: HTMLDivElement | null = null;
+
+    const quickReactions = ['❤️', '😂', '😮', '😢', '👍'];
 
     function handleOutsideClick(e: MouseEvent) {
         if (!menuEl) return;
@@ -21,6 +26,17 @@
 
     function onAction(type: 'reply' | 'edit' | 'copy' | 'delete') {
         dispatch(type);
+        dispatch('close');
+    }
+
+    function onReaction(emoji: string) {
+        const hasReaction = existingReactions.some(r => r.emoji === emoji && r.user_id === currentUserId);
+        
+        if (hasReaction) {
+            dispatch('removeReaction', { emoji, messageId });
+        } else {
+            dispatch('addReaction', { emoji, messageId });
+        }
         dispatch('close');
     }
 
@@ -36,6 +52,24 @@
 
 {#if isOpen}
 <div class="menu" bind:this={menuEl} style={`left:${x}px; top:${y}px`}>
+    <div class="reactions-section">
+        <div class="reactions-title">Реакции</div>
+        <div class="reactions-grid">
+            {#each quickReactions as emoji}
+                {@const hasReaction = existingReactions.some(r => r.emoji === emoji && r.user_id === currentUserId)}
+                <button 
+                    class="reaction-btn" 
+                    class:has-reaction={hasReaction}
+                    on:click={() => onReaction(emoji)}
+                    title={hasReaction ? "Удалить реакцию" : "Добавить реакцию"}
+                >
+                    <span class="reaction-emoji">{emoji}</span>
+                </button>
+            {/each}
+        </div>
+        <div class="divider"></div>
+    </div>
+    
     {#if canReply}
     <button class="item" on:click={() => onAction('reply')}>
         <Reply size={16} class="icon" />
@@ -74,8 +108,64 @@
         backdrop-filter: blur(12px);
         overflow: hidden;
         animation: fadeInScale 240ms cubic-bezier(0.16, 1, 0.3, 1);
-        min-width: 180px;
+        min-width: 200px;
         padding: 4px;
+    }
+
+    .reactions-section {
+        padding: 4px 0;
+    }
+
+    .reactions-title {
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .reactions-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        padding: 4px 12px;
+    }
+
+    .reaction-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 18px;
+        padding: 0;
+    }
+
+    .reaction-btn:hover {
+        background: var(--surface-glass);
+        transform: scale(1.1);
+    }
+
+    .reaction-btn.has-reaction {
+        background: var(--color-accent);
+        color: var(--color-button-text);
+    }
+
+    .reaction-btn.has-reaction:hover {
+        background: var(--color-accent);
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+
+    .reaction-emoji {
+        line-height: 1;
+        display: block;
     }
 
     .item {

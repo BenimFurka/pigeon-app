@@ -30,16 +30,7 @@ function removeReaction(messageId: number, reactionId: number) {
     if (!isValidMessageId(messageId) || !reactionId) return;
     
     update((state) => {
-        const currentReactions = state[messageId] || [];
-        const filteredReactions = currentReactions.filter(r => r.id !== reactionId);
-        
-        if (filteredReactions.length === 0) {
-            const newState = { ...state };
-            delete newState[messageId];
-            return newState;
-        }
-        
-        return { ...state, [messageId]: filteredReactions };
+        return removeReactionFromState(state, messageId, reactionId);
     });
 }
 
@@ -65,6 +56,34 @@ function handleReactionRemoved(messageId: number, reactionId: number) {
     removeReaction(messageId, reactionId);
 }
 
+function handleReactionRemovedByData(messageId: number, userId: number, emoji: string) {
+    if (!isValidMessageId(messageId)) return;
+    
+    update((state) => {
+        const currentReactions = state[messageId] || [];
+        const targetReaction = currentReactions.find(r => r.user_id === userId && r.emoji === emoji);
+        
+        if (targetReaction) {
+            return removeReactionFromState(state, messageId, targetReaction.id);
+        }
+        
+        return state;
+    });
+}
+
+function removeReactionFromState(state: ReactionState, messageId: number, reactionId: number): ReactionState {
+    const currentReactions = state[messageId] || [];
+    const filteredReactions = currentReactions.filter(r => r.id !== reactionId);
+    
+    if (filteredReactions.length === 0) {
+        const newState = { ...state };
+        delete newState[messageId];
+        return newState;
+    }
+    
+    return { ...state, [messageId]: filteredReactions };
+}
+
 function getReactions(messageId: number): MessageReaction[] {
     if (!isValidMessageId(messageId)) return [];
     const state = get({ subscribe });
@@ -87,11 +106,13 @@ function clearMessage(messageId: number) {
 
 export const reactions = {
     subscribe,
+    set,
     addReaction,
     removeReaction,
     setReactions,
     handleReactionAdded,
     handleReactionRemoved,
+    handleReactionRemovedByData,
     get: getReactions,
     clear,
     clearMessage,

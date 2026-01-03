@@ -1,5 +1,7 @@
 import { createQuery } from '@tanstack/svelte-query';
+import { get } from 'svelte/store';
 import { makeRequest } from '../lib/api';
+import { reactions } from '../stores/reactions';
 import type { Message } from '../types/models';
 
 export type GetMessagesParams = {
@@ -33,6 +35,20 @@ export async function fetchMessages(chatId: number, params?: GetMessagesParams):
     'GET'
   );
   if (!res.data) throw new Error('No messages in response');
+  
+  const reactionsStore = get(reactions);
+  const newReactionsState = { ...reactionsStore };
+  
+  res.data.forEach(message => {
+    if (message.reactions && message.reactions.length > 0) {
+      newReactionsState[message.id] = message.reactions;
+    } else {
+      delete newReactionsState[message.id];
+    }
+  });
+  
+  reactions.set(newReactionsState);
+  
   return res.data;
 }
 

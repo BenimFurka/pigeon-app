@@ -235,7 +235,14 @@
                 {/if}
                 
                 {#if messageReactions && messageReactions.length > 0}
-                    <ReactionList reactions={messageReactions} {currentUserId} isOwnMessage={isOwn} />
+                    <ReactionList 
+                        reactions={messageReactions} 
+                        {currentUserId} 
+                        isOwnMessage={isOwn}
+                        messageId={message.id}
+                        on:addReaction={(e) => { handleAddReaction(e.detail.emoji); }}
+                        on:removeReaction={(e) => { handleRemoveReaction(e.detail.emoji); }}
+                    />
                 {/if}
 
                 <div class="bubble-footer">
@@ -258,11 +265,16 @@
         canReply={canReply}
         canEdit={canEdit}
         canDelete={canDelete}
+        messageId={message.id}
+        {currentUserId}
+        existingReactions={messageReactions}
         on:close={closeMenu}
         on:reply={() => { closeMenu(); handleReplyClick(); }}
         on:edit={() => { closeMenu(); handleEdit(); }}
         on:copy={() => { closeMenu(); handleCopy(); }}
         on:delete={() => { closeMenu(); handleDelete(); }}
+        on:addReaction={(e) => { handleAddReaction(e.detail.emoji); }}
+        on:removeReaction={(e) => { handleRemoveReaction(e.detail.emoji); }}
     />
 </div>
 

@@ -1,10 +1,13 @@
-<!-- TODO: finish and use -->
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import type { MessageReaction } from '../../types/models';
 
   export let reactions: MessageReaction[] = [];
   export let currentUserId: number | null = null;
   export let isOwnMessage: boolean = false;
+  export let messageId: number | null = null;
+
+  const dispatch = createEventDispatcher();
 
   // export let onAdd: (emoji: string) => void;
   // export let onRemove: (emoji: string) => void;
@@ -19,15 +22,31 @@
     if (!currentUserId) return false;
     return (reactionsByEmoji[emoji] || []).includes(currentUserId);
   }
+
+  function handleReactionClick(emoji: string) {
+    if (!messageId) return;
+    
+    if (hasUser(emoji)) {
+      dispatch('removeReaction', { emoji, messageId });
+    } else {
+      dispatch('addReaction', { emoji, messageId });
+    }
+  }
 </script>
 
 {#if Object.keys(reactionsByEmoji).length > 0}
   <div class="reactions" class:own-message={isOwnMessage}>
     {#each Object.entries(reactionsByEmoji) as [emoji, userIds]}
-      <div class="reaction-item" class:has-user={hasUser(emoji)} class:own-reaction={isOwnMessage && hasUser(emoji)}>
+      <button 
+        class="reaction-item" 
+        class:has-user={hasUser(emoji)} 
+        class:own-reaction={isOwnMessage && hasUser(emoji)}
+        on:click={() => handleReactionClick(emoji)}
+        title={hasUser(emoji) ? "Удалить реакцию" : "Добавить реакцию"}
+      >
         <span class="emoji">{emoji}</span>
         <span class="count">{userIds.length}</span>
-      </div>
+      </button>
     {/each}
   </div>
 {/if}
@@ -50,7 +69,9 @@
     border-radius: 12px;
     font-size: 14px;
     transition: all 0.2s ease;
-    cursor: default;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
   }
   
   .reaction-item:hover {
