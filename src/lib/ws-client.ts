@@ -1,15 +1,15 @@
-import config, { getWebSocketUrl } from "../config";
+import config, { getWebSocketUrl } from "$lib/config";
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { getIsTauriEnvironment } from "./tauri-env";
-import { presence } from '../stores/presence';
-import { queryClient } from './query';
+import { getIsTauriEnvironment } from "$lib/tauri-env";
+import { presence } from '$lib/stores/presence';
+import { queryClient } from '$lib/query';
 import type { 
     OnlineListMessage, 
     UserOfflineMessage, 
     UserOnlineMessage, 
     AuthenticateMessage
-} from '../types/websocket';
-import type { Chat, ChatMember } from "../types/models";
+} from '$lib/types/websocket';
+import type { Chat, ChatMember } from "$lib/types/models";
 import { get } from "svelte/store";
 
 type WsMessageEvent = { type: 'message'; data: any };

@@ -4,7 +4,7 @@
   import { get, type Unsubscriber } from 'svelte/store';
 
   import { queryClient } from '$lib/query';
-  import config from '../config';
+  import config from '$lib/config';
   import { changeLocale, setupI18n } from '$lib/i18n';
 
   const initialLocale = get(config)?.app?.defaultLanguage;

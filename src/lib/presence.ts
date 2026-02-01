@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
-import { presence } from '../stores/presence';
-import { formatLastSeen } from './datetime';
+import { presence } from '$lib/stores/presence';
+import { formatLastSeen } from '$lib/datetime';
 
 export function getUserPresence(userId: number | null | undefined) {
     if (!userId) {

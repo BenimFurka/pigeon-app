@@ -2,19 +2,19 @@
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { get } from 'svelte/store';
-    import AuthLayout from '../layouts/AuthLayout.svelte';
-    import LeftLayout from '../layouts/LeftLayout.svelte';
-    import { loggedIn } from '../stores/auth';
-    import RightLayout from '../layouts/RightLayout.svelte';
-    import Sidebar from '../layouts/Sidebar.svelte';
-    import type { ChatPreview } from '../types/models';
-    import { ChatType } from '../types/models';
-    import { session } from '../lib/session';
-    import '../stores/window';
-    import Modal from '../components/ui/Modal.svelte';
-    import CreateChatForm from '../components/chat/modals/CreateChatForm.svelte';
-    import SettingsModal from '../components/chat/modals/SettingsModal.svelte';
-    import { requestChatOpen } from '../stores/chatNavigation';
+    import AuthLayout from '$lib/components/layout/AuthLayout.svelte';
+    import LeftLayout from '$lib/components/layout/LeftLayout.svelte';
+    import { loggedIn } from '$lib/stores/auth';
+    import RightLayout from '$lib/components/layout/RightLayout.svelte';
+    import Sidebar from '$lib/components/layout/Sidebar.svelte';
+    import type { ChatPreview } from '$lib/types/models';
+    import { ChatType } from '$lib/types/models';
+    import { session } from '$lib/session';
+    import '$lib/stores/window';
+    import CreateChatForm from '$lib/components/forms/modals/CreateChatForm.svelte';
+    import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
+    import { requestChatOpen } from '$lib/stores/chatNavigation';
+    
     let isChatInfoOpen = false;
     let selectedChatForInfo: ChatPreview | null = null;
     let selectedChat: ChatPreview | null = null;
@@ -169,17 +169,18 @@
                 onBack={handleBackToList}
                 isMobile={isMobile}
                 isVisible={rightVisible}
+                on:select={handleChatSelect}
             />
         {/if}
     </main>
 
-    <Modal open={isCreateChatOpen} title="Создать чат" on:close={closeCreateChat} zIndex={1200}>
-        <CreateChatForm
-            initialChatType={createChatPreset.chatType ?? ChatType.GROUP}
-            initialMemberIds={createChatPreset.memberIds ?? []}
-            on:created={handleChatCreated}
-        />
-    </Modal>
+    <CreateChatForm
+        isOpen={isCreateChatOpen}
+        initialChatType={createChatPreset.chatType ?? ChatType.GROUP}
+        initialMemberIds={createChatPreset.memberIds ?? []}
+        on:created={handleChatCreated}
+        on:close={closeCreateChat}
+    />
 {:else}
     <main class="auth">
         <AuthLayout></AuthLayout>

@@ -1,6 +1,6 @@
-import type { ApiResponse, ApiError, UserPublic } from "../types/models";
-import { getApiUrl } from "../config";
-import { getIsTauriEnvironment } from "./tauri-env";
+import type { ApiResponse, ApiError, UserPublic } from "$lib/types/models";
+import { getApiUrl } from "$lib/config";
+import { getIsTauriEnvironment } from "$lib/tauri-env";
 
 export async function makeRequest<T = any>(
     endpoint: string, 
@@ -190,7 +190,7 @@ export async function uploadChatAvatar(
 export async function uploadAttachment(
     chatId: number,
     file: File
-): Promise<ApiResponse<import("../types/models").ChatAttachment>> {
+): Promise<ApiResponse<import("$lib/types/models").ChatAttachment>> {
     try {
         const MAX_FILE_SIZE = 8 * 1024 * 1024;
         if (file.size > MAX_FILE_SIZE) {
@@ -206,7 +206,7 @@ export async function uploadAttachment(
 
         if (isTauri) {
             const { invoke } = await import('@tauri-apps/api/core');
-            const { writeFile, remove } = await import('@tauri-apps/plugin-fs');
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
             
             // TODO: tauri
             const tempDir = '/tmp';
@@ -225,7 +225,7 @@ export async function uploadAttachment(
             };
 
             try {
-                const res: ApiResponse<import("../types/models").ChatAttachment> = await invoke('upload_attachment', {
+                const res: ApiResponse<import("$lib/types/models").ChatAttachment> = await invoke('upload_attachment', {
                     options
                 });
 
@@ -254,7 +254,7 @@ export async function uploadAttachment(
                 body: formData
             });
 
-            const data: ApiResponse<import("../types/models").ChatAttachment> = await res.json();
+            const data: ApiResponse<import("$lib/types/models").ChatAttachment> = await res.json();
 
             if (isApiError(data)) {
                 throw new Error(data.error.message || 'Request failed');

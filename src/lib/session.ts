@@ -1,25 +1,18 @@
 import { get } from 'svelte/store';
-import { loggedIn, refreshTokens, currentUser, shouldRefreshTokens } from '../stores/auth';
-import { typing } from '../stores/typing';
-import { presence } from '../stores/presence';
-import { reactions } from '../stores/reactions';
-import { WSClient } from './ws-client';
-import type { ServerMessage } from '../types/websocket';
-import type { Chat, Message as ChatMessage, ChatPreview } from '../types/models';
-import { queryClient } from './query';
-import { messageKeys } from '../queries/messages';
-import { chatKeys } from '../queries/chats';
-import { profileKeys } from '../queries/profile';
-import { makeRequest } from './api';
+import { loggedIn, refreshTokens, currentUser, shouldRefreshTokens } from '$lib/stores/auth';
+import { typing } from '$lib/stores/typing';
+import { presence } from '$lib/stores/presence';
+import { reactions } from '$lib/stores/reactions';
+import { WSClient } from '$lib/ws-client';
+import type { ServerMessage } from '$lib/types/websocket';
+import type { Message as ChatMessage, ChatPreview } from '$lib/types/models';
+import { queryClient } from '$lib/query';
+import { messageKeys } from '$lib/queries/messages';
+import { chatKeys } from '$lib/queries/chats';
+import { profileKeys } from '$lib/queries/profile';
+import { makeRequest } from '$lib/api';
 
 const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
-
-interface ReactionData {
-    message_id: number;
-    user_id: number;
-    emoji: string;
-    reaction?: any;
-}
 
 export class Session {
     private static instance: Session;
@@ -178,10 +171,14 @@ export class Session {
     private updateMessageList(chatId: number, updater: (prev: ChatMessage[]) => ChatMessage[]): void {
         const key = messageKeys.list(chatId);
         const prev = queryClient.getQueryData<ChatMessage[]>(key) || [];
+        const wasEmpty = prev.length === 0;
         const next = updater(prev).sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         queryClient.setQueryData(key, next);
+        if (wasEmpty) {
+            void queryClient.invalidateQueries({ queryKey: key });
+        }
     }
 
     private updateMessageReaction(messageId: number, reactionData: any, action: 'add' | 'remove'): void {

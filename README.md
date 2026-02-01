@@ -48,30 +48,44 @@ Pigeon App is a cross-platform messaging application that provides fast and secu
 ```
 pigeon-app/
 ├── src/                   # Frontend source code
-│   ├── components/        # Svelte components
-│   │   ├── chat/          # Chat-related components
-│   │   └── ui/            # UI components
-│   ├── lib/               # Utility libraries
-│   │   ├── api.ts         # API client functions
-│   │   └── index.ts       # Main exports
-│   ├── stores/            # Svelte stores
+│   ├── lib/               # Utility libraries and components
+│   │   ├── components/    # Svelte components
+│   │   │   ├── forms/     # Form components
+│   │   │   │   └── modals/ # Modal components
+│   │   │   ├── layout/    # Layout components
+│   │   │   ├── media/     # Media-related components
+│   │   │   ├── navigation/ # Navigation components
+│   │   │   ├── overlays/  # Overlay components
+│   │   │   └── shared/    # Shared components
+│   │   ├── i18n/          # Internationalization
+│   │   │   └── translations/ # Translation files
+│   │   ├── queries/       # Data query functions
+│   │   ├── stores/        # Svelte stores
+│   │   └── types/         # TypeScript types
 │   ├── routes/            # Svelte routes
-│   ├── layouts/           # Page layouts
-│   ├── queries/           # Data queries
-│   ├── types/             # TypeScript types
 │   ├── app.html           # Svelte app.html
 │   ├── app.d.ts           # Svelte app.d.ts
-│   ├── global.css         # Svelte global.css
-│   └── config.ts          # Application configuration
+│   └── global.d.ts        # Global type definitions
 ├── src-tauri/             # Desktop app source code
 │   ├── src/
 │   │   ├── lib.rs         # Main library
 │   │   ├── main.rs        # Application entry point
 │   │   └── websocket.rs   # WebSocket implementation
+│   ├── capabilities/      # Tauri capabilities
+│   ├── gen/               # Generated schemas
+│   ├── icons/             # Application icons
 │   ├── Cargo.toml         # Rust dependencies
-│   └── capabilities/      # Tauri capabilities
+│   └── tauri.conf.json    # Tauri configuration
 ├── static/                # Static assets
-└── package.json           # Node.js dependencies
+│   ├── assets/            # Static assets
+│   │   └── image/         # Image assets
+│   ├── favicon.png        # Application favicon
+│   ├── global.css         # Global styles
+│   └── manifest.json      # Web manifest
+├── package.json           # Node.js dependencies
+├── svelte.config.js       # Svelte configuration
+├── tsconfig.json          # TypeScript configuration
+└── vite.config.ts         # Vite configuration
 ```
 
 ## Getting Started

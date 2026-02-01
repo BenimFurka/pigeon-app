@@ -1,0 +1,287 @@
+<script lang="ts">
+    import { createEventDispatcher, onDestroy } from 'svelte';
+    import { ChatType, type ChatPreview, type Chat, type ChatMember } from '$lib/types/models';
+    import { subscribeToPresence } from '$lib/presence';
+    import Avatar from '$lib/components/shared/Avatar.svelte';
+    import ChatInfoModal from '$lib/components/forms/modals/ChatInfoModal.svelte';
+    import EditChatModal from '$lib/components/forms/modals/EditChatModal.svelte';
+    import ManageMembersModal from '$lib/components/forms/modals/ManageMembersModal.svelte';
+    import { ArrowLeft } from 'lucide-svelte';
+    import ProfileModal from '$lib/components/forms/modals/ProfileModal.svelte';
+
+    export let chatPreview: ChatPreview | null = null;
+    export let chat: Chat | null = null;
+    export let isCreator = false;
+    export let myMembership: ChatMember | undefined;
+
+    $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
+        ? chatPreview.other_user?.avatar_url 
+        : chatPreview?.avatar_url;
+    
+    $: displayName = chatPreview?.chat_type === ChatType.DM
+        ? chatPreview.other_user?.name
+        : chatPreview?.name;
+    
+    
+    export let isMobile: boolean = false;
+    
+    let isOnline = false;
+    let chatStatus: string | null = null;
+    let unsubscribePresence: (() => void) | null = null;
+    
+    const dispatch = createEventDispatcher<{
+        back: void;
+        search: void;
+        menu: void;
+        userClick: { user: any };
+    }>();
+    
+    let showChatInfo = false;
+    let showEditChat = false;
+    let showManageMembers = false;
+    
+    $: {
+        isOnline = false;
+        chatStatus = null;
+        
+        if (unsubscribePresence) {
+            unsubscribePresence();
+            unsubscribePresence = null;
+        }
+        
+        if (chatPreview?.chat_type === ChatType.DM && chatPreview.other_user?.id) {
+            unsubscribePresence = subscribeToPresence(
+                chatPreview.other_user.id,
+                (online, lastSeen) => {
+                    isOnline = online;
+                    chatStatus = lastSeen;
+                }
+            );
+        } else if (chatPreview) {
+            chatStatus = chatPreview.chat_type === ChatType.GROUP 
+                ? `${chatPreview.member_count} участников` 
+                : `${chatPreview.member_count} подписчиков`;
+        }
+    }
+    
+    onDestroy(() => {
+        if (unsubscribePresence) {
+            unsubscribePresence();
+        }
+    });
+
+    function handleBack() {
+        dispatch('back');
+    }
+    
+    function handleOpenChatInfo() {
+        showChatInfo = true;
+    }
+    
+    function handleCloseChatInfo() {
+        showChatInfo = false;
+    }
+    
+    function handleEditChat() {
+        showChatInfo = false;
+        showEditChat = true;
+    }
+    
+    function handleManageMembers() {
+        showChatInfo = false;
+        showManageMembers = true;
+    }
+    
+    function handleCloseEditChat() {
+        showEditChat = false;
+        showChatInfo = true;
+    }
+    
+    function handleCloseManageMembers() {
+        showManageMembers = false;
+        showChatInfo = true;
+    }
+    
+    function handleChatUpdated(updatedChat: any) {
+        chatPreview = { ...chatPreview, ...updatedChat };
+        showEditChat = false;
+        showChatInfo = true;
+    }
+    
+    function handleUserClick(event: CustomEvent) {
+        dispatch('userClick', event.detail);
+    }
+    
+    function handleMessageToUser() {
+        // TODO: navigate to DM or open message inputs
+        console.log('Message to user from profile');
+    }
+</script>
+
+<div class="chat-header">
+    <div class="header-left">
+        {#if isMobile}
+            <button class="back-button" on:click={handleBack} aria-label="Назад к списку чатов">
+                <ArrowLeft size={18} />
+            </button>
+        {/if}
+        {#if chatPreview}
+        <div class="chat-info" role="button" tabindex="0" on:click={handleOpenChatInfo} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleOpenChatInfo(); } }}>
+            <div class="avatar-container">
+                <Avatar {avatarUrl} />
+                {#if chatPreview.chat_type === ChatType.DM && isOnline}
+                    <span class="online-dot" title="В сети" />
+                {/if}
+            </div> 
+            <div class="chat-details">
+                <span class="chat-name">{displayName}</span>
+                {#if chatStatus}
+                    <div class="chat-status" class:online={isOnline}>
+                        {chatStatus}
+                    </div>
+                {/if}
+            </div>
+        </div>
+        {/if}
+    </div>
+</div>
+
+{#if chatPreview && (chat || chatPreview.chat_type === ChatType.DM)}
+    {#if showChatInfo}
+        {#if chatPreview.chat_type === ChatType.DM}
+            {#if chatPreview.other_user}
+                <ProfileModal 
+                    user={chatPreview.other_user}
+                    isOpen={showChatInfo}
+                    on:close={handleCloseChatInfo}
+                    on:message={handleMessageToUser}
+                />
+            {/if}
+        {:else}
+            <ChatInfoModal 
+                chat={chat}
+                chatPreview={chatPreview} 
+                isOpen={showChatInfo} 
+                on:close={handleCloseChatInfo}
+                on:edit={handleEditChat}
+                on:manageMembers={handleManageMembers}
+                on:userClick={handleUserClick}
+            />
+        {/if}
+    {/if}
+
+    {#if showEditChat}
+        <EditChatModal 
+            chat={chatPreview} 
+            isOpen={showEditChat} 
+            isCreator={isCreator}
+            myMembership={myMembership}
+            on:close={handleCloseEditChat}
+            on:save={({ detail }) => handleChatUpdated(detail.chat)}
+            on:back={handleCloseEditChat}
+        />
+    {/if}
+
+    {#if showManageMembers}
+        <ManageMembersModal 
+            chat={chat} 
+            isOpen={showManageMembers} 
+            on:close={handleCloseManageMembers}
+            on:back={handleCloseManageMembers}
+            on:userClick={handleUserClick}
+        />
+    {/if}
+{/if}
+
+<style>
+    .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .chat-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .avatar-container {
+        position: relative;
+    }
+    
+    .online-dot {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--color-online);
+        border: 2px solid var(--color-bg-elevated);
+    }
+    
+    .chat-details {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-name {
+        font-weight: 600;
+        font-size: 1rem;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .chat-status {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .chat-status.online {
+        color: var(--color-online);
+    }
+    
+    .back-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: rgba(255, 255, 255, 0.6);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .back-button:hover {
+        background: var(--surface-glass);
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    @media (min-width: 768px) {
+        .back-button {
+            display: none;
+        }
+    }
+</style>

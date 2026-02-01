@@ -58,6 +58,13 @@
     "language": {
       "en": "English",
       "ru": "Русский"
+    },
+    "attachmentTypes": {
+      "image": "Изображение",
+      "video": "Видео",
+      "audio": "Аудио",
+      "document": "Документ",
+      "gif": "GIF"
     }
   }
 }
