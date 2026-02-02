@@ -72,9 +72,19 @@
         profileUser = null;
     }
     
-    function handleMessageToUser() {
+    async function handleMessageToUser() {
         showProfileModal = false;
-        if (profileUser?.id) {
+        if (!profileUser?.id) return;
+        try {
+            const result = await $createChat.mutateAsync({
+                chat_type: ChatType.DM,
+                is_public: false,
+                member_ids: [profileUser.id],
+            } as any);
+            if (result?.id) {
+                dispatch('select', { chat: result });
+            }
+        } catch (e) {
             const ephemeralChat: ChatPreview = {
                 id: -Number(profileUser.id),
                 chat_type: ChatType.DM,

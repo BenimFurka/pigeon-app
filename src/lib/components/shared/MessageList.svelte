@@ -23,6 +23,7 @@
     let replyToMap: Map<number, MessageType> = new Map();
 
     const PAGE_SIZE = 50;
+    const loadedChats = new Set<number>();
     const SCROLL_TOP_THRESHOLD_PX = 120;
 
     let isLoadingOlder = false;
@@ -70,6 +71,15 @@
         if (!didInitialScroll && messageList.length > 0 && !($messagesQuery?.isLoading)) {
             didInitialScroll = true;
             setTimeout(() => scrollToBottom(), 0);
+        }
+
+        if (chatId && !loadedChats.has(chatId) && !($messagesQuery?.isLoading)) {
+            loadedChats.add(chatId);
+            void (async () => {
+                try {
+                    await $messagesQuery?.refetch?.();
+                } catch (e) { }
+            })();
         }
     }
     
