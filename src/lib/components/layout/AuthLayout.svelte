@@ -2,6 +2,8 @@
 	import Tabs from '$lib/components/navigation/tab/Tabs.svelte';
 	import Form from '$lib/components/shared/Form.svelte';
 	import ClickText from '$lib/components/navigation/ClickText.svelte';
+	import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
+	import { Settings } from 'lucide-svelte';
 	import {
 		login,
 		register,
@@ -12,10 +14,13 @@
 	} from '$lib/stores/auth';
 	import { writable } from 'svelte/store';
 	import type { InputItem } from '$lib/types/components';
+	import { onMount } from 'svelte';
 
 	const isLoading = writable(false);
 
 	let view = 'login';
+	let showSettingsModal = false;
+	let isMobile = false;
 
 	let loginData = {
 		login: '',
@@ -201,6 +206,24 @@
 		authError.set(null);
 		view = newView;
 	}
+
+	function openSettings() {
+		showSettingsModal = true;
+	}
+
+	function closeSettingsModal() {
+		showSettingsModal = false;
+	}
+
+	function checkMobile() {
+		isMobile = window.innerWidth <= 768;
+	}
+
+	onMount(() => {
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+		return () => window.removeEventListener('resize', checkMobile);
+	});
 </script>
 
 <h1>PIGEON</h1>
@@ -280,6 +303,18 @@
 	{/if}
 </div>
 
+{#if isMobile}
+	<button class="floating-settings-btn" on:click={openSettings}>
+		<Settings size={20} />
+	</button>
+{/if}
+
+<SettingsModal
+	open={showSettingsModal}
+	on:close={closeSettingsModal}
+	zIndex={1300}
+/>
+
 <style>
 	.container {
 		display: flex;
@@ -311,5 +346,33 @@
 	h1 {
 		text-align: center;
 		text-justify: center;
+	}
+
+	.floating-settings-btn {
+		position: fixed;
+		bottom: 20px;
+		right: 20px;
+		width: 56px;
+		height: 56px;
+		border-radius: 50%;
+		background: var(--color-accent);
+		border: none;
+		color: var(--color-text);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		transition: all 0.3s ease;
+		z-index: 1000;
+	}
+
+	.floating-settings-btn:hover {
+		transform: scale(1.05);
+		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+	}
+
+	.floating-settings-btn:active {
+		transform: scale(0.95);
 	}
 </style>

@@ -7,7 +7,7 @@
   import config, { saveConfigToStorage, resetConfig } from '$lib/config';
   import { useCurrentProfile, useUpdateCurrentProfile, useUploadAvatar } from '$lib/queries/profile';
   import { theme, type Theme } from '$lib/stores/theme';
-  import { logout } from '$lib/stores/auth';
+  import { logout, loggedIn } from '$lib/stores/auth';
   import { SUPPORTED_LOCALES, changeLocale } from '$lib/i18n';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -45,6 +45,8 @@
     { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
   ];
 
+  $: filteredNavItems = navItems.filter(item => item.id !== 'profile' || $loggedIn);
+
   const languageOptions = SUPPORTED_LOCALES;
 
   $: currentProfile = $profileQuery?.data ?? null;
@@ -68,7 +70,7 @@
     localConfig = null;
     configInitialized = false;
     isConfigDirty = false;
-    activeSection = 'profile';
+    activeSection = $loggedIn ? 'profile' : 'appearance';
   }
 
   $: if (open && !configInitialized) {
@@ -242,7 +244,7 @@
 >
   <div class="settings-modal">
     <nav class="settings-nav">
-      {#each navItems as item}
+      {#each filteredNavItems as item}
         <button
           class:active={activeSection === item.id}
           on:click={() => focusSection(item.id)}
