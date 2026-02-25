@@ -10,40 +10,33 @@
     import MemberListItem from '$lib/components/shared/MemberListItem.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { chatKeys } from '$lib/queries/chats';
+    import { _, format } from 'svelte-i18n';
 
+    // Props
     export let chat: Chat;
     export let chatPreview: ChatPreview;
     export let isOpen = false;
-    
+
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
         edit: { chat: any };
         back: void;
         manageMembers: void;
-        message: void;
         userClick: { user: any };
     }>();
 
+    // Queries and stores
     const presenceStore = presence;
-    
-    let isOnline = false;
-    let lastSeenText: string | null = null;
-    let members: ChatMember[] = [];
-    let onlineCount = 0;
-    let memberCountDisplay = 0;
-    let myMembership: ChatMember | undefined;
-    let presenceState: Record<number, PresenceRecord> = {};
-    
     const currentUserQuery = useCurrentProfile();
-    $: currentUser = $currentUserQuery?.data || null;
-    
     const queryClient = useQueryClient();
-    
+
+    // Mutations
     const leaveChatMutation = createMutation({
         mutationFn: async () => {
             const { makeRequest } = await import('$lib/api');
             const res = await makeRequest(`/chats/${chat.id}/members/${currentUser?.id}`, null, true, 'DELETE');
-            if ((res as any).error) throw new Error((res as any).error.message || 'Не удалось покинуть чат');
+            if ((res as any).error) throw new Error((res as any).error.message || $_('chat_info.leave_chat_error'));
             return true;
         },
         onSuccess: () => {
@@ -54,63 +47,52 @@
         onError: (e: any) => {
             console.error('Failed to leave chat:', e);
         }
-    }); 
+    });
 
+    // State
+    let isOnline = false;
+    let lastSeenText: string | null = null;
+    let members: ChatMember[] = [];
+    let onlineCount = 0;
+    let memberCountDisplay = 0;
+    let myMembership: ChatMember | undefined;
+    let presenceState: Record<number, PresenceRecord> = {}; 
+
+    // Reactive statements
+    $: currentUser = $currentUserQuery?.data || null;
     $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
         ? chatPreview.other_user?.avatar_url 
         : chatPreview?.avatar_url;
-        
     $: displayName = chatPreview?.chat_type === ChatType.DM
         ? chatPreview.other_user?.name
         : chatPreview?.name;
-
     $: presenceState = $presenceStore ?? {};
-
     $: members = chat?.members ?? [];
-
     $: myMembership = currentUser ? members.find((member) => member.user_id === currentUser.id) : undefined;
-
     $: canEditChat = Boolean(myMembership?.can_manage_chat || chat?.owner_id === currentUser?.id);
     $: canManageMembers = Boolean(myMembership?.can_manage_members || chat?.owner_id === currentUser?.id);
-    
-    function getPresenceRecord(userId: number) {
-        return presenceState[userId];
-    }
-
-    function getMemberStatus(userId: number) {
-        const record = getPresenceRecord(userId);
-        if (record?.online) {
-            return 'в сети';
-        }
-        return formatLastSeen(record?.lastSeenAt) ?? 'не в сети';
-    }
-
-    function isMemberOnline(userId: number) {
-        return Boolean(getPresenceRecord(userId)?.online);
-    }
-
+    $: showMembersSectionForChannel = chat?.chat_type === ChatType.CHANNEL && canManageMembers;
     $: onlineCount = members.reduce((count, member) => {
         return count + (isMemberOnline(member.user_id) ? 1 : 0);
     }, 0);
-
     $: memberCountDisplay = members.length || chat?.member_count || 0;
-
+    $: modalTitle = chat?.chat_type === ChatType.DM 
+        ? $_('chat_info.user_info')
+        : chat?.chat_type === ChatType.GROUP 
+        ? $_('chat_info.group_info')
+        : $_('chat_info.channel_info');
+    
     $: if (chat?.chat_type === ChatType.DM && chatPreview.other_user?.id) {
         const record = getPresenceRecord(chatPreview.other_user.id);
         isOnline = Boolean(record?.online);
         const lastSeenAt = record?.lastSeenAt || chatPreview.other_user.last_seen_at;
-        lastSeenText = isOnline ? 'В сети' : (lastSeenAt ? formatLastSeen(lastSeenAt) : null);
+        lastSeenText = isOnline ? $_('chat_info.online') : (lastSeenAt ? formatLastSeen(lastSeenAt, $format) : null);
     } else {
         isOnline = false;
         lastSeenText = null;
     }
-    
-    $: modalTitle = chat?.chat_type === ChatType.DM 
-        ? 'Информация о пользователе'
-        : chat?.chat_type === ChatType.GROUP 
-        ? 'Информация о группе'
-        : 'Информация о канале';
-    
+
+    // Event handlers
     function handleClose() {
         dispatch('close');
     }
@@ -119,12 +101,8 @@
         dispatch('edit', { chat });
     }
     
-    function handleAddMember() {
+    function handleManageMembers() {
         dispatch('manageMembers');
-    }
-
-    function handleMessageClick() {
-        dispatch('message');
     }
     
     function handleUserClick(event: CustomEvent) {
@@ -132,9 +110,26 @@
     }
     
     function handleLeaveChat() {
-        if (confirm('Вы уверены, что хотите покинуть этот чат?')) {
+        if (confirm($_('chat_info.leave_chat_confirm'))) {
             $leaveChatMutation.mutate();
         }
+    }
+
+    // Utility functions
+    function getPresenceRecord(userId: number) {
+        return presenceState[userId];
+    }
+
+    function getMemberStatus(userId: number) {
+        const record = getPresenceRecord(userId);
+        if (record?.online) {
+            return $_('chat_info.online');
+        }
+        return formatLastSeen(record?.lastSeenAt, $format) ?? $_('chat_info.offline');
+    }
+
+    function isMemberOnline(userId: number) {
+        return Boolean(getPresenceRecord(userId)?.online);
     }
 </script>
 
@@ -151,7 +146,7 @@
         <div class="chat-avatar-container">
             <Avatar avatarUrl={avatarUrl} size="xlarge" />
             {#if chat.chat_type === ChatType.DM && isOnline}
-                <span class="online-dot" title="В сети" />
+                <span class="online-dot" title={$_('chat_info.online')} />
             {/if}
         </div>
         
@@ -166,43 +161,29 @@
                 
                 {#if chatPreview.other_user?.bio}
                     <div class="bio">
-                        <h4>О себе</h4>
+                        <h4>{$_('chat_info.about')}</h4>
                         <p>{chatPreview.other_user.bio}</p>
                     </div>
                 {/if}
                 
             {:else if chat.chat_type === ChatType.GROUP}
                 <div class="member-count">
-                    {memberCountDisplay} участников • {onlineCount} онлайн
+                    {memberCountDisplay} {$_('chat_info.members')} • {onlineCount} {$_('chat_info.online')}
                 </div>
                 
                 {#if chat.description}
                     <div class="description">
-                        <h4>Описание</h4>
+                        <h4>{$_('chat_info.description')}</h4>
                         <p>{chat.description}</p>
-                    </div>
-                {/if}
-                
-                {#if myMembership && chat.owner_id !== currentUser?.id}
-                    <div class="leave-chat-section">
-                        <Button 
-                            variant="text" 
-                            size="small" 
-                            on:click={handleLeaveChat}
-                            disabled={$leaveChatMutation.isPending}
-                            style="color: var(--color-danger);"
-                        >
-                            Покинуть группу
-                        </Button>
                     </div>
                 {/if}
                 
                 <div class="members-section">
                     <div class="section-header">
-                        <h4>Участники</h4>
+                        <h4>{$_('chat_info.members_title')}</h4>
                         {#if canManageMembers}
-                            <Button variant="text" size="small" on:click={handleAddMember}>
-                                Добавить
+                            <Button variant="text" size="small" on:click={handleManageMembers}>
+                                {$_('chat_info.add_member')}
                             </Button>
                         {/if}
                     </div>
@@ -220,18 +201,54 @@
                     </div>
                 </div>
                 
+                {#if myMembership && chat.owner_id !== currentUser?.id}
+                    <div class="leave-chat-section">
+                        <Button 
+                            variant="text" 
+                            size="small" 
+                            on:click={handleLeaveChat}
+                            disabled={$leaveChatMutation.isPending}
+                            style="color: var(--color-danger);"
+                        >
+                            {$_('chat_info.leave_group')}
+                        </Button>
+                    </div>
+                {/if}
+                
             {:else if chat.chat_type === ChatType.CHANNEL}
                 <div class="subscriber-count">
-                    {chat.member_count || 0} подписчиков
+                    {chat.member_count || 0} {$_('chat_info.subscribers')}
                 </div>
                 
                 {#if chat.description}
                     <div class="description">
-                        <h4>Описание</h4>
+                        <h4>{$_('chat_info.description')}</h4>
                         <p>{chat.description}</p>
                     </div>
                 {/if}
 
+                {#if showMembersSectionForChannel}
+                    <div class="members-section">
+                        <div class="section-header">
+                            <h4>{$_('chat_info.members_title')}</h4>
+                            <Button variant="text" size="small" on:click={handleManageMembers}>
+                                {$_('chat_info.manage_members')}
+                            </Button>
+                        </div>
+                        
+                        <div class="members-list">
+                            {#each members as member (member.user_id)}
+                                <MemberListItem
+                                    userId={member.user_id}
+                                    role={member.role}
+                                    isOnline={isMemberOnline(member.user_id)}
+                                    statusText={getMemberStatus(member.user_id)}
+                                    on:userClick={handleUserClick}
+                                />
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
 
                 {#if myMembership && chat.owner_id !== currentUser?.id}
                     <div class="leave-chat-section">
@@ -242,7 +259,7 @@
                             disabled={$leaveChatMutation.isPending}
                             style="color: var(--color-danger);"
                         >
-                            Покинуть канал
+                            {$_('chat_info.leave_channel')}
                         </Button>
                     </div>
                 {/if}
@@ -340,12 +357,10 @@
     .members-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        border: 1px solid var(--color-border);
+        gap: 0;
         border-radius: 12px;
-        padding: 14px;
+        background-color: var(--color-bg-elevated);
+        padding: 0;
         overflow: hidden;
-        border: 1px solid var(--color-border);
     }
-
 </style>

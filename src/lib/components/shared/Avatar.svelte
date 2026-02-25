@@ -1,19 +1,25 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { useAvatar } from '$lib/queries/avatar';
+    import { assets } from '$app/paths';
 
+    // Props
     export let avatarUrl: string | null = null;
     export let size: number | 'small' | 'medium' | 'large' | 'xlarge' = 40;
     export let className: string = '';
 
-    const fallbackImage: string = './assets/image/default.png';
-    
+    // Constants
+    const fallbackImage: string = `${assets}/assets/image/default.png`;
+
+    // State
     let isVisible = false;
     let container: HTMLDivElement;
     let imageError = false;
+    let avatarQuery: ReturnType<typeof useAvatar> | null = null;
+    let avatarData: any = null;
 
+    // Computed values
     $: currentAvatarUrl = avatarUrl;
-    
     $: resolvedSize = typeof size === 'number'
         ? size
         : size === 'small'
@@ -23,28 +29,10 @@
                 : size === 'large'
                     ? 60
                     : 90;
-
-    onMount(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    isVisible = true;
-                    observer.disconnect();
-                }
-            },
-            { threshold: 0.1 }
-        );
-        observer.observe(container);
-        return () => observer.disconnect();
-    });
-
-    type AvatarQuery = ReturnType<typeof useAvatar>;
-    let avatarQuery: AvatarQuery | null = null;
-    let avatarData: any = null;
-    
     $: avatarQuery = isVisible && currentAvatarUrl ? useAvatar(currentAvatarUrl) : null;
     $: avatarData = avatarQuery ? $avatarQuery : null;
-    
+
+    // Reactive statements
     $: {
         if (currentAvatarUrl) {
             imageError = false;
@@ -59,10 +47,26 @@
             }
         }
     }
-    
+
+    // Event handlers
     function handleImageError() {
         imageError = true;
     }
+
+    // Lifecycle hooks
+    onMount(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    isVisible = true;
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.1 }
+        );
+        observer.observe(container);
+        return () => observer.disconnect();
+    });
 </script>
 
 <div 

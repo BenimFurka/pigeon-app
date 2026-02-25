@@ -1,31 +1,19 @@
 import { get } from 'svelte/store';
 import { presence } from '$lib/stores/presence';
-import { formatLastSeen } from '$lib/datetime';
 
 export function getUserPresence(userId: number | null | undefined) {
     if (!userId) {
-        return { isOnline: false, lastSeenText: "не в сети" };
+        return { isOnline: false, lastSeenAt: null };
     }
     
     const presenceData = get(presence)[userId];
     const isOnline = Boolean(presenceData?.online);
     
-    let lastSeenText = "не в сети";
-    if (presenceData) {
-        if (isOnline) {
-            lastSeenText = 'в сети';
-        } else if (presenceData.lastSeenAt) {
-            lastSeenText = formatLastSeen(presenceData.lastSeenAt) || "не в сети";
-        } else if (presenceData.updatedAt) {
-            lastSeenText = formatLastSeen(presenceData.updatedAt) || "не в сети";
-        }
-    }
-    
-    return { isOnline, lastSeenText };
+    return { isOnline, lastSeenAt: presenceData?.lastSeenAt || presenceData?.updatedAt || null };
 }
 
 export function getMultipleUserPresence(userIds: (number | null | undefined)[]) {
-    const result: Record<number, { isOnline: boolean; lastSeenText: string | null }> = {};
+    const result: Record<number, { isOnline: boolean; lastSeenAt: string | null }> = {};
     
     for (const userId of userIds) {
         if (userId) {
@@ -38,7 +26,7 @@ export function getMultipleUserPresence(userIds: (number | null | undefined)[]) 
 
 export function subscribeToPresence(
     userId: number | null | undefined, 
-    callback: (isOnline: boolean, lastSeenText: string) => void
+    callback: (isOnline: boolean, lastSeenAt: string | null) => void
 ) {
     if (!userId) {
         return () => {};
@@ -47,21 +35,13 @@ export function subscribeToPresence(
     return presence.subscribe(($presence) => {
         const presenceData = $presence[userId];
         if (!presenceData) {
-            callback(false, "не в сети");
+            callback(false, null);
             return;
         }
         
         const isOnline = Boolean(presenceData.online);
-        let lastSeenText = "не в сети";
+        const lastSeenAt = presenceData.lastSeenAt || presenceData.updatedAt || null;
         
-        if (isOnline) {
-            lastSeenText = 'в сети';
-        } else if (presenceData.lastSeenAt) {
-            lastSeenText = formatLastSeen(presenceData.lastSeenAt) || "не в сети";
-        } else if (presenceData.updatedAt) {
-            lastSeenText = formatLastSeen(presenceData.updatedAt) || "не в сети";
-        }
-        
-        callback(isOnline, lastSeenText);
+        callback(isOnline, lastSeenAt);
     });
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+    // Props
     export let label: string = '';
     export let id: string = '';
     export let name: string = id;
@@ -10,6 +11,7 @@
     export let options: Array<{ value: string; label: string }> = [];
     export let style: string = '';
     export let disabled: boolean = false;
+    export let onChange: (event: Event) => void = () => {};
 </script>
 
 <div class="input-group">
@@ -22,6 +24,7 @@
                 name={name}
                 {checked}
                 style={style}
+                on:change={onChange}
             />
         </label>
     {:else}
@@ -36,6 +39,7 @@
                 bind:value
                 {style}
                 {disabled}
+                on:change={onChange}
             />
         {:else if type === 'password'}
             <input
@@ -47,6 +51,7 @@
                 bind:value
                 {style}
                 {disabled}
+                on:change={onChange}
             />
         {:else if type === 'email'}
             <input
@@ -58,6 +63,7 @@
                 bind:value
                 {style}
                 {disabled}
+                on:change={onChange}
             />
         {:else if type === 'select'}
             <select
@@ -66,6 +72,7 @@
                 required={required}
                     style={style}
                     disabled={disabled}
+                    on:change={onChange}
             >
                 {#if placeholder}<option value="">{placeholder}</option>{/if}
                 {#each options as option}

@@ -1,19 +1,35 @@
 <script lang="ts">
     import { useChats } from '$lib/queries/chats';
     import type { SearchResults } from '$lib/queries/search';
-    import ChatElement from '$lib/components/layout/ChatElement.svelte';
+    import ChatElement from '$lib/components/shared/ChatElement.svelte';
     import { ChatType, type ChatPreview, type UserPublic } from '$lib/types/models';
     import { createEventDispatcher, onMount } from 'svelte';
     import { chatNavigationTarget, clearChatOpenRequest } from '$lib/stores/chatNavigation';
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let selectedChatId: number | null = null;
     export let searchQuery: string = '';
     export let searchResults: SearchResults | null = null;
     export let isSearchLoading: boolean = false;
     export let searchError: string | null = null;
 
+    // Event dispatcher
+    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview }; startDm: { user: UserPublic } }>();
+
+    // Queries and stores
     const chatsQuery = useChats();
-    $: chatList = ($chatsQuery?.data || []).slice().sort((a, b) => {
+
+    // State
+    let pendingChatId: number | null = null;
+    let lastHandledRequestId = 0;
+
+    // Computed values
+    $: chatList = Array.from(
+        new Map(
+            ($chatsQuery?.data || []).map(chat => [chat.id, chat])
+        ).values()
+    ).sort((a, b) => {
         const aTime = new Date(a.last_message?.created_at || 0).getTime();
         const bTime = new Date(b.last_message?.created_at || 0).getTime();
         return bTime - aTime;
@@ -22,25 +38,12 @@
     $: error = $chatsQuery?.error ? String($chatsQuery.error) : null;
     $: searchActive = searchQuery.trim().length >= 2;
 
-    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview }; startDm: { user: UserPublic } }>();
-
-    let pendingChatId: number | null = null;
-    let lastHandledRequestId = 0;
-
-    function trySelectChatById(chatId: number) {
-        const match = chatList.find((chat) => Number(chat.id) === chatId);
-        if (match) {
-            selectedChatId = Number(match.id);
-            dispatch('select', { chat: match });
-            pendingChatId = null;
-            clearChatOpenRequest();
-        }
-    }
-
+    // Reactive statements
     $: if (pendingChatId !== null && chatList.length) {
         trySelectChatById(pendingChatId);
     }
 
+    // Lifecycle hooks
     onMount(() => {
         const unsubscribeNavigation = chatNavigationTarget.subscribe((request) => {
             if (!request) {
@@ -54,7 +57,6 @@
             lastHandledRequestId = request.requestId;
             const { chatId } = request;
             if (typeof chatId !== 'number') {
-                console.error('[ChatList] Received chat navigation request with invalid chatId:', chatId);
                 return;
             }
 
@@ -62,10 +64,11 @@
             trySelectChatById(chatId);
         });
         return () => {
-            unsubscribeNavigation();
+            unsubscribeNavigation?.();
         };
     });
 
+    // Event handlers
     function handleSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         dispatch('select', event.detail);
     }
@@ -85,6 +88,17 @@
         }
     }
 
+    // Utility functions
+    function trySelectChatById(chatId: number) {
+        const match = chatList.find((chat) => Number(chat.id) === chatId);
+        if (match) {
+            selectedChatId = Number(match.id);
+            dispatch('select', { chat: match });
+            pendingChatId = null;
+            clearChatOpenRequest();
+        }
+    }
+
     function hasSearchResults(results: SearchResults | null): boolean {
         if (!results) return false;
         return Boolean(results.chats.length || results.users.length || results.messages.length);
@@ -93,17 +107,17 @@
 
 <div class="list">
     {#if searchActive}
-        <div class="search-header">Результаты по запросу «{searchQuery}»</div>
+        <div class="search-header">{$_('chat_list.search_results')} «{searchQuery}»</div>
         {#if isSearchLoading}
-            <div class="loading">Поиск...</div>
+            <div class="loading">{$_('chat_list.searching')}</div>
         {:else if searchError}
             <div class="error">{searchError}</div>
         {:else if !hasSearchResults(searchResults)}
-            <div class="empty">Ничего не найдено</div>
+            <div class="empty">{$_('chat_list.nothing_found')}</div>
         {:else}
             {#if searchResults?.chats.length}
                 <div class="search-group">
-                    <div class="group-title">Чаты</div>
+                    <div class="group-title">{$_('chat_list.chats')}</div>
                     {#each searchResults.chats as chat (chat.id)}
                         <button
                             class={`search-card chat ${selectedChatId === Number(chat.id) ? 'active' : ''}`}
@@ -111,7 +125,7 @@
                             on:click={() => handleSearchChatSelect(chat)}
                         >
                             <div class="card-header">
-                                <span class="card-title">{chat.name || `Чат #${chat.id}`}</span>
+                                <span class="card-title">{chat.name || `${$_('chat_list.chat')} #${chat.id}`}</span>
                                 <span class="badge">{chat.chat_type}</span>
                             </div>
                             {#if chat.description}
@@ -124,7 +138,7 @@
 
             {#if searchResults?.users.length}
                 <div class="search-group">
-                    <div class="group-title">Пользователи</div>
+                    <div class="group-title">{$_('chat_list.users')}</div>
                     {#each searchResults.users as user (user.id)}
                         <button
                             class="search-card user"
@@ -134,7 +148,7 @@
                             <div class="card-header">
                                 <span class="card-title">{user.name || user.username}</span>
                                 {#if user.is_bot}
-                                    <span class="badge alt">бот</span>
+                                    <span class="badge alt">{$_('chat_list.bot')}</span>
                                 {/if}
                             </div>
                             <div class="card-subtitle muted">@{user.username}</div>
@@ -145,7 +159,7 @@
 
             {#if searchResults?.messages.length}
                 <div class="search-group">
-                    <div class="group-title">Сообщения</div>
+                    <div class="group-title">{$_('chat_list.messages')}</div>
                     {#each searchResults.messages as item (item.message.id)}
                         <button
                             class="search-card message"
@@ -166,11 +180,11 @@
         {/if}
     {:else}
         {#if isLoading}
-            <div class="loading">Загрузка чатов...</div>
+            <div class="loading">{$_('chat_list.loading_chats')}</div>
         {:else if error}
             <div class="error">{error}</div>
         {:else if chatList.length === 0}
-            <div class="empty">Нет чатов</div>
+            <div class="empty">{$_('chat_list.no_chats')}</div>
         {:else}
             {#each chatList as chat (chat.id)}
                 <ChatElement 

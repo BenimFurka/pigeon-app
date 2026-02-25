@@ -11,6 +11,7 @@ export type InputItem =
       required?: boolean;
       checked?: never;
       options?: never;
+      onChange?: (event: Event) => void;
     }
   | {
       type: 'select';
@@ -21,6 +22,7 @@ export type InputItem =
       required?: boolean;
       placeholder?: never;
       checked?: never;
+      onChange?: (event: Event) => void;
     }
   | {
       type: 'checkbox';
@@ -31,6 +33,7 @@ export type InputItem =
       value?: never;
       placeholder?: never;
       options?: never;
+      onChange?: (event: Event) => void;
     };
     
 export interface TabItem {

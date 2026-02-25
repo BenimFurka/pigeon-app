@@ -2,14 +2,17 @@
     import Input from "$lib/components/shared/Input.svelte";
     import Button from "$lib/components/shared/Button.svelte";
     import type { InputItem } from "$lib/types/components";
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let title: string = '';
-    export let submit: string = 'Отправить';
+    export let submit: string = $_('form.submit');
     export let fields: InputItem[] = [];
     export let onSubmit: (e: SubmitEvent) => void = (e) => {};
     export let active = false;
     export let disabled = false;
 
+    // Event handlers
     function handleSubmit(e: SubmitEvent) {
         if (!disabled) {
             onSubmit(e);
@@ -36,6 +39,7 @@
                     required={field.required}
                     value={field.value}
                     options={field.type === 'select' ? field.options : undefined}
+                    onChange={field.onChange}
                     style="width: 100%; height: 40px;"
                 />
             {:else if field.type === 'checkbox'}
@@ -45,6 +49,7 @@
                     name={field.id}
                     type={field.type}
                     checked={field.checked}
+                    onChange={field.onChange}
                 />
             {/if}
         {/each}

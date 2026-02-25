@@ -1,5 +1,7 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
+    import { base } from '$app/paths';
     import AuthLayout from '$lib/components/layout/AuthLayout.svelte';
     import LeftLayout from '$lib/components/layout/LeftLayout.svelte';
     import { loggedIn } from '$lib/stores/auth';
@@ -11,10 +13,9 @@
     import '$lib/stores/window';
     import CreateChatForm from '$lib/components/forms/modals/CreateChatForm.svelte';
     import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
-    import { goto } from '$app/navigation';
-    import { base } from '$app/paths';
+    import { requestChatOpen } from '$lib/stores/chatNavigation';
     import { activeChatId } from '$lib/stores/activeChat';
-    import { initPWA } from '$lib/pwa'
+    import { onMount } from 'svelte';
     
     let selectedChat: ChatPreview | null = null;
     let isMobile = false;
@@ -24,14 +25,12 @@
     let createChatPreset: { chatType?: ChatType; memberIds?: number[] } = {};
 
     let showSettingsModal = false;
-
     let initialized = false;
 
     if (!initialized) {
         initializeApp();
     }
 
-    
     async function initializeApp() {
         try {
             await session.initialize();
@@ -48,28 +47,34 @@
         }
     }
 
+    function openChatFromRoute() {
+        const chatId = Number($page.params.id);
+        if (Number.isNaN(chatId)) {
+            console.error('[RouteChat] Invalid chat ID:', $page.params.id);
+            return;
+        }
+        requestChatOpen(chatId);
+    }
 
     onMount(() => {
-        initPWA();
         updateViewportState();
         const handleResize = () => {
-            const wasMobile = isMobile;
             updateViewportState();
         };
         window.addEventListener('resize', handleResize);
 
         const handleKeyDown = (event: { ctrlKey: any; code: string; key: string; preventDefault: () => void; }) => {
-        if (event.ctrlKey && (event.code === 'Backquote' || event.key === '`')) {
-            event.preventDefault();
-            showSettingsModal = !showSettingsModal;
-        }
+            if (event.ctrlKey && (event.code === 'Backquote' || event.key === '`')) {
+                event.preventDefault();
+                showSettingsModal = !showSettingsModal;
+            }
         };
         
         window.addEventListener('keydown', handleKeyDown);
+        openChatFromRoute();
         
         return () => {
             window.removeEventListener('resize', handleResize);
-    
             window.removeEventListener('keydown', handleKeyDown);
         };
     });
@@ -86,6 +91,7 @@
 
     function handleBackToList() {
         selectedChat = null;
+        goto(`${base}/`, { replaceState: true });
     }
 
     function openSettings() {
@@ -161,10 +167,6 @@
   zIndex={1300}
 />
 
-<button id="install-pwa" class="install-pwa-button">
-    Install Pigeon
-</button>
-
 <style>
 	:global(:root) {
 		--hue: 235;
@@ -185,7 +187,6 @@
 
 		--color-accent: hsl(var(--hue), 45%, 52%);
 		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 42%);
 
 		--color-danger: #ff4d4d;
 		--color-danger-soft: rgba(255, 77, 77, 0.1);
@@ -193,10 +194,7 @@
 		--color-success: #2ecc71;
 		--color-online: var(--color-success);
 
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
-
-        --surface-glass: rgba(255, 255, 255, 0.03);
+		--surface-glass: rgba(255, 255, 255, 0.03);
 
 		--hover-filter: brightness(0.9);
 	}
@@ -216,16 +214,12 @@
 
 		--color-accent: hsl(var(--hue), 45%, 52%);
 		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 42%);
 
 		--color-danger: #ff4d4d;
 		--color-danger-soft: rgba(255, 77, 77, 0.1);
 
 		--color-success: #2ecc71;
 		--color-online: var(--color-success);
-
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
 
 		--surface-glass: rgba(255, 255, 255, 0.03);
 
@@ -247,16 +241,12 @@
 
 		--color-accent: hsl(var(--hue), 45%, 58%);
 		--color-accent-soft: hsla(var(--hue), 45%, 58%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 48%);
 
 		--color-danger: #dc2626;
 		--color-danger-soft: rgba(220, 38, 38, 0.08);
 
 		--color-success: #16a34a;
 		--color-online: var(--color-success);
-        
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
 
 		--surface-glass: rgba(0, 0, 0, 0.04);
 
@@ -313,20 +303,4 @@
 		place-items: center;
 		width: 100%
 	}
-
-    .install-pwa-button {
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        padding: 10px 16px;
-        border-radius: 999px;
-        background: var(--color-accent);
-        color: var(--color-button-text);
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-        display: none;
-        z-index: 1400;
-    }
 </style>

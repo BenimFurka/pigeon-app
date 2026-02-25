@@ -1,4 +1,11 @@
-export function formatLastSeen(lastSeenAt: string | null | undefined): string | null {
+import { locale } from 'svelte-i18n';
+
+type MessageFormatter = (id: string, values?: Record<string, any>) => string;
+
+export function formatLastSeen(
+    lastSeenAt: string | null | undefined, 
+    format?: MessageFormatter
+): string | null {
     if (!lastSeenAt) return null;
 
     const date = new Date(lastSeenAt);
@@ -7,24 +14,34 @@ export function formatLastSeen(lastSeenAt: string | null | undefined): string | 
     }
 
     const now = new Date();
-    const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
-        hour: '2-digit',
-        minute: '2-digit'
+    let currentLocale = 'en'; // fallback
+    const unsubscribe = locale.subscribe((value: string | null | undefined) => {
+        currentLocale = value || 'en';
+    });
+    unsubscribe();
+    const timeFormatter = new Intl.DateTimeFormat(currentLocale, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: currentLocale === 'en'
     });
     const timePart = timeFormatter.format(date);
 
     const sameDay = date.toDateString() === now.toDateString();
     if (sameDay) {
-        return `был(а) в ${timePart}`;
+        return format 
+            ? format('datetime.was_today_at', { values: { time: timePart } })
+            : `was today at ${timePart}`;
     }
 
-    const dateFormatter = new Intl.DateTimeFormat('ru-RU', date.getFullYear() === now.getFullYear()
-        ? { day: '2-digit', month: '2-digit' }
-        : { day: '2-digit', month: '2-digit', year: 'numeric' }
+    const dateFormatter = new Intl.DateTimeFormat(currentLocale, date.getFullYear() === now.getFullYear()
+        ? { day: 'numeric', month: 'short' }
+        : { day: 'numeric', month: 'short', year: 'numeric' }
     );
     const datePart = dateFormatter.format(date);
 
-    return `был(а) ${datePart} в ${timePart}`;
+    return format 
+        ? format('datetime.was_on_date_at', { values: { date: datePart, time: timePart } })
+        : `was on ${datePart} at ${timePart}`;
 }
 
 export function isOlderThan(
@@ -65,24 +82,81 @@ export function isOlderThan(
     return targetDate < compareDate;
 }
 
-export function formatDateHeader(timestamp: string): string {
+export function formatDateHeader(timestamp: string, format?: MessageFormatter): string {
     const date = new Date(timestamp);
     const now = new Date();
     
     if (date.toDateString() === now.toDateString()) {
-        return 'Сегодня';
+        return format ? format('datetime.today') : 'Today';
     }
     
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
-        return 'Вчера';
+        return format ? format('datetime.yesterday') : 'Yesterday';
     }
     
-    const formatter = new Intl.DateTimeFormat('ru-RU', {
+    let currentLocale = 'en'; // fallback
+    const unsubscribe = locale.subscribe((value: string | null | undefined) => {
+        currentLocale = value || 'en';
+    });
+    unsubscribe();
+    
+    const formatter = new Intl.DateTimeFormat(currentLocale, {
         day: 'numeric',
         month: 'long'
     });
     
     return formatter.format(date);
+}
+
+export function formatMessageTime(timestamp: string, format?: MessageFormatter): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    let currentLocale = 'en'; // fallback
+    const unsubscribe = locale.subscribe((value: string | null | undefined) => {
+        currentLocale = value || 'en';
+    });
+    unsubscribe();
+    
+    const timeFormatter = new Intl.DateTimeFormat(currentLocale, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: currentLocale === 'en'
+    });
+    
+    return timeFormatter.format(date);
+}
+
+export function formatChatListTime(timestamp: string, format?: MessageFormatter): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    let currentLocale = 'en'; // fallback
+    const unsubscribe = locale.subscribe((value: string | null | undefined) => {
+        currentLocale = value || 'en';
+    });
+    unsubscribe();
+    
+    const isToday = 
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+    
+    if (isToday) {
+        const timeFormatter = new Intl.DateTimeFormat(currentLocale, {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: currentLocale === 'en'
+        });
+        return timeFormatter.format(date);
+    } else {
+        const dateFormatter = new Intl.DateTimeFormat(currentLocale, {
+            day: 'numeric',
+            month: 'short',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+        return dateFormatter.format(date);
+    }
 }

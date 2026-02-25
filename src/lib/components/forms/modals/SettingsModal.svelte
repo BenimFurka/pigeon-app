@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, type ComponentType } from 'svelte';
-  import { User, Palette, Settings as SettingsIcon, Globe, Wifi, LogOut, ImagePlus, RefreshCw, Save, Loader2 } from 'lucide-svelte';
+  import { User, Palette, Settings as SettingsIcon, Globe, Wifi } from 'lucide-svelte';
   import Modal from '$lib/components/overlays/Modal.svelte';
   import Button from '$lib/components/shared/Button.svelte';
   import Avatar from '$lib/components/shared/Avatar.svelte';
@@ -12,16 +12,32 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
+  // Props
   export let open: boolean = false;
   export let zIndex: number = 1000;
 
+  // Types
   type SettingsSection = 'profile' | 'appearance' | 'config';
+  type NavItem = { id: SettingsSection; labelKey: string; icon: ComponentType };
 
+  // Event dispatcher
   const dispatch = createEventDispatcher<{ close: void }>();
+
+  // Queries and stores
   const profileQuery = useCurrentProfile();
   const updateProfile = useUpdateCurrentProfile();
   const avatarMutation = useUploadAvatar();
 
+  // Constants
+  const hostPattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  const languageOptions = SUPPORTED_LOCALES;
+  const navItems: NavItem[] = [
+    { id: 'profile', labelKey: 'settings.nav.profile', icon: User },
+    { id: 'appearance', labelKey: 'settings.nav.appearance', icon: Palette },
+    { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
+  ];
+
+  // State
   let activeSection: SettingsSection = 'profile';
   let profileInitialized = false;
   let localName = '';
@@ -30,29 +46,29 @@
   let profileBaselineBio = '';
   let profileError: string | null = null;
   let avatarError: string | null = null;
-  let avatarInput: HTMLInputElement | null = null;
-
   let localConfig: any = null;
   let configInitialized = false;
   let isConfigDirty = false;
   let isSavingConfig = false;
   let configError: string | null = null;
 
-  type NavItem = { id: SettingsSection; labelKey: string; icon: ComponentType };
-  const navItems: NavItem[] = [
-    { id: 'profile', labelKey: 'settings.nav.profile', icon: User },
-    { id: 'appearance', labelKey: 'settings.nav.appearance', icon: Palette },
-    { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
-  ];
+  // DOM refs
+  let avatarInput: HTMLInputElement | null = null;
 
-  $: filteredNavItems = navItems.filter(item => item.id !== 'profile' || $loggedIn);
-
-  const languageOptions = SUPPORTED_LOCALES;
-
+  // Computed values
   $: currentProfile = $profileQuery?.data ?? null;
   $: profileLoading = Boolean($profileQuery?.isLoading);
   $: profileQueryError = $profileQuery?.error ? String($profileQuery.error) : null;
+  $: filteredNavItems = navItems.filter(item => item.id !== 'profile' || $loggedIn);
+  $: serverPreview = localConfig ? buildServerUrl(localConfig) : '';
+  $: websocketPreview = localConfig ? buildWebSocketUrl(localConfig) : '';
+  $: isProfileDirty = profileInitialized && (
+    localName.trim() !== profileBaselineName.trim() ||
+    localBio.trim() !== profileBaselineBio.trim()
+  );
+  $: currentTheme = $theme as Theme;
 
+  // Reactive statements
   $: if (open && currentProfile && !profileInitialized) {
     localName = currentProfile.name ?? '';
     localBio = currentProfile.bio ?? '';
@@ -79,37 +95,7 @@
     configInitialized = true;
   }
 
-  const hostPattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^localhost$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-
-  function validatePort(port: number): boolean {
-    return port > 0 && port <= 65535;
-  }
-
-  function validateHost(host: string): boolean {
-    if (!host) return false;
-    return hostPattern.test(host);
-  }
-
-  function buildServerUrl(conf: any): string {
-    const protocol = conf.server.secure ? 'https' : 'http';
-    return `${protocol}://${conf.server.host}:${conf.server.port}`;
-  }
-
-  function buildWebSocketUrl(conf: any): string {
-    const protocol = conf.server.secure ? 'wss' : 'ws';
-    return `${protocol}://${conf.server.host}:${conf.server.port}${conf.server.apiPath}/${conf.server.apiVer}/ws`;
-  }
-
-  $: serverPreview = localConfig ? buildServerUrl(localConfig) : '';
-  $: websocketPreview = localConfig ? buildWebSocketUrl(localConfig) : '';
-
-  $: isProfileDirty = profileInitialized && (
-    localName.trim() !== profileBaselineName.trim() ||
-    localBio.trim() !== profileBaselineBio.trim()
-  );
-
-  $: currentTheme = $theme as Theme;
-
+  // Event handlers
   function handleClose() {
     dispatch('close');
   }
@@ -152,6 +138,56 @@
     }
   }
 
+  function handleLogout() {
+    logout();
+    dispatch('close');
+  }
+
+  async function handleConfigSave() {
+    if (!localConfig || !isConfigDirty) return;
+    
+    isSavingConfig = true;
+    configError = null;
+    
+    try {
+      config.set(localConfig);
+      saveConfigToStorage();
+      isConfigDirty = false;
+    } catch (error) {
+      configError = error instanceof Error ? error.message : 'Failed to save configuration';
+    } finally {
+      isSavingConfig = false;
+    }
+  }
+
+  function handleConfigReset() {
+    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+      resetConfig();
+      localConfig = structuredClone($config);
+      isConfigDirty = false;
+    }
+  }
+
+  // Utility functions
+  function validatePort(port: number): boolean {
+    return port > 0 && port <= 65535;
+  }
+
+  function validateHost(host: string): boolean {
+    if (!host) return false;
+    return hostPattern.test(host);
+  }
+
+  function buildServerUrl(conf: any): string {
+    const protocol = conf.server.secure ? 'https' : 'http';
+    return `${protocol}://${conf.server.host}:${conf.server.port}`;
+  }
+
+  function buildWebSocketUrl(conf: any): string {
+    const protocol = conf.server.secure ? 'wss' : 'ws';
+    return `${protocol}://${conf.server.host}:${conf.server.port}${conf.server.apiPath}/${conf.server.apiVer}/ws`;
+  }
+  
   function updateServerField(field: keyof typeof $config.server, value: any) {
     if (!localConfig) return;
 
@@ -198,35 +234,6 @@
   function formatPort(value: string): number {
     const port = parseInt(value, 10);
     return Number.isNaN(port) ? 80 : Math.min(Math.max(port, 1), 65535);
-  }
-
-  async function handleConfigSave() {
-    if (!localConfig) return;
-    configError = null;
-    isSavingConfig = true;
-    try {
-      config.set(localConfig);
-      saveConfigToStorage();
-      isConfigDirty = false;
-    } catch (error) {
-      configError = error instanceof Error ? error.message : get(t)('settings.config.saveError');
-    } finally {
-      isSavingConfig = false;
-    }
-  }
-
-  function handleConfigReset() {
-    if (!confirm(get(t)('settings.confirmReset'))) {
-      return;
-    }
-    resetConfig();
-    localConfig = structuredClone($config);
-    isConfigDirty = false;
-  }
-
-  function handleLogout() {
-    logout();
-    handleClose();
   }
 
   function toggleTheme() {
@@ -397,7 +404,7 @@
                   <input
                     type="checkbox"
                     checked={localConfig.server.secure}
-                    on:change={(e) => updateServerField('secure', e.target.checked)}
+                    on:change={(e) => updateServerField('secure', e.currentTarget?.checked ?? false)}
                   />
                   {$t('settings.config.useHttps')}
                 </label>
@@ -408,7 +415,7 @@
                   type="text"
                   class:invalid={!validateHost(localConfig.server.host)}
                   value={localConfig.server.host}
-                  on:input={(e) => updateServerField('host', e.target.value)}
+                  on:input={(e) => updateServerField('host', e.currentTarget?.value ?? '')}
                 />
                 {#if !validateHost(localConfig.server.host)}
                   <div class="field-error">{$t('settings.config.hostError')}</div>
@@ -422,7 +429,7 @@
                   max="65535"
                   class:invalid={!validatePort(localConfig.server.port)}
                   value={localConfig.server.port}
-                  on:input={(e) => updateServerField('port', formatPort(e.target.value))}
+                  on:input={(e) => updateServerField('port', formatPort(e.currentTarget?.value ?? ''))}
                 />
                 {#if !validatePort(localConfig.server.port)}
                   <div class="field-error">{$t('settings.config.portError')}</div>
@@ -433,7 +440,7 @@
                   id="connection-api-path"
                   type="text"
                   value={localConfig.server.apiPath}
-                  on:input={(e) => updateServerField('apiPath', e.target.value)}
+                  on:input={(e) => updateServerField('apiPath', e.currentTarget?.value ?? '')}
                 />
 
                 <label class="field-label" for="connection-api-ver">{$t('settings.config.apiVersion')}</label>
@@ -441,7 +448,7 @@
                   id="connection-api-ver"
                   type="text"
                   value={localConfig.server.apiVer}
-                  on:input={(e) => updateServerField('apiVer', e.target.value)}
+                  on:input={(e) => updateServerField('apiVer', e.currentTarget?.value ?? '')}
                 />
 
                 <div class="url-preview">
@@ -462,7 +469,7 @@
                   min="1000"
                   max="30000"
                   value={localConfig.websocket.reconnectDelay}
-                  on:input={(e) => updateWebsocketField('reconnectDelay', parseInt(e.target.value) || 3000)}
+                  on:input={(e) => updateWebsocketField('reconnectDelay', parseInt(e.currentTarget?.value ?? '') || 3000)}
                 />
 
                 <div class="url-preview">
@@ -480,7 +487,7 @@
                 <select
                   id="connection-language"
                   value={localConfig.app.defaultLanguage}
-                  on:change={(e) => updateAppField('defaultLanguage', e.target.value)}
+                  on:change={(e) => updateAppField('defaultLanguage', e.currentTarget?.value ?? '')}
                 >
                   {#each languageOptions as option}
                     <option value={option}>{$t(`common.language.${option}`)}</option>
@@ -546,7 +553,7 @@
 
   .settings-nav button.active {
     background: var(--color-accent);
-    color: var(--color-text);
+    color: var(--color-button-text);
   }
 
   .settings-content {

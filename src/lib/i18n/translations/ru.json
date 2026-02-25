@@ -54,10 +54,116 @@
     },
     "confirmReset": "Сбросить конфигурацию к значениям по умолчанию?"
   },
+  "auth": {
+    "login": "Вход",
+    "register": "Регистрация",
+    "login_email_username": "Email или имя пользователя",
+    "password": "Пароль",
+    "display_name": "Отображаемое имя",
+    "username": "Имя пользователя",
+    "email_code": "Код из письма",
+    "enter_email": "Введите ваш Email",
+    "new_password": "Новый пароль",
+    "loading": "Загрузка...",
+    "registering": "Регистрация...",
+    "register_button": "Зарегистрироваться",
+    "verify_email_title": "Проверьте почту и введите код",
+    "verifying": "Проверка...",
+    "verify": "Подтвердить",
+    "password_reset_title": "Восстановление пароля",
+    "sending": "Отправка...",
+    "send_code": "Отправить код",
+    "set_new_password_title": "Установка нового пароля",
+    "updating": "Обновление...",
+    "reset_password": "Сбросить пароль",
+    "back_to_login": "Назад ко входу",
+    "forgot_password": "Забыли пароль?"
+  },
+  "chat_element": {
+    "no_messages": "Нет сообщений",
+    "unread_count": "непрочитанных"
+  },
+  "chat_access": {
+    "loading_chat_info": "Загрузка информации о чате…",
+    "joining": "Присоединяемся…",
+    "subscribe": "Подписаться",
+    "join_group": "Вступить в группу",
+    "private_chat": "Это приватный чат. Получите приглашение у администратора.",
+    "cannot_write_group": "Вы не можете писать сообщения в этой группе",
+    "soon": "Скоро",
+    "messages_unavailable": "Отправка сообщений недоступна"
+  },
+  "form": {
+    "submit": "Отправить"
+  },
+  "member_list": {
+    "user": "Пользователь"
+  },
+  "message": {
+    "delete_confirm": "Удалить это сообщение?",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "deleted": "Сообщение удалено",
+    "you": "Вы",
+    "edited_at": "Отредактировано {date}",
+    "edited": "изменено",
+    "sending": "Отправка",
+    "sent": "Доставлено",
+    "read": "Прочитано"
+  },
+  "message_list": {
+    "no_messages": "Нет сообщений",
+    "start_conversation": "Начните общение, отправив первое сообщение",
+    "no_group_messages": "Нет сообщений в группе",
+    "start_group_dialog": "Будьте первым, кто начнет диалог в этой группе",
+    "no_posts": "Нет публикаций",
+    "subscribe_for_updates": "Здесь пока нет публикаций. Подпишитесь, чтобы не пропустить обновления",
+    "loading": "Загрузка...",
+    "new_messages": "Новые сообщения",
+    "loading_messages": "Загрузка сообщений...",
+    "scroll_down": "Вниз"
+  },
+  "reaction_list": {
+    "remove_reaction": "Удалить реакцию",
+    "add_reaction": "Добавить реакцию"
+  },
+  "message_input": {
+    "reply_to": "Ответ на",
+    "cancel_reply": "Отменить",
+    "attach_file": "Прикрепить файл",
+    "write_reply": "Напишите ответ...",
+    "write_message": "Напишите сообщение...",
+    "select_gif": "Выбрать GIF",
+    "open_gif_panel": "Открыть GIF-панель",
+    "send_enter": "Отправить (Enter)",
+    "send_message": "Отправить сообщение"
+  },
+  "chat_list": {
+    "search_results": "Результаты по запросу",
+    "searching": "Поиск...",
+    "nothing_found": "Ничего не найдено",
+    "chats": "Чаты",
+    "chat": "Чат",
+    "users": "Пользователи",
+    "bot": "бот",
+    "messages": "Сообщения",
+    "loading_chats": "Загрузка чатов...",
+    "no_chats": "Нет чатов"
+  },
+  "chat_header": {
+    "back_to_chat_list": "Назад к списку чатов",
+    "members": "участников",
+    "subscribers": "подписчиков"
+  },
+  "sidebar": {
+    "settings": "Настройки",
+    "create_chat": "Создать чат",
+    "search_placeholder": "Поиск..."
+  },
   "common": {
     "language": {
       "en": "English",
-      "ru": "Русский"
+      "ru": "Russian"
     },
     "attachmentTypes": {
       "image": "Изображение",
@@ -65,6 +171,165 @@
       "audio": "Аудио",
       "document": "Документ",
       "gif": "GIF"
-    }
+    },
+    "cancel": "Отмена",
+    "send": "Отправить",
+    "close": "Закрыть",
+    "download": "Скачать",
+    "remove": "Удалить",
+    "done": "Готово",
+    "searching": "Поиск",
+    "not_found": "Не найдено",
+    "online": "В сети",
+    "offline": "Не в сети",
+    "uploading": "Загрузка",
+    "loading": "Загрузка"
+  },
+  "attachments": {
+    "send_attachments": "Отправить вложения",
+    "add_files_or_message": "Добавьте файлы или введите сообщение",
+    "wait_for_upload": "Дождитесь завершения загрузки файлов",
+    "file_too_large": "Файл \"{fileName}\" слишком большой (максимум {maxSize})",
+    "upload_error": "Ошибка загрузки файла",
+    "drag_files_or": "Перетащите файлы сюда или",
+    "select_files": "Выбрать файлы",
+    "max_file_size": "Максимальный размер файла: {size}",
+    "attachments_count": "Вложения ({count})",
+    "add_message_text": "Добавьте текст к сообщению..."
+  },
+  "chat_info": {
+    "user_info": "Информация о пользователе",
+    "group_info": "Информация о группе",
+    "channel_info": "Информация о канале",
+    "online": "В сети",
+    "offline": "Не в сети",
+    "leave_chat_error": "Не удалось покинуть чат",
+    "leave_chat_confirm": "Вы уверены, что хотите покинуть этот чат?",
+    "about": "О себе",
+    "members": "участников",
+    "members_title": "Участники",
+    "subscribers": "подписчиков",
+    "description": "Описание",
+    "add_member": "Добавить",
+    "manage_members": "Управление",
+    "leave_group": "Покинуть группу",
+    "leave_channel": "Покинуть канал"
+  },
+  "create_chat": {
+    "create_chat": "Создать чат",
+    "creating": "Создание...",
+    "chat_type": "Тип чата",
+    "type_dm": "Личный",
+    "type_group": "Группа",
+    "type_channel": "Канал",
+    "name": "Название",
+    "name_placeholder": "Введите название",
+    "description": "Описание",
+    "description_placeholder": "Краткое описание (необязательно)",
+    "public": "Публичный",
+    "add_member": "Добавить участника",
+    "search_user_placeholder": "Введите имя пользователя",
+    "search_error": "Ошибка поиска",
+    "specify_one_user": "Укажите одного пользователя для личного чата",
+    "enter_chat_name": "Введите название чата"
+  },
+  "edit_chat": {
+    "edit_group": "Редактировать группу",
+    "edit_channel": "Редактировать канал",
+    "update_error": "Ошибка обновления чата",
+    "avatar_upload_error": "Не удалось загрузить аватар",
+    "change_avatar": "Изменить",
+    "group_name": "Название группы",
+    "channel_name": "Название канала",
+    "group_name_placeholder": "Название группы",
+    "channel_name_placeholder": "Название канала",
+    "group_description": "Описание группы",
+    "channel_description": "Описание канала",
+    "group_description_placeholder": "Расскажите о группе",
+    "channel_description_placeholder": "Расскажите о канале",
+    "saving": "Сохранение...",
+    "save_changes": "Сохранить изменения",
+    "delete": "Удалить",
+    "group": "группу",
+    "channel": "канал"
+  },
+  "manage_members": {
+    "manage_members": "Управление участниками",
+    "add_members_error": "Ошибка добавления участников",
+    "remove_member_error": "Ошибка удаления участника",
+    "add_members": "Добавить участников",
+    "search_users_placeholder": "Найти пользователей...",
+    "add_selected": "Добавить выбранных",
+    "no_users_found": "Пользователи не найдены",
+    "members": "Участники",
+    "no_members": "В этом чате пока нет участников"
+  },
+  "media_viewer": {
+    "media_viewer": "Просмотр медиа",
+    "pause": "Пауза",
+    "play": "Воспроизвести",
+    "video_progress": "Прогресс видео",
+    "unmute": "Включить звук",
+    "mute": "Выключить звук",
+    "volume": "Громкость",
+    "exit_fullscreen": "Выйти из полноэкранного режима",
+    "fullscreen": "Полноэкранный режим",
+    "browser_not_support_video": "Ваш браузер не поддерживает видео"
+  },
+  "profile_modal": {
+    "user_profile": "Профиль пользователя",
+    "send_message": "Написать"
+  },
+  "datetime": {
+    "today": "Сегодня",
+    "yesterday": "Вчера",
+    "was_today_at": "был(а) сегодня в {time}",
+    "was_on_date_at": "был(а) {date} в {time}"
+  },
+  "modal": {
+    "back": "Назад",
+    "edit": "Редактировать",
+    "close": "Закрыть"
+  },
+  "message_menu": {
+    "reactions": "Реакции",
+    "add_reaction": "Добавить реакцию",
+    "remove_reaction": "Удалить реакцию",
+    "reply": "Ответить",
+    "copy": "Копировать",
+    "edit": "Редактировать",
+    "delete": "Удалить"
+  },
+  "gif_picker": {
+    "title": "Выбор GIF",
+    "search_placeholder": "Поиск GIF...",
+    "load_error": "Ошибка загрузки GIF",
+    "recent": "Недавние гифки",
+    "popular": "Популярные гифки",
+    "no_gifs": "Здесь будут GIF",
+    "no_results": "Ничего не найдено",
+    "back_to_popular": "Вернуться к популярным",
+    "load_more": "Загрузить ещё"
+  },
+  "attachment_item": {
+    "load_error": "Ошибка загрузки файла",
+    "retry": "Повторить",
+    "open_video": "Открыть видео",
+    "download_audio": "Скачать аудио",
+    "download_document": "Скачать документ",
+    "bytes": "Б",
+    "kb": "КБ",
+    "mb": "МБ"
+  },
+  "presence": {
+    "online": "В сети",
+    "offline": "Не в сети"
+  },
+  "typing": {
+    "is_typing": "печатает...",
+    "are_typing": "печатают...",
+    "one_user_typing": "Кто-то печатает...",
+    "two_users_typing": "Два человека печатают...",
+    "many_users_typing": "{count} человек печатают..."
   }
 }

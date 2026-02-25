@@ -1,8 +1,10 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
-    import { X, ArrowLeft, Edit } from 'lucide-svelte';
+    import { X, ArrowLeft, SquarePen } from 'lucide-svelte';
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let open: boolean = false;
     export let title: string = '';
     export let zIndex: number = 1000;
@@ -13,8 +15,10 @@
     export let disabled: boolean = false;
     export let closeOnBackdrop: boolean = true;
 
+    // Event dispatcher
     const dispatch = createEventDispatcher<{ close: void; back: void; edit: void }>();
 
+    // Event handlers
     function close() {
         if (!disabled) {
             dispatch('close');
@@ -43,17 +47,18 @@
     }
 
     function handleBackdropClick(event: MouseEvent) {
-        if (event.target === event.currentTarget && closeOnBackdrop && !disabled) {
+        if (event.target === event.currentTarget && closeOnBackdrop && !disabled && window.innerWidth > 576) {
             close();
         }
     }
 
     function handleKeydown(event: KeyboardEvent) {
-        if (event.key === 'Escape' && !disabled) {
+        if (event.key === 'Escape' && !disabled && open) {
             close();
         }
     }
 
+    // Lifecycle hooks
     onMount(() => {
         window.addEventListener('keydown', handleKeydown);
     });
@@ -81,7 +86,7 @@
                         class="icon-button" 
                         type="button" 
                         on:click={goBack} 
-                        aria-label="Назад"
+                        aria-label={$_('modal.back')}
                         disabled={disabled}
                     >
                         <ArrowLeft size={20} />
@@ -89,16 +94,16 @@
                 {/if}
             </div>
             <h2 id="modal-title">{title}</h2>
-            <div class="modal-actions">
+            <div class="modal-actions" style="margin-left: auto;">
                 {#if showEdit}
                     <button 
                         class="icon-button" 
                         type="button" 
                         on:click={edit} 
-                        aria-label="Редактировать"
+                        aria-label={$_('modal.edit')}
                         disabled={disabled}
                     >
-                        <Edit size={18} />
+                        <SquarePen size={18} />
                     </button>
                 {/if}
                 {#if showClose}
@@ -106,7 +111,7 @@
                         class="icon-button" 
                         type="button" 
                         on:click={close} 
-                        aria-label="Закрыть"
+                        aria-label={$_('modal.close')}
                         disabled={disabled}
                     >
                         <X size={20} />
@@ -155,7 +160,6 @@
 
     .modal-header {
         padding: 16px;
-        border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
         display: flex;
         align-items: center;
         position: relative;
@@ -169,11 +173,19 @@
     }
 
     .modal-header h2 {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
         margin: 0;
         font-size: 1.25rem;
         font-weight: 600;
-        flex: 1;
+        width: calc(100% - 160px);
         text-align: center;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        pointer-events: none;
     }
 
     .icon-button {
@@ -203,13 +215,44 @@
     .modal-body {
         padding: 24px;
         overflow-y: auto;
+        overflow-x: hidden;
         flex: 1;
         color: var(--color-text);
     }
 
+    .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .modal-body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .modal-body::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        transition: background 0.2s ease;
+    }
+    
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .modal-body::-webkit-scrollbar-thumb:active {
+        background: rgba(255, 255, 255, 0.4);
+    }
+    
+    .modal-body {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+    
+    .modal-body:hover {
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
     .modal-footer {
         padding: 16px;
-        border-top: 1px solid var(--color-border);
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -225,7 +268,10 @@
 
         .modal-panel {
             max-width: 100%;
-            height: var(--window-height);
+            height: 100vh;
+            height: var(--window-height, 100vh);
+            max-height: 100vh;
+            min-height: 100%;
             box-shadow: none;
         }
     }

@@ -6,6 +6,7 @@
   import { queryClient } from '$lib/query';
   import config from '$lib/config';
   import { changeLocale, setupI18n } from '$lib/i18n';
+  import { assets } from '$app/paths';
 
   const initialLocale = get(config)?.app?.defaultLanguage;
   setupI18n(initialLocale);
@@ -24,8 +25,8 @@
 
 
 <svelte:head>
-	<link rel="icon" href="/favicon.png" />
-	<link rel="stylesheet" href="/global.css" />
+	<link rel="icon" href={`${assets}/favicon.png`} />
+	<link rel="stylesheet" href={`${assets}/global.css`} />
 </svelte:head>
  
 <QueryClientProvider client={queryClient}>

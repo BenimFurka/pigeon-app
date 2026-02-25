@@ -3,40 +3,79 @@
     import { fetchMessages, messageKeys, useMessages } from '$lib/queries/messages';
     import { useChat } from '$lib/queries/chats';
     import { currentUser } from '$lib/stores/auth';
-    import { typing } from '$lib/stores/typing';
     import type { Message as MessageType, ChatMember } from '$lib/types/models';
-    import { createEventDispatcher } from 'svelte';
     import { queryClient } from '$lib/query';
     import { formatDateHeader } from '$lib/datetime';
     import { ChevronDown } from 'lucide-svelte';
     import { ChatType } from '$lib/types/models';
+    import { session } from '$lib/session';
+    import { _, format } from 'svelte-i18n';
     
-    const dispatch = createEventDispatcher();
+    // Props
+    export let chatContext: {
+        selectedChat: any;
+        chat: any;
+        myMembership: ChatMember | undefined;
+        replyToMessage: MessageType | null;
+        onReply: (event: CustomEvent) => void;
+        updateChatUnreadCount: (chatId: number, unreadCount?: number, lastReadMessageId?: number) => void;
+    };
     
-    export let chatId: number | null = null;
-    export let myMembership: ChatMember | undefined;
-    export let chatType: string | null = null;
-    
+
+    // Constants
+    const PAGE_SIZE = 50;
+    const SCROLL_TOP_THRESHOLD_PX = 120;
+    const MARK_READ_THROTTLE_MS = 400;
+
+    // State
     let messageList: MessageType[] = [];
-    let replyToMessage: MessageType | null = null;
     let messagesContainer: HTMLDivElement;
     let replyToMap: Map<number, MessageType> = new Map();
-
-    const PAGE_SIZE = 50;
     const loadedChats = new Set<number>();
-    const SCROLL_TOP_THRESHOLD_PX = 120;
-
+    let markReadThrottle: ReturnType<typeof setTimeout> | null = null;
+    let lastMarkReadMessageId = 0;
     let isLoadingOlder = false;
     let hasMoreOlder = true;
     let didInitialScroll = false;
     let lastChatId: number | null = null;
     let lastMessageCount = 0;
     let isUserAtBottom = true;
-    
+
+    // Queries
     $: messagesQuery = chatId ? useMessages(chatId, { enabled: !!chatId, params: { limit: PAGE_SIZE } }) : null;
     $: chatQuery = chatId && !chatType ? useChat(chatId, { enabled: !!chatId && !chatType }) : null;
+
+    // Computed values
+    $: chatId = chatContext.selectedChat ? (chatContext.selectedChat.id > 0 ? Number(chatContext.selectedChat.id) : null) : null;
+    $: lastReadMessageId = chatContext.selectedChat?.last_read_message_id ?? null;
+    $: myMembership = chatContext.myMembership;
+    $: chatType = chatContext.chat?.chat_type || chatContext.selectedChat?.chat_type || null;
     $: effectiveChatType = chatType || $chatQuery?.data?.chat_type || null;
-    
+    $: groupedMessages = messageList.reduce((groups, message, index) => {
+        const messageDate = new Date(message.created_at).toDateString();
+        const prevMessage = index > 0 ? messageList[index - 1] : null;
+        
+        const isNewDay = !prevMessage || new Date(prevMessage.created_at).toDateString() !== messageDate;
+        
+        if (isNewDay) {
+            groups.push({
+                dateHeader: formatDateHeader(message.created_at, $format),
+                messages: [message]
+            });
+        } else {
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup) {
+                lastGroup.messages.push(message);
+            }
+        }
+        
+        return groups;
+    }, [] as { dateHeader: string; messages: MessageType[] }[]);
+    $: firstUnreadMessageId = lastReadMessageId != null
+        ? (messageList.find((m) => m.id > 0 && m.id > lastReadMessageId! && m.sender_id !== $currentUser)?.id ?? null)
+        : null;
+
+    // Reactive statements
     $: if (chatId && messagesQuery) {
         const data = $messagesQuery?.data || [];
         messageList = data;
@@ -47,6 +86,7 @@
             hasMoreOlder = true;
             replyToMap = new Map();
             lastMessageCount = 0;
+            lastMarkReadMessageId = 0;
         }
 
         if (messageList.length > lastMessageCount && lastMessageCount > 0 && isUserAtBottom) {
@@ -70,7 +110,12 @@
 
         if (!didInitialScroll && messageList.length > 0 && !($messagesQuery?.isLoading)) {
             didInitialScroll = true;
-            setTimeout(() => scrollToBottom(), 0);
+            const firstUnreadId = getFirstUnreadMessageId();
+            setTimeout(() => scrollToInitialPosition(firstUnreadId), 0);
+            const lastId = messageList[messageList.length - 1]?.id;
+            if (chatId && typeof lastId === 'number' && lastId > 0) {
+                setTimeout(() => sendMarkAsRead(lastId), 300);
+            }
         }
 
         if (chatId && !loadedChats.has(chatId) && !($messagesQuery?.isLoading)) {
@@ -82,10 +127,41 @@
             })();
         }
     }
-    
+
+
+    // Utility functions
+    function isMobileDevice(): boolean {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
     function scrollToBottom() {
         if (messagesContainer) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function getFirstUnreadMessageId(): number | null {
+        if (lastReadMessageId == null) return null;
+        const first = messageList.find((m) => m.id > 0 && m.id > lastReadMessageId!);
+        return first?.id ?? null;
+    }
+
+    function scrollToInitialPosition(firstUnreadId: number | null) {
+        if (!messagesContainer) return;
+        if (firstUnreadId != null) {
+            setTimeout(() => {
+                const el = messagesContainer.querySelector(`[data-message-id="${firstUnreadId}"]`);
+                if (el) {
+                    const containerRect = messagesContainer.getBoundingClientRect();
+                    const elementRect = (el as HTMLElement).getBoundingClientRect();
+                    const relativeTop = elementRect.top - containerRect.top + messagesContainer.scrollTop;
+                    messagesContainer.scrollTop = relativeTop - 50;
+                } else {
+                    scrollToBottom();
+                }
+            }, 50);
+        } else {
+            scrollToBottom();
         }
     }
 
@@ -104,6 +180,32 @@
         );
     }
 
+    function getEmptyStateText() {
+        switch (effectiveChatType) {
+            case ChatType.DM:
+                return {
+                    title: $_('message_list.no_messages'),
+                    hint: $_('message_list.start_conversation')
+                };
+            case ChatType.GROUP:
+                return {
+                    title: $_('message_list.no_group_messages'),
+                    hint: $_('message_list.start_group_dialog')
+                };
+            case ChatType.CHANNEL:
+                return {
+                    title: $_('message_list.no_posts'),
+                    hint: $_('message_list.subscribe_for_updates')
+                };
+            default:
+                return {
+                    title: $_('message_list.no_messages'),
+                    hint: $_('message_list.start_conversation')
+                };
+        }
+    }
+
+    // Event handlers
     async function loadOlderMessages() {
         if (!chatId) return;
         if (isLoadingOlder) return;
@@ -140,92 +242,84 @@
         }
     }
 
-    function handleScroll() {
-        if (!messagesContainer) return;
+    function sendMarkAsRead(messageId: number) {
+        if (!chatId || messageId <= lastMarkReadMessageId) return;
+        lastMarkReadMessageId = messageId;
+        const ws = session.getWebSocket();
+        if (ws) {
+            ws.send({ type: 'mark_as_read', data: { chat_id: chatId, message_id: messageId } });
+        }
+        chatContext.updateChatUnreadCount(chatId, 0, messageId);
+    }
+
+    function handleScroll(event: Event) {
+        event.stopPropagation();
+        if (!messagesContainer || !chatId) return;
         
         isUserAtBottom = isAtBottom();
         
         if (messagesContainer.scrollTop <= SCROLL_TOP_THRESHOLD_PX) {
             void loadOlderMessages();
         }
+
+        if (markReadThrottle) return;
+        markReadThrottle = setTimeout(() => {
+            markReadThrottle = null;
+            if (!messagesContainer || messageList.length === 0) return;
+            const rect = messagesContainer.getBoundingClientRect();
+            const bottom = rect.bottom - 80;
+            let bestId = 0;
+            const nodes = messagesContainer.querySelectorAll('[data-message-id]');
+            nodes.forEach((el) => {
+                const id = parseInt((el as HTMLElement).dataset.messageId || '0', 10);
+                if (!id || id < 0) return;
+                const r = (el as HTMLElement).getBoundingClientRect();
+                if (r.top <= bottom) bestId = Math.max(bestId, id);
+            });
+            if (bestId > 0) sendMarkAsRead(bestId);
+        }, MARK_READ_THROTTLE_MS);
     }
     
     function handleReply(event: CustomEvent) {
         const message = messageList.find(m => m.id === event.detail.messageId);
         if (message) {
-            replyToMessage = message;
-            dispatch('reply', { message });
+            chatContext.onReply({ detail: { message } } as CustomEvent<any>);
         }
     }
     
     function handleScrollTo(event: CustomEvent) {
         const messageId = event.detail.messageId;
         const element = messagesContainer?.querySelector(`[data-message-id="${messageId}"]`);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
-    
-    $: typingUsers = chatId ? typing.getTypingUsers(chatId) : [];
-    let typingNames: string[] = [];
-    // TODO: optionally derive names via useProfile 
-    $: if (typingUsers.length > 0) {
-        typingNames = [];
-    } else {
-        typingNames = typingUsers.map(num => num.toString());
-    }
-
-    $: groupedMessages = messageList.reduce((groups, message, index) => {
-        const messageDate = new Date(message.created_at).toDateString();
-        const prevMessage = index > 0 ? messageList[index - 1] : null;
-        
-        const isNewDay = !prevMessage || new Date(prevMessage.created_at).toDateString() !== messageDate;
-        
-        if (isNewDay) {
-            groups.push({
-                dateHeader: formatDateHeader(message.created_at),
-                messages: [message]
+        if (element && messagesContainer) {
+            const containerRect = messagesContainer.getBoundingClientRect();
+            const elementRect = (element as HTMLElement).getBoundingClientRect();
+            const relativeTop = elementRect.top - containerRect.top + messagesContainer.scrollTop;
+            const containerHeight = messagesContainer.clientHeight;
+            const elementHeight = (element as HTMLElement).clientHeight;
+            const targetScrollTop = relativeTop - (containerHeight / 2) + (elementHeight / 2);
+            
+            messagesContainer.scrollTo({
+                top: targetScrollTop,
+                behavior: 'smooth'
             });
-        } else {
-            const lastGroup = groups[groups.length - 1];
-            if (lastGroup) {
-                lastGroup.messages.push(message);
-            }
         }
-        
-        return groups;
-    }, [] as { dateHeader: string; messages: MessageType[] }[]);
+    }
 
-    function getEmptyStateText() {
-        switch (effectiveChatType) {
-            case ChatType.DM:
-                return {
-                    title: "Нет сообщений",
-                    hint: "Начните общение, отправив первое сообщение"
-                };
-            case ChatType.GROUP:
-                return {
-                    title: "Нет сообщений в группе",
-                    hint: "Будьте первым, кто начнет диалог в этой группе"
-                };
-            case ChatType.CHANNEL:
-                return {
-                    title: "Нет публикаций",
-                    hint: "Здесь пока нет публикаций. Подпишитесь, чтобы не пропустить обновления"
-                };
-            default:
-                return {
-                    title: "Нет сообщений",
-                    hint: "Начните общение, отправив первое сообщение"
-                };
+    function handleMessageListClick(event: MouseEvent) {
+        if (isMobileDevice()) {
+            const messageInput = document.querySelector('.message-input') as HTMLTextAreaElement;
+            if (messageInput && document.activeElement === messageInput) {
+                event.preventDefault();
+                messageInput.focus();
+            }
         }
     }
 </script>
 
-<div class="message-list" bind:this={messagesContainer} on:scroll={handleScroll}>
+<div class="message-list" bind:this={messagesContainer} on:scroll={handleScroll} on:wheel|stopPropagation on:click={handleMessageListClick}>
     {#if isLoadingOlder}
         <div class="empty-state">
-            <p>Загрузка...</p>
+            <p>{$_('message_list.loading')}</p>
         </div>
     {/if}
     {#if chatId === null}
@@ -247,6 +341,11 @@
             </div>
             
             {#each group.messages as message, index (message.id)}
+                {#if firstUnreadMessageId != null && message.id === firstUnreadMessageId}
+                    <div class="date-header">
+                        <span class="date-text">{$_('message_list.new_messages')}</span>
+                    </div>
+                {/if}
                 {@const prevMessage = index > 0 ? group.messages[index - 1] : null}
                 {@const nextMessage = index < group.messages.length - 1 ? group.messages[index + 1] : null}
                 
@@ -269,6 +368,7 @@
                     groupPosition={groupPosition}
                     showSender={groupPosition === 'start' || groupPosition === 'single'}
                     replyToMessage={replyTo || null}
+                    chatId={chatId}
                     on:reply={handleReply}
                     on:scrollTo={handleScrollTo}
                 />
@@ -277,23 +377,13 @@
     
     {:else if messagesQuery && $messagesQuery?.isLoading}
         <div class="empty-state">
-            <p>Загрузка сообщений...</p>
+            <p>{$_('message_list.loading_messages')}</p>
         </div>    
     {/if}
-    
-    <!--{#if typingUsers.length > 0}
-        <div class="typing-indicator">
-            {#if typingNames.length > 0}
-                <span>{typingNames.join(', ')} печатает...</span>
-            {:else}
-                <span>Печатает...</span>
-            {/if}
-        </div>
-    {/if}-->
 </div>
 
 {#if !isUserAtBottom && messageList.length > 0}
-    <button class="scroll-to-bottom-btn" on:click={scrollToBottom} title="Вниз">
+    <button class="scroll-to-bottom-btn" on:click={scrollToBottom} title={$_('message_list.scroll_down')}>
         <ChevronDown size={20} />
     </button>
 {/if}
@@ -310,7 +400,6 @@
         position: relative;
     }
     
-    /* Custom scrollbar styles */
     .message-list::-webkit-scrollbar {
         width: 6px;
     }
@@ -333,7 +422,6 @@
         background: rgba(255, 255, 255, 0.4);
     }
     
-    /* Firefox scrollbar styles */
     .message-list {
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
@@ -358,13 +446,6 @@
         opacity: 0.6;
     }
     
-    .typing-indicator {
-        padding: 8px 12px;
-        font-size: 0.85em;
-        opacity: 0.7;
-        font-style: italic;
-        color: var(--color-accent);
-    }
     
     .date-header {
         display: flex;
@@ -384,7 +465,7 @@
         opacity: 0.8;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-    
+
     .scroll-to-bottom-btn {
         position: absolute;
         bottom: 80px;
@@ -432,4 +513,3 @@
         transform: translateX(-2px) scale(1.02);
     }
 </style>
-

@@ -1,16 +1,29 @@
 <script lang="ts">
     import Button from '$lib/components/shared/Button.svelte';
-    import { Loader2 } from 'lucide-svelte';
+    import { LoaderCircle } from 'lucide-svelte';
     import { ChatType, type Chat, type ChatPreview, type ChatMember } from '$lib/types/models';
     import { useJoinPublicChat } from '$lib/queries/chats';
+    import { _ } from 'svelte-i18n';
 
-    export let chat: Chat | null = null;
-    export let chatPreview: ChatPreview | null = null;
-    export let myMembership: ChatMember | undefined;
-    export let isChatLoading: boolean = false;
+    // Props
+    export let chatContext: {
+        selectedChat: ChatPreview | null;
+        chat: Chat | null;
+        myMembership: ChatMember | undefined;
+        isChatLoading: boolean;
+    };
 
+    // Queries and stores
     const joinChat = useJoinPublicChat();
 
+    // State
+    let joinError: string | null = null;
+
+    // Computed values
+    $: chat = chatContext.chat;
+    $: chatPreview = chatContext.selectedChat;
+    $: myMembership = chatContext.myMembership;
+    $: isChatLoading = chatContext.isChatLoading;
     $: chatId = chat?.id ?? chatPreview?.id ?? null;
     $: chatType = chat?.chat_type ?? chatPreview?.chat_type ?? null;
     $: isGroup = chatType === ChatType.GROUP;
@@ -19,6 +32,7 @@
     $: joinPending = Boolean($joinChat?.isPending);
     $: joinError = $joinChat?.error ? String($joinChat.error) : null;
 
+    // Event handlers
     async function handleJoinClick() {
         if (!chatId || joinPending) return;
         try {
@@ -27,17 +41,13 @@
             console.error(error);
         }
     }
-
-    $: title = chat?.name ?? chatPreview?.name ?? null;
-    $: fallbackTitle = chatId ? `Чат #${chatId}` : 'Чат';
-    $: displayName = title?.trim().length ? title : fallbackTitle;
 </script>
 
 <div class="prompt">
     {#if isChatLoading}
         <div class="state loading">
-            <Loader2 size={18} />
-            <span>Загрузка информации о чате…</span>
+            <LoaderCircle size={18} />
+            <span>{$_('chat_access.loading_chat_info')}</span>
         </div>
     {:else if !myMembership}
         {#if isPublic}
@@ -46,17 +56,16 @@
                 disabled={joinPending}
                 fullWidth={true}>
                 {#if joinPending}
-                    <Loader2 size={16} />
-                    <span>Присоединяем…</span>
+                    <span>{$_('chat_access.joining')}</span>
                 {:else if isChannel}
-                    Подписаться
+                    {$_('chat_access.subscribe')}
                 {:else}
-                    Вступить в группу
+                    {$_('chat_access.join_group')}
                 {/if}
             </Button>
         {:else}
             <div class="state warning">
-                <span>Это приватный чат. Получите приглашение у администратора.</span>
+                <span>{$_('chat_access.private_chat')}</span>
             </div>
         {/if}
 
@@ -65,11 +74,11 @@
         {/if}
     {:else if !myMembership.can_send_messages}
         {#if isGroup}
-            <span class="info">Вы не можете писать сообщения в этой группе</span>
+            <span>{$_('chat_access.cannot_write_group')}</span>
         {:else if isChannel}
-            <span class="info">Скоро</span>
+            <span class="info">{$_('chat_access.soon')}</span>
         {:else}
-            <span class="info">Отправка сообщений недоступна</span>
+            <span>{$_('chat_access.messages_unavailable')}</span>
         {/if}
     {/if}
 </div>
@@ -110,8 +119,8 @@
     }
 
     .state.warning {
-        background: rgba(255, 193, 7, 0.1);
-        color: #ffba3b;
+        background: var(--color-warning-soft);
+        color: var(--color-warning);
     }
 
     .state.error {
@@ -119,4 +128,4 @@
         color: var(--color-danger)
     }
     
-    </style>
+</style>

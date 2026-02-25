@@ -1,26 +1,32 @@
 <script lang="ts">
-	import type { TabItem } from "$lib/types/components";
-	import Tab from "./Tab.svelte";
+    import type { TabItem } from "$lib/types/components";
+    import Tab from "./Tab.svelte";
 
-	export let tabs: TabItem[] = [];
-	export let onTabSelect: (id: string) => void = () => {};
-	
-	$: activeIndex = tabs.findIndex(t => t.active);	
-	$: tabWidthPercent = tabs.length > 0 ? 100 / tabs.length : 100;
-	$: sliderPosition = activeIndex === 0 ? 'start' : 
-	                  activeIndex === tabs.length - 1 ? 'end' : 'middle';
-	
-	function handleTabClick(id: string) {
-		const index = tabs.findIndex(t => t.id === id);
-		if (index !== -1) {
-			tabs = tabs.map((tab, i) => ({
-				...tab,
-				active: i === index
-			}));
-			
-			onTabSelect(id);
-		}
-	}
+    // Props
+    export let tabs: TabItem[] = [];
+    export let onTabSelect: (id: string) => void = () => {};
+
+    // State
+    let activeIndex = 0;
+
+    // Computed values
+    $: activeIndex = tabs.findIndex(t => t.active);
+    $: tabWidthPercent = tabs.length > 0 ? 100 / tabs.length : 100;
+    $: sliderPosition = activeIndex === 0 ? 'start' : 
+        activeIndex === tabs.length - 1 ? 'end' : 'middle';
+
+    // Event handlers
+    function handleTabClick(id: string) {
+        const index = tabs.findIndex(t => t.id === id);
+        if (index !== -1) {
+            tabs = tabs.map((tab, i) => ({
+                ...tab,
+                active: i === index
+            }));
+            
+            onTabSelect(id);
+        }
+    }
 </script>
 
 <div class="tabs-container">

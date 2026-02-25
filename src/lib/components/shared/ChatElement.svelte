@@ -1,26 +1,88 @@
 <script lang="ts">
-    import type { ChatPreview, UserPublic, MessageAttachment } from '$lib/types/models';
+    import type { ChatPreview, MessageAttachment } from '$lib/types/models';
     import { useQueryClient } from '@tanstack/svelte-query';
     import Avatar from '$lib/components/shared/Avatar.svelte';
     import { createEventDispatcher, onDestroy } from 'svelte';
     import { presence } from '$lib/stores/presence';
     import { get } from 'svelte/store';
-    import { formatLastSeen, isOlderThan } from '$lib/datetime';
+    import { isOlderThan, formatChatListTime } from '$lib/datetime';
     import { ChatType } from '$lib/types/models';
-    import { _ } from 'svelte-i18n';
+    import { _, format } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
-    
+
+    // Props
     export let chat: ChatPreview;
     export let selected: boolean = false;
 
+    // Event dispatcher
     const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
 
+    // Stores
     const queryClient = useQueryClient();
     const presenceStore = { subscribe: presence.subscribe };
 
+    // State
     let isOnline = false;
     let lastMessageTime = '';
+    let unsubscribePresence = () => {};
 
+    // Computed values
+    $: counterpartId = chat.chat_type === ChatType.DM ? chat.other_user?.id as number | undefined ?? null : null;
+
+    // Reactive statements
+    $: if (chat) {
+        if (chat.chat_type === ChatType.DM && counterpartId) {
+            const presenceData = get(presenceStore)[counterpartId];
+            if (!presenceData || isOlderThan(presenceData.updatedAt, { minutes: 5 })) {
+                queryClient.invalidateQueries({ 
+                    queryKey: ['presence', counterpartId] 
+                });
+            }
+        }
+        
+        if (chat.last_message?.created_at) {
+            lastMessageTime = formatChatListTime(chat.last_message.created_at, $format);
+        } else {
+            lastMessageTime = '';
+        }
+    }
+
+    $: if (chat?.chat_type === ChatType.DM) {
+        const counterpartId = chat.other_user?.id as number | undefined ?? null;
+        if (typeof counterpartId === 'number') {
+            unsubscribePresence();
+            
+            unsubscribePresence = presence.subscribe(($presence) => {
+                const record = counterpartId ? $presence[counterpartId] : undefined;
+                isOnline = Boolean(record?.online);
+            });
+            
+            const record = get(presenceStore)[counterpartId];
+            isOnline = Boolean(record?.online);
+        } else {
+            unsubscribePresence();
+            isOnline = false;
+        }
+    }
+
+    // Lifecycle hooks
+    onDestroy(() => {
+        unsubscribePresence();
+    });
+
+    // Event handlers
+    function handleClick() {
+        dispatch('select', { chat });
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            dispatch('select', { chat });
+        }
+    }
+
+    // Utility functions
     function getAttachmentType(attachment: MessageAttachment): string {
         const mimeType = attachment.mime_type.toLowerCase();
         const fileType = attachment.file_type.toLowerCase();
@@ -50,83 +112,6 @@
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;
         return `${baseUrl}/${cleanPath}`;
     }
-
-    function formatLastMessageTime(timestamp: string): string {
-        const messageDate = new Date(timestamp);
-        const today = new Date();
-        
-        const isToday = 
-            messageDate.getDate() === today.getDate() &&
-            messageDate.getMonth() === today.getMonth() &&
-            messageDate.getFullYear() === today.getFullYear();
-        
-        if (isToday) {
-            return messageDate.toLocaleTimeString('ru-RU', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        } else {
-            return messageDate.toLocaleDateString('ru-RU', { 
-                day: 'numeric', 
-                month: 'short' 
-            });
-        }
-    }
-
-    $: if (chat) {
-        if (chat.chat_type === ChatType.DM) {
-            const counterpartId = chat.other_user?.id as number | undefined ?? null;
-            if (counterpartId) {
-                const presenceData = get(presenceStore)[counterpartId];
-                if (!presenceData || isOlderThan(presenceData.updatedAt, { minutes: 5 })) {
-                    queryClient.invalidateQueries({ 
-                        queryKey: ['presence', counterpartId] 
-                    });
-                }
-            }
-        }
-        
-        if (chat.last_message?.created_at) {
-            lastMessageTime = formatLastMessageTime(chat.last_message.created_at);
-        } else {
-            lastMessageTime = '';
-        }
-    }
-
-    let unsubscribePresence = () => {};
-    
-    onDestroy(() => {
-        unsubscribePresence();
-    });
-    
-    $: if (chat?.chat_type === ChatType.DM) {
-        const counterpartId = chat.other_user?.id as number | undefined ?? null;
-        if (typeof counterpartId === 'number') {
-            unsubscribePresence();
-            
-            unsubscribePresence = presence.subscribe(($presence) => {
-                const record = counterpartId ? $presence[counterpartId] : undefined;
-                isOnline = Boolean(record?.online);
-            });
-            
-            const record = get(presenceStore)[counterpartId];
-            isOnline = Boolean(record?.online);
-        } else {
-            unsubscribePresence();
-            isOnline = false;
-        }
-    }
-
-    function handleClick() {
-        dispatch('select', { chat });
-    }
-
-    function handleKeydown(event: KeyboardEvent) {
-        if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            dispatch('select', { chat });
-        }
-    }
 </script>
 
 <div 
@@ -145,9 +130,14 @@
     <div class="chat-info">
         <div class="chat-header">
             <span class="chat-name">{chat.other_user && chat.chat_type === "DM" ? chat.other_user.name : chat.name}</span>
-            {#if lastMessageTime}
-                <span class="timestamp">{lastMessageTime}</span>
-            {/if}
+            <span class="header-right">
+                {#if typeof chat.unread_count === 'number' && chat.unread_count > 0}
+                    <span class="unread-badge" aria-label="{chat.unread_count} {$_('chat_element.unread_count')}">{chat.unread_count > 99 ? '99+' : chat.unread_count}</span>
+                {/if}
+                {#if lastMessageTime}
+                    <span class="timestamp">{lastMessageTime}</span>
+                {/if}
+            </span>
         </div>
         <div class="last-message">
             {#if chat.last_message}
@@ -162,10 +152,6 @@
                                 alt="" 
                                 class="mini-thumbnail"
                             />
-                        {:else}
-                            <span class="mini-thumbnail-placeholder">
-                                {getAttachmentTypeName(chat.last_message.attachments[0]).charAt(0).toUpperCase()}
-                            </span>
                         {/if}
                         <em class="attachment-type">{getAttachmentTypeName(chat.last_message.attachments[0])}</em>
                         {#if chat.last_message.content} {chat.last_message.content}{/if}
@@ -174,7 +160,7 @@
                     <span class="last-message-content">{chat.last_message.content}</span>
                 {/if}
             {:else}
-                <span class="last-message empty">Нет сообщений</span>
+                <span class="last-message empty">{$_('chat_element.no_messages')}</span>
             {/if}
         </div>  
     </div>
@@ -249,6 +235,32 @@
         width: 100%;
         min-width: 0;
     }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .unread-badge {
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 9px;
+        background: var(--color-accent);
+        color: var(--color-button-text);
+        font-size: 0.7em;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .chat-element.selected .unread-badge {
+        background: var(--color-button-text);
+        color: var(--color-accent);
+    }
         
     .chat-name {
         color: var(--color-text);
@@ -307,20 +319,6 @@
         border-radius: 2px;
         object-fit: cover;
         filter: blur(0.5px);
-        flex-shrink: 0;
-    }
-    
-    .mini-thumbnail-placeholder {
-        width: 1.2em;
-        height: 1.2em;
-        border-radius: 2px;
-        background: rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.7em;
-        color: rgba(255, 255, 255, 0.6);
         flex-shrink: 0;
     }
     

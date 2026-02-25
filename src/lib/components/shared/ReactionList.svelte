@@ -1,37 +1,40 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  import type { MessageReaction } from '$lib/types/models';
+    import { createEventDispatcher } from 'svelte';
+    import type { MessageReaction } from '$lib/types/models';
+    import { _ } from 'svelte-i18n';
 
-  export let reactions: MessageReaction[] = [];
-  export let currentUserId: number | null = null;
-  export let isOwnMessage: boolean = false;
-  export let messageId: number | null = null;
+    // Props
+    export let reactions: MessageReaction[] = [];
+    export let currentUserId: number | null = null;
+    export let isOwnMessage: boolean = false;
+    export let messageId: number | null = null;
 
-  const dispatch = createEventDispatcher();
+    // Event dispatcher
+    const dispatch = createEventDispatcher();
 
-  // export let onAdd: (emoji: string) => void;
-  // export let onRemove: (emoji: string) => void;
+    // Computed values
+    $: reactionsByEmoji = (reactions || []).filter(r => r && r.emoji).reduce((acc, r) => {
+        if (!acc[r.emoji]) acc[r.emoji] = [] as number[];
+        acc[r.emoji].push(r.user_id);
+        return acc;
+    }, {} as Record<string, number[]>);
 
-  $: reactionsByEmoji = (reactions || []).filter(r => r && r.emoji).reduce((acc, r) => {
-    if (!acc[r.emoji]) acc[r.emoji] = [] as number[];
-    acc[r.emoji].push(r.user_id);
-    return acc;
-  }, {} as Record<string, number[]>);
-
-  function hasUser(emoji: string): boolean {
-    if (!currentUserId) return false;
-    return (reactionsByEmoji[emoji] || []).includes(currentUserId);
-  }
-
-  function handleReactionClick(emoji: string) {
-    if (!messageId) return;
-    
-    if (hasUser(emoji)) {
-      dispatch('removeReaction', { emoji, messageId });
-    } else {
-      dispatch('addReaction', { emoji, messageId });
+    // Utility functions
+    function hasUser(emoji: string): boolean {
+        if (!currentUserId) return false;
+        return (reactionsByEmoji[emoji] || []).includes(currentUserId);
     }
-  }
+
+    // Event handlers
+    function handleReactionClick(emoji: string) {
+        if (!messageId) return;
+        
+        if (hasUser(emoji)) {
+            dispatch('removeReaction', { emoji, messageId });
+        } else {
+            dispatch('addReaction', { emoji, messageId });
+        }
+    }
 </script>
 
 {#if Object.keys(reactionsByEmoji).length > 0}
@@ -42,7 +45,7 @@
         class:has-user={hasUser(emoji)} 
         class:own-reaction={isOwnMessage && hasUser(emoji)}
         on:click={() => handleReactionClick(emoji)}
-        title={hasUser(emoji) ? "Удалить реакцию" : "Добавить реакцию"}
+        title={hasUser(emoji) ? $_('reaction_list.remove_reaction') : $_('reaction_list.add_reaction')}
       >
         <span class="emoji">{emoji}</span>
         <span class="count">{userIds.length}</span>
@@ -55,8 +58,10 @@
   .reactions {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    justify-content: flex-start;
+    width: 100%;
     margin-top: 4px;
+    gap: 4px;
   }
   
   .reaction-item {

@@ -1,3 +1,4 @@
+/* TODO: translate */
 import { makeRequest } from '$lib/api';
 import type {
     ChatAttachment,

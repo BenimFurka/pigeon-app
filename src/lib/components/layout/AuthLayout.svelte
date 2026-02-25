@@ -1,136 +1,93 @@
 <script lang="ts">
-	import Tabs from '$lib/components/navigation/tab/Tabs.svelte';
-	import Form from '$lib/components/shared/Form.svelte';
-	import ClickText from '$lib/components/navigation/ClickText.svelte';
-	import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
-	import { Settings } from 'lucide-svelte';
-	import {
-		login,
-		register,
-		verifyEmail,
-		requestPasswordReset,
-		verifyPasswordReset,
-		authError
-	} from '$lib/stores/auth';
-	import { writable } from 'svelte/store';
-	import type { InputItem } from '$lib/types/components';
-	import { onMount } from 'svelte';
+    import Tabs from '$lib/components/navigation/tab/Tabs.svelte';
+    import Form from '$lib/components/shared/Form.svelte';
+    import ClickText from '$lib/components/navigation/ClickText.svelte';
+    import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
+    import { Settings } from 'lucide-svelte';
+    import {
+        login,
+        register,
+        verifyEmail,
+        requestPasswordReset,
+        verifyPasswordReset,
+        authError
+    } from '$lib/stores/auth';
+    import { writable } from 'svelte/store';
+    import type { InputItem } from '$lib/types/components';
+    import { onMount } from 'svelte';
+    import { _, locale } from 'svelte-i18n';
 
-	const isLoading = writable(false);
+    // Stores
+    const isLoading = writable(false);
 
-	let view = 'login';
-	let showSettingsModal = false;
-	let isMobile = false;
+    // State
+    let view = 'login';
+    let showSettingsModal = false;
+    let isMobile = false;
+    
+    // Form Data
+    let loginData = {
+        login: '',
+        password: ''
+    };
 
-	let loginData = {
-		login: '',
-		password: ''
-	};
+    let registerData = {
+        display: '',
+        username: '',
+        email: '',
+        password: ''
+    };
 
-	let registerData = {
-		display: '',
-		username: '',
-		email: '',
-		password: ''
-	};
+    let verifyData = {
+        code: ''
+    };
 
-	let verifyData = {
-		code: ''
-	};
+    let forgotPasswordData = {
+        email: ''
+    };
 
-	let forgotPasswordData = {
-		email: ''
-	};
+    let resetPasswordData = {
+        code: '',
+        new_password: ''
+    };
 
-	let resetPasswordData = {
-		code: '',
-		new_password: ''
-	};
+	$: loginFields = [
+		{ id: 'login', label: $_('auth.login_email_username'), type: 'text', required: true, placeholder: $_('auth.login_email_username') },
+		{ id: 'password', label: $_('auth.password'), type: 'password', required: true, placeholder: $_('auth.password') }
+	] as InputItem[];
+	$: registerFields = [
+		{ id: 'display', label: $_('auth.display_name'), type: 'text', placeholder: $_('auth.display_name') },
+		{ id: 'username', label: $_('auth.username'), type: 'text', required: true, placeholder: $_('auth.username') },
+		{ id: 'email', label: 'Email', type: 'email', required: true, placeholder: 'Email' },
+		{ id: 'password', label: $_('auth.password'), type: 'password', required: true, placeholder: $_('auth.password') }
+	] as InputItem[];
+	$: verifyFields = [
+		{ id: 'code', label: $_('auth.email_code'), type: 'text', required: true, placeholder: $_('auth.email_code') }
+	] as InputItem[];
+	$: forgotPasswordFields = [
+		{ id: 'email', label: $_('auth.enter_email'), type: 'email', required: true, placeholder: $_('auth.enter_email') }
+	] as InputItem[];
+	$: resetPasswordFields = [
+		{ id: 'code', label: $_('auth.email_code'), type: 'text', required: true, placeholder: $_('auth.email_code') },
+		{ id: 'new_password', label: $_('auth.new_password'), type: 'password', required: true, placeholder: $_('auth.new_password') }
+	] as InputItem[];
 
-	let loginFields: InputItem[] = [
-		{ 
-			id: 'login', 
-			label: 'Email или имя пользователя', 
-			type: 'text', 
-			required: true 
-		},
-		{ 
-			id: 'password', 
-			label: 'Пароль', 
-			type: 'password', 
-			required: true 
-		}
-	];
+    // Lifecycle hooks
+    onMount(() => {
+        const checkMobile = () => {
+            isMobile = window.innerWidth <= 768;
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+        };
+    });
 
-	let registerFields: InputItem[] = [
-		{ 
-			id: 'display', 
-			label: 'Отображаемое имя', 
-			type: 'text' 
-		},
-		{ 
-			id: 'username', 
-			label: 'Имя пользователя', 
-			type: 'text', 
-			required: true 
-		},
-		{ 
-			id: 'email', 
-			label: 'Email', 
-			type: 'email', 
-			required: true 
-		},
-		{ 
-			id: 'password', 
-			label: 'Пароль', 
-			type: 'password', 
-			required: true 
-		}
-	];
-
-	let verifyFields: InputItem[] = [
-		{ 
-			id: 'code', 
-			label: 'Код из письма', 
-			type: 'text', 
-			required: true 
-		}
-	];
-
-	let forgotPasswordFields: InputItem[] = [
-		{ 
-			id: 'email', 
-			label: 'Введите ваш Email', 
-			type: 'email', 
-			required: true 
-		}
-	];
-
-	let resetPasswordFields: InputItem[] = [
-		{ 
-			id: 'code', 
-			label: 'Код из письма', 
-			type: 'text', 
-			required: true 
-		},
-		{ 
-			id: 'new_password', 
-			label: 'Новый пароль', 
-			type: 'password', 
-			required: true 
-		}
-	];
-
-	function updateFormData(formData: FormData, dataStore: any) {
-		for (const key in dataStore) {
-			const value = formData.get(key);
-			if (value !== null) {
-				dataStore[key] = value.toString();
-			}
-		}
-	}
-
-	async function handleLogin(event: SubmitEvent) {
+    // Event handlers
+    async function handleLogin(event: SubmitEvent) {
 		if ($isLoading) return;
 		isLoading.set(true);
 		try {
@@ -202,6 +159,7 @@
 		}
 	}
 
+    // Utility functions
 	function switchView(newView: string) {
 		authError.set(null);
 		view = newView;
@@ -212,18 +170,17 @@
 	}
 
 	function closeSettingsModal() {
-		showSettingsModal = false;
-	}
+        showSettingsModal = false;
+    }
 
-	function checkMobile() {
-		isMobile = window.innerWidth <= 768;
-	}
-
-	onMount(() => {
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	});
+    function updateFormData(formData: FormData, dataStore: any) {
+        for (const key in dataStore) {
+            const value = formData.get(key);
+            if (value !== null) {
+                dataStore[key] = value.toString();
+            }
+        }
+    }
 </script>
 
 <h1>PIGEON</h1>
@@ -232,8 +189,8 @@
 	{#if view === 'login' || view === 'register'}
 		<Tabs
 			tabs={[
-				{ id: 'login', text: 'Вход', active: view === 'login' },
-				{ id: 'register', text: 'Регистрация', active: view === 'register' }
+				{ id: 'login', text: $_('auth.login'), active: view === 'login' },
+				{ id: 'register', text: $_('auth.register'), active: view === 'register' }
 			]}
 			onTabSelect={switchView}
 		/>
@@ -243,71 +200,69 @@
 		<div class="error">{$authError}</div>
 	{/if}
 
-	<Form
-		active={view === 'login'}
-		fields={loginFields}
-		onSubmit={handleLogin}
-		submit={$isLoading ? 'Загрузка...' : 'Войти'}
-		disabled={$isLoading}
-	/>
+		<Form
+			active={view === 'login'}
+			fields={loginFields}
+			onSubmit={handleLogin}
+			submit={$isLoading ? $_('auth.loading') : $_('auth.login')}
+			disabled={$isLoading}
+			/>
 
-	<Form
-		active={view === 'register'}
-		fields={registerFields}
-		onSubmit={handleRegister}
-		submit={$isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
-		disabled={$isLoading}
-	/>
+		<Form
+			active={view === 'register'}
+			fields={registerFields}
+			onSubmit={handleRegister}
+			submit={$isLoading ? $_('auth.registering') : $_('auth.register_button')}
+			disabled={$isLoading}
+			/>
 
-	<Form
-		title="Проверьте почту и введите код"
-		active={view === 'verifyEmail'}
-		fields={verifyFields}
-		onSubmit={handleVerify}
-		submit={$isLoading ? 'Проверка...' : 'Подтвердить'}
-		disabled={$isLoading}
-	/>
+		<Form
+			title={$_('auth.verify_email_title')}
+			active={view === 'verifyEmail'}
+			fields={verifyFields}
+			onSubmit={handleVerify}
+			submit={$isLoading ? $_('auth.verifying') : $_('auth.verify')}
+			disabled={$isLoading}
+			/>
 
-	<Form
-		title="Восстановление пароля"
-		active={view === 'forgotPassword'}
-		fields={forgotPasswordFields}
-		onSubmit={handleRequestReset}
-		submit={$isLoading ? 'Отправка...' : 'Отправить код'}
-		disabled={$isLoading}
-	/>
+		<Form
+			title={$_('auth.password_reset_title')}
+			active={view === 'forgotPassword'}
+			fields={forgotPasswordFields}
+			onSubmit={handleRequestReset}
+			submit={$isLoading ? $_('auth.sending') : $_('auth.send_code')}
+			disabled={$isLoading}
+			/>
 
-	<Form
-		title="Установка нового пароля"
-		active={view === 'resetPassword'}
-		fields={resetPasswordFields}
-		onSubmit={handleResetPassword}
-		submit={$isLoading ? 'Обновление...' : 'Сбросить пароль'}
-		disabled={$isLoading}
-	/>
+		<Form
+			title={$_('auth.set_new_password_title')}
+			active={view === 'resetPassword'}
+			fields={resetPasswordFields}
+			onSubmit={handleResetPassword}
+			submit={$isLoading ? $_('auth.updating') : $_('auth.reset_password')}
+			disabled={$isLoading}
+			/>
 
-	{#if view === 'forgotPassword' || view === 'resetPassword'}
-		<ClickText
-			style="font-size: 0.9rem; align-self: center"
-			onClick={() => switchView('login')}
-		>
-			Назад ко входу
-		</ClickText>
-	{:else if view !== 'verifyEmail'}
-		<ClickText
-			style="font-size: 0.9rem; align-self: center"
-			onClick={() => switchView('forgotPassword')}
-		>
-			Забыли пароль?
-		</ClickText>
-	{/if}
-</div>
+		{#if view === 'forgotPassword' || view === 'resetPassword'}
+			<ClickText
+				style="font-size: 0.9rem; align-self: center"
+				onClick={() => switchView('login')}
+			>
+				{$_('auth.back_to_login')}
+			</ClickText>
+		{:else if view !== 'verifyEmail'}
+			<ClickText
+				style="font-size: 0.9rem; align-self: center"
+				onClick={() => switchView('forgotPassword')}
+			>
+				{$_('auth.forgot_password')}
+			</ClickText>
+		{/if}
+	</div>
 
-{#if isMobile}
-	<button class="floating-settings-btn" on:click={openSettings}>
-		<Settings size={20} />
-	</button>
-{/if}
+<button class="floating-settings-btn" on:click={openSettings}>
+	<Settings size={20} />
+</button>
 
 <SettingsModal
 	open={showSettingsModal}
@@ -357,7 +312,7 @@
 		border-radius: 50%;
 		background: var(--color-accent);
 		border: none;
-		color: var(--color-text);
+		color: var(--color-button-text);
 		cursor: pointer;
 		display: flex;
 		align-items: center;

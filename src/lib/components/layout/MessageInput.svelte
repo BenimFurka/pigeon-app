@@ -4,41 +4,49 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { Send, Paperclip, ImagePlay } from 'lucide-svelte';
     import AttachmentModal from '$lib/components/forms/modals/AttachmentModal.svelte';
-    import GifDropdown from '$lib/components/media/GifDropdown.svelte';
-    import GifMenu from '$lib/components/media/GifMenu.svelte';
+    import GifPicker from '$lib/components/media/GifPicker.svelte';
     import type { GifItem } from '$lib/types/models';
     import { _ } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
     
+    // Props
     export let chatId: number | null = null;
-    export let replyToMessage: Message | null = null;
-    export let isMobile: boolean = false;
+    export let chatContext: {
+        replyToMessage: Message | null;
+        isMobile: boolean;
+        onClearReply: () => void;
+        onUserClick: (event: CustomEvent) => void;
+    };
     
+    // Event dispatcher
     const dispatch = createEventDispatcher();
-    
+
+    // State
     let inputValue = '';
     let inputElement: HTMLTextAreaElement;
     let attachmentModalOpen = false;
     let gifDropdownOpen = false;
     let gifButtonRef: HTMLButtonElement;
-    let gifContainerRef: HTMLDivElement;
+    let isTyping = false;
+    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Computed values
+    $: replyToMessage = chatContext.replyToMessage;
+    $: isMobile = chatContext.isMobile;
+
+    // Utility functions
+    function isMobileDevice(): boolean {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
 
     function getAttachmentType(attachment: MessageAttachment): string {
         const mimeType = attachment.mime_type.toLowerCase();
         const fileType = attachment.file_type.toLowerCase();
         
-        if (fileType === 'gif' || mimeType.includes('gif')) {
-            return 'gif';
-        }
-        if (mimeType.startsWith('image/')) {
-            return 'image';
-        }
-        if (mimeType.startsWith('video/')) {
-            return 'video';
-        }
-        if (mimeType.startsWith('audio/')) {
-            return 'audio';
-        }
+        if (fileType === 'gif' || mimeType.includes('gif')) return 'gif';
+        if (mimeType.startsWith('image/')) return 'image';
+        if (mimeType.startsWith('video/')) return 'video';
+        if (mimeType.startsWith('audio/')) return 'audio';
         return 'document';
     }
 
@@ -59,20 +67,31 @@
         const maxHeight = 200;
         const newHeight = Math.min(Math.max(inputElement.scrollHeight, 40), maxHeight);
         inputElement.style.height = `${newHeight}px`;
+        
+        if (inputElement.scrollHeight > maxHeight) {
+            inputElement.style.overflowY = 'auto';
+        } else {
+            inputElement.style.overflowY = 'hidden';
+        }
     }
-    
+
+    // Event handlers
     function handleSubmit(attachmentIds?: number[]) {
-        console.log('handleSubmit called:', { chatId, inputValue: inputValue.trim(), attachmentIds });
         if (!chatId) {
             if (!inputValue.trim() && !attachmentIds?.length) {
-                console.log('handleSubmit early return - conditions not met');
                 return;
             }
             dispatch('ephemeralSend', { content: inputValue.trim(), attachmentIds });
             inputValue = '';
             adjustTextareaHeight();
             dispatch('clearReply');
-            setTimeout(() => { if (inputElement) { inputElement.focus(); } }, 0);
+            chatContext.onClearReply();
+            
+            if (inputElement) {
+                queueMicrotask(() => {
+                    if (inputElement) inputElement.focus();
+                });
+            }
             return;
         }
         
@@ -93,12 +112,13 @@
                 inputValue = '';
                 adjustTextareaHeight();
                 dispatch('clearReply');
+                chatContext.onClearReply();
                 
-                setTimeout(() => {
-                    if (inputElement) {
-                        inputElement.focus();
-                    }
-                }, 0);
+                if (inputElement) {
+                    queueMicrotask(() => {
+                        if (inputElement) inputElement.focus();
+                    });
+                }
                 return;
             } catch (error) {
                 console.error('Failed to parse custom WebSocket message:', error);
@@ -108,12 +128,18 @@
         if (!inputValue.trim() && !attachmentIds?.length) {
             return;
         }
-        
+
+        const content = inputValue.trim();
+        session.addOptimisticMessage(chatId, content, {
+            reply_to: replyToMessage?.id ?? undefined,
+            attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
+        });
+
         ws.send({
             type: 'send_message',
             data: {
                 chat_id: chatId,
-                content: inputValue.trim(),
+                content,
                 reply_to: replyToMessage?.id,
                 attachment_ids: attachmentIds?.length ? attachmentIds : undefined
             }
@@ -132,14 +158,15 @@
         inputValue = '';
         adjustTextareaHeight();
         dispatch('clearReply');
+        chatContext.onClearReply();
         
         sendTyping(false);
         
-        setTimeout(() => {
-            if (inputElement) {
-                inputElement.focus();
-            }
-        }, 0);
+        if (inputElement) {
+            queueMicrotask(() => {
+                if (inputElement) inputElement.focus();
+            });
+        }
     }
 
     function handleAttachmentSent(event: CustomEvent<{ content: string; attachmentIds: number[] }>) {
@@ -150,7 +177,6 @@
 
     function handleGifSelected(event: CustomEvent<{ gif: GifItem; attachmentId: number }>) {
         const { gif, attachmentId } = event.detail;
-        console.log('GIF selected:', { gif, attachmentId });
         dispatch('gifSelected', { gif });
         handleSubmit([attachmentId]);
     }
@@ -175,9 +201,6 @@
             handleSubmit();
         }
     }
-    
-    let isTyping = false;
-    let typingTimeout: ReturnType<typeof setTimeout> | null = null;
     
     function handleInput() {
         if (!chatId) return;
@@ -215,22 +238,12 @@
     }
     
     function handleCancelReply() {
-        dispatch('clearReply');
+        chatContext.onClearReply();
     }
 
-    function handleClickOutside(event: MouseEvent) {
-        if (gifContainerRef && !gifContainerRef.contains(event.target as Node)) {
-            gifDropdownOpen = false;
-        }
-    }
 
-    onMount(() => {
-        window.addEventListener('click', handleClickOutside);
-        return () => {
-            window.removeEventListener('click', handleClickOutside);
-        };
-    });
 
+    // Reactive statements
     $: if (inputElement) {
         adjustTextareaHeight();
     }
@@ -255,7 +268,7 @@
                 </div>
             {/if}
             <div class="reply-info">
-                <span class="reply-label">Ответ на:</span>
+                <span class="reply-label">{$_('message_input.reply_to')}:</span>
                 
                 <div class="reply-content-container">
                     <div class="reply-content">
@@ -268,7 +281,7 @@
                     </div>
                 </div>
             </div>
-            <button class="cancel-reply" on:click={handleCancelReply} title="Отменить">×</button>
+            <button class="cancel-reply" on:click={handleCancelReply} title={$_('message_input.cancel_reply')}>×</button>
         </div>
     {/if}
     
@@ -277,8 +290,8 @@
             class="attachment-button"
             on:click={openAttachmentModal}
             disabled={!chatId}
-            title="Прикрепить файл"
-            aria-label="Прикрепить файл"
+            title={$_('message_input.attach_file')}
+            aria-label={$_('message_input.attach_file')}
             type="button"
         >
             <Paperclip size={18} />
@@ -287,7 +300,7 @@
         <textarea
             bind:this={inputElement}
             bind:value={inputValue}
-            placeholder={replyToMessage ? "Напишите ответ..." : "Напишите сообщение..."}
+            placeholder={replyToMessage ? $_('message_input.write_reply') : $_('message_input.write_message')}
             on:keydown={handleKeyDown}
             on:input={handleInput}
             class="message-input"
@@ -295,43 +308,41 @@
         ></textarea>
         
 
-        <div class="gif-button-container" bind:this={gifContainerRef}>
+        <div class="gif-button-container">
             <button
+                bind:this={gifButtonRef}
                 class="gif-button"
                 on:click={toggleGifDropdown}
                 disabled={!chatId}
-                title="Выбрать GIF"
-                aria-label="Открыть GIF-панель"
+                title={$_('message_input.select_gif')}
+                aria-label={$_('message_input.open_gif_panel')}
                 type="button"
             >
                 <ImagePlay size={18} />
             </button>
             
             {#if chatId}
-                {#if isMobile}
-                    <GifMenu
-                        chatId={chatId}
-                        isOpen={gifDropdownOpen}
-                        on:close={() => gifDropdownOpen = false}
-                        on:selected={handleGifSelected}
-                    />
-                {:else}
-                    <GifDropdown
-                        chatId={chatId}
-                        isOpen={gifDropdownOpen}
-                        on:close={() => gifDropdownOpen = false}
-                        on:selected={handleGifSelected}
-                    />
-                {/if}
+                <GifPicker
+                    chatId={chatId}
+                    isOpen={gifDropdownOpen}
+                    isMobile={isMobile}
+                    triggerButton={gifButtonRef}
+                    on:close={() => gifDropdownOpen = false}
+                    on:selected={handleGifSelected}
+                />
             {/if}
         </div>
 
         <button 
             class="send-button" 
-            on:click={() => handleSubmit()}
+            on:click={(event) => {
+                event.preventDefault();
+                if (inputElement) inputElement.focus();
+                handleSubmit();
+            }}
             disabled={!inputValue.trim()}
-            title="Отправить (Enter)"
-            aria-label="Отправить сообщение"
+            title={$_('message_input.send_enter')}
+            aria-label={$_('message_input.send_message')}
         >
             <Send size={18} />
         </button>
@@ -536,11 +547,10 @@
         resize: none;
         line-height: 1.4;
         box-sizing: border-box;
-        overflow-y: auto;
+        overflow-y: hidden;
         overflow-x: hidden;
     }
     
-    /* Custom scrollbar styles - only show when needed */
     .message-input::-webkit-scrollbar {
         width: 4px;
     }
@@ -563,7 +573,6 @@
         background: rgba(255, 255, 255, 0.35);
     }
     
-    /* Firefox scrollbar styles */
     .message-input {
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
@@ -605,7 +614,7 @@
     
     .send-button:not(:disabled) {
         background: var(--color-accent);
-        color: var(--color-text);
+        color: var(--color-button-text);
     }
 
     .send-button:disabled {

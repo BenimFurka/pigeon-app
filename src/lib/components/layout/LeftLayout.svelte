@@ -8,30 +8,36 @@
     import { ChatType } from '$lib/types/models';
     import { Settings, Plus } from 'lucide-svelte';
     import { useSearch, type SearchResults } from '$lib/queries/search';
+    import { _ } from 'svelte-i18n';
 
-    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
-    
+    // Props
     export let onOpenSettings: () => void = () => {};
     export let isSettingsOpen: boolean = false;
     export let isMobile: boolean = false;
     export let isVisible: boolean = true;
     export let onOpenCreateChat: (preset?: { chatType?: ChatType; memberIds?: number[] }) => void = () => {};
+    export let selectedChatId: number | null = null;
 
-    let searchQuery = '';
-    let debouncedQuery = '';
-    let selectedChatId: number | null = null;
-    let searchResults: SearchResults | null = null;
-    let searchIsLoading: boolean = false;
-    let searchError: string | null = null;
-    let searchActive: boolean = false;
+    // Event dispatcher
+    const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
+
+    // Stores
     const searchInput = writable('');
     const debouncedSearch = derived(searchInput, ($value, set) => {
         const trimmed = $value.trim();
         const handle = setTimeout(() => set(trimmed), 250);
         return () => clearTimeout(handle);
     }, '');
-    const searchQueryResult = useSearch(debouncedSearch);
 
+    // State
+    let searchQuery = '';
+    let searchResults: SearchResults | null = null;
+    let searchIsLoading: boolean = false;
+    let searchError: string | null = null;
+    let searchActive: boolean = false;
+
+    // Computed values
+    const searchQueryResult = useSearch(debouncedSearch);
     $: layoutVisibleClass = isMobile ? (isVisible ? 'mobile-visible' : 'mobile-hidden') : '';
     $: searchQuery = $searchInput;
     $: debouncedQuery = $debouncedSearch;
@@ -40,9 +46,9 @@
     $: searchIsLoading = searchActive ? Boolean($searchQueryResult?.isFetching) : false;
     $: searchError = searchActive && $searchQueryResult?.error ? String($searchQueryResult.error) : null;
 
+    // Event handlers
     function handleChatSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
-        selectedChatId = chat.id;
         dispatch('select', { chat });
     }
 
@@ -65,7 +71,6 @@
                 last_user: null,
                 other_user: user,
             };
-            selectedChatId = ephemeralChat.id;
             dispatch('select', { chat: ephemeralChat });
             searchQuery = '';
         }
@@ -83,14 +88,14 @@
                 <button
                     class={`settings-button ${isSettingsOpen ? 'active' : ''}`}
                     on:click={handleOpenSettings}
-                    title="Настройки"
-                    aria-label="Настройки"
+                    title={$_('sidebar.settings')}
+                    aria-label={$_('sidebar.settings')}
                 >
                     <Settings size={18} />
                 </button>
             {/if}
             <Input 
-                placeholder="Поиск..."
+                placeholder={$_('sidebar.search_placeholder')}
                 style="width: 100%; margin: 10px; padding: 10px;"
                 bind:value={$searchInput} />
         </div>
@@ -108,7 +113,7 @@
         class="floating-create" 
         class:hidden={!isMobile || searchActive}
         on:click={handleCreateChatClick}
-        aria-label="Создать чат"
+        aria-label={$_('sidebar.create_chat')}
     >
         <Plus size={22} />
     </button>
@@ -184,7 +189,7 @@
         height: 56px;
         border-radius: 50%;
         background-color: var(--color-accent);
-        color: var(--color-text);
+        color: var(--color-button-text);
         border: none;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         cursor: pointer;

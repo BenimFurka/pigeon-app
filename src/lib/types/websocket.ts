@@ -175,6 +175,14 @@ export interface MessageReadMessage {
     };
 }
 
+export interface AllMessagesReadMessage {
+    type: 'all_messages_read';
+    data: {
+        chat_id: number;
+        user_id: number;
+    };
+}
+
 export interface PollCreatedMessage {
     type: 'poll_created';
     data: {
@@ -216,6 +224,7 @@ export type ServerMessage =
     | OnlineListMessage
     | UserTypingMessage
     | MessageReadMessage
+    | AllMessagesReadMessage
     | PollCreatedMessage
     | PollVotedMessage
     | PollClosedMessage;

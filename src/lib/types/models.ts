@@ -71,6 +71,8 @@ export interface ChatPreview {
     last_message: Message | null;
     last_user: UserPublic | null;
     other_user: UserPublic | null;
+    last_read_message_id?: number | null;
+    unread_count?: number;
 }
  
 export interface ChatMember {
@@ -173,6 +175,8 @@ export interface MessageReaction {
     created_at: string;
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'read';
+
 export interface Message {
     id: number;
     chat_id: number;
@@ -184,6 +188,8 @@ export interface Message {
     edited_at: string | null;
     attachments: MessageAttachment[] | null;
     reactions: MessageReaction[] | null;
+    status?: MessageStatus;
+    clientId?: string;
 }
 
 export interface Poll {

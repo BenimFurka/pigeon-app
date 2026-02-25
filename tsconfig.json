@@ -9,6 +9,7 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
+		"module": "preserve",
 		"moduleResolution": "bundler",
 		"verbatimModuleSyntax": false,
 		"types": ["@types/node"]

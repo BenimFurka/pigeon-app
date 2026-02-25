@@ -3,29 +3,35 @@
     import { useProfile } from '$lib/queries/profile';
     import type { UserPublic } from '$lib/types/models';
     import { createEventDispatcher } from 'svelte';
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let userId: number;
     export let role: string | null = null;
     export let statusText: string | null = null;
     export let isOnline: boolean = false;
     export let clickable = true;
     
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         userClick: { user: UserPublic };
     }>();
 
+    // Queries
     const profileQuery = useProfile(userId, { enabled: Boolean(userId) });
 
+    // State
     let profile: UserPublic | null = null;
 
+    // Computed values
     $: profile = $profileQuery?.data || null;
     $: avatarUrl = profile?.avatar_url ?? null;
-    $: displayName = profile?.name || profile?.username || `Пользователь #${userId}`;
+    $: displayName = profile?.name || profile?.username || `${$_('member_list.user')} #${userId}`;
     $: username = profile?.username ? `@${profile.username}` : null;
     
+    // Event handlers
     function handleClick() {
         if (profile) {
-            console.log('MemberListItem clicked:', profile);
             dispatch('userClick', { user: profile });
         }
     }
@@ -43,7 +49,7 @@
         <div class="avatar-wrapper">
             <Avatar {avatarUrl} size="small" />
             {#if isOnline}
-                <span class="online-dot" title="В сети"></span>
+                <span class="online-dot" title={$_('chat_info.online')}></span>
             {/if}
         </div>
         <div class="member-text">

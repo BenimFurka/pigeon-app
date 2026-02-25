@@ -1,4 +1,5 @@
 <script lang="ts">
+    // Props
     export let disabled: boolean = false;
     export let style: string = '';
     export let onClick: (e: MouseEvent) => void = (e) => {};

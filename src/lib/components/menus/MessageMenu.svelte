@@ -1,7 +1,9 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { createEventDispatcher, onMount, tick } from 'svelte';
     import { Reply, Copy, Pencil, Trash2 } from 'lucide-svelte';
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let x: number = 0;
     export let y: number = 0;
     export let isOpen: boolean = false;
@@ -12,15 +14,81 @@
     export let currentUserId: number | null = null;
     export let existingReactions: any[] = [];
 
+    // Event dispatcher
     const dispatch = createEventDispatcher();
-    let menuEl: HTMLDivElement | null = null;
 
+    // Constants
     const quickReactions = ['❤️', '😂', '😮', '😢', '👍'];
 
-    function handleOutsideClick(e: MouseEvent) {
+    // State
+    let menuEl: HTMLDivElement | null = null;
+    let adjustedX = x;
+    let adjustedY = y;
+
+    // Utility functions
+    function adjustPosition() {
         if (!menuEl) return;
+
+        const width = menuEl.offsetWidth;
+        const height = menuEl.offsetHeight;
+
+        let left = x;
+        let top = y;
+
+        if (top + height > window.innerHeight) {
+            top = y - height;
+        }
+        if (top < 0) top = 0;
+
+        if (left + width > window.innerWidth) {
+            left = x - width;
+        }
+        if (left < 0) left = 0;
+
+        adjustedX = left;
+        adjustedY = top;
+    }
+
+    // Event handlers
+    function handleOutsideClick(e: MouseEvent) {
+        if (!menuEl || !isOpen) return;
         if (!menuEl.contains(e.target as Node)) {
+            e.stopPropagation();
             dispatch('close');
+        }
+    }
+
+    function handleContextMenu(e: MouseEvent) {
+        if (!menuEl || !isOpen) return;
+        
+        const target = e.target as Node;
+        if (!menuEl.contains(target)) {
+            const messageElement = (target as Element).closest('[data-message-id]');
+            if (!messageElement || messageElement.getAttribute('data-message-id') !== messageId?.toString()) {
+                e.preventDefault();
+                e.stopPropagation();
+                dispatch('close');
+            }
+        }
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+        if (!menuEl || !isOpen) return;
+        
+        const target = e.target as Node;
+        if (!menuEl.contains(target)) {
+            const messageElement = (target as Element).closest('[data-message-id]');
+            if (!messageElement || messageElement.getAttribute('data-message-id') !== messageId?.toString()) {
+                e.stopPropagation();
+                dispatch('close');
+                
+                if (typeof window !== 'undefined') {
+                    (window as any).__menuJustClosed = true;
+                    setTimeout(() => {
+                        (window as any).__menuJustClosed = false;
+                    }, 200);
+                }
+            }
         }
     }
 
@@ -40,20 +108,34 @@
         dispatch('close');
     }
 
+    // Lifecycle hooks
     onMount(() => {
-        document.addEventListener('click', handleOutsideClick, { capture: true });
-        document.addEventListener('contextmenu', handleOutsideClick, { capture: true });
+        setTimeout(() => {
+            document.addEventListener('click', handleOutsideClick);
+            document.addEventListener('contextmenu', handleContextMenu);
+            document.addEventListener('touchstart', handleTouchStart);
+        }, 100);
+        
+        window.addEventListener('resize', adjustPosition); 
+        
         return () => {
-            document.removeEventListener('click', handleOutsideClick, { capture: true } as any);
-            document.removeEventListener('contextmenu', handleOutsideClick, { capture: true } as any);
+            document.removeEventListener('click', handleOutsideClick);
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('resize', adjustPosition);
         };
     });
+
+    // Reactive statements
+    $: if (isOpen && menuEl) {
+        tick().then(adjustPosition);
+    }
 </script>
 
 {#if isOpen}
-<div class="menu" bind:this={menuEl} style={`left:${x}px; top:${y}px`}>
+<div class="menu" bind:this={menuEl} style={`left: ${adjustedX}px; top: ${adjustedY}px`}>
     <div class="reactions-section">
-        <div class="reactions-title">Реакции</div>
+        <div class="reactions-title">{$_('message_menu.reactions')}</div>
         <div class="reactions-grid">
             {#each quickReactions as emoji}
                 {@const hasReaction = existingReactions.some(r => r.emoji === emoji && r.user_id === currentUserId)}
@@ -61,7 +143,7 @@
                     class="reaction-btn" 
                     class:has-reaction={hasReaction}
                     on:click={() => onReaction(emoji)}
-                    title={hasReaction ? "Удалить реакцию" : "Добавить реакцию"}
+                    title={hasReaction ? $_('message_menu.remove_reaction') : $_('message_menu.add_reaction')}
                 >
                     <span class="reaction-emoji">{emoji}</span>
                 </button>
@@ -73,25 +155,25 @@
     {#if canReply}
     <button class="item" on:click={() => onAction('reply')}>
         <Reply size={16} class="icon" />
-        <span>Ответить</span>
+        <span>{$_('message_menu.reply')}</span>
     </button>
     {/if}
     <button class="item" on:click={() => onAction('copy')}>
         <Copy size={16} class="icon" />
-        <span>Копировать</span>
+        <span>{$_('message_menu.copy')}</span>
     </button>
     {#if canEdit || canDelete}
         <div class="divider"></div>
         {#if canEdit}
         <button class="item edit" on:click={() => onAction('edit')}>
             <Pencil size={16} class="icon" />
-            <span>Редактировать</span>
+            <span>{$_('message_menu.edit')}</span>
         </button>
         {/if}
         {#if canDelete}
         <button class="item danger" on:click={() => onAction('delete')}>
             <Trash2 size={16} class="icon" />
-            <span>Удалить</span>
+            <span>{$_('message_menu.delete')}</span>
         </button>
         {/if}
     {/if}
@@ -101,7 +183,7 @@
 <style>
     .menu {
         position: fixed;
-        z-index: 1000;
+        z-index: 9999;
         background: var(--color-bg-elevated);
         border: none;
         border-radius: var(--radius-sm, 6px);

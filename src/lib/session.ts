@@ -3,6 +3,8 @@ import { loggedIn, refreshTokens, currentUser, shouldRefreshTokens } from '$lib/
 import { typing } from '$lib/stores/typing';
 import { presence } from '$lib/stores/presence';
 import { reactions } from '$lib/stores/reactions';
+import { setReadUpTo, setAllRead } from '$lib/stores/readReceipts';
+import { activeChatId } from '$lib/stores/activeChat';
 import { WSClient } from '$lib/ws-client';
 import type { ServerMessage } from '$lib/types/websocket';
 import type { Message as ChatMessage, ChatPreview } from '$lib/types/models';
@@ -97,7 +99,9 @@ export class Session {
             'reaction_added': this.handleReactionAdded.bind(this),
             'reaction_removed': this.handleReactionRemoved.bind(this),
             'authenticated': this.handleAuthenticated.bind(this),
-            'user_typing': this.handleUserTyping.bind(this)
+            'user_typing': this.handleUserTyping.bind(this),
+            'message_read': this.handleMessageRead.bind(this),
+            'all_messages_read': this.handleAllMessagesRead.bind(this),
         };
 
         if (message.type in messageHandlers && 'data' in message && message.data) {
@@ -119,8 +123,28 @@ export class Session {
 
     private handleNewMessage(data: any): void {
         const chatId = data.message.chat_id as number;
-        this.updateMessageList(chatId, prev => [...prev, data.message]);
-        this.updateChatListWithMessage(chatId, data.message);
+        const serverMsg = data.message as ChatMessage & { status?: string };
+        const myId = get(currentUser);
+        this.updateMessageList(chatId, (prev) => {
+            const optimistic = prev.find(
+                (m) =>
+                    (m as any).status === 'sending' &&
+                    m.sender_id === myId &&
+                    m.content === serverMsg.content &&
+                    (m.reply_to_message_id ?? null) === (serverMsg.reply_to_message_id ?? null)
+            );
+            if (optimistic) {
+                const rest = prev.filter((m) => m !== optimistic);
+                const merged = { ...serverMsg, status: 'sent' as const };
+                return [...rest, merged].sort(
+                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+            }
+            return [...prev, serverMsg].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+        });
+        this.updateChatListWithMessage(chatId, serverMsg);
     }
 
     private handleMessageEdited(data: any): void {
@@ -166,6 +190,20 @@ export class Session {
 
     private handleUserTyping(data: any): void {
         typing.setTyping(data.chat_id, data.user_id, data.is_typing);
+    }
+
+    private handleMessageRead(data: { chat_id: number; message_id: number; reader_id: number }): void {
+        const me = get(currentUser);
+        if (me != null && data.reader_id !== me) {
+            setReadUpTo(data.chat_id, data.message_id);
+        }
+    }
+
+    private handleAllMessagesRead(data: { chat_id: number; user_id: number }): void {
+        const me = get(currentUser);
+        if (me != null && data.user_id !== me) {
+            setAllRead(data.chat_id);
+        }
     }
 
     private updateMessageList(chatId: number, updater: (prev: ChatMessage[]) => ChatMessage[]): void {
@@ -250,11 +288,19 @@ export class Session {
                 }
             }
 
+            const me = get(currentUser);
+            const isFromOther = me != null && (lastMessage as any)?.sender_id !== me;
+            const isActiveChat = Number(chatId) === Number(get(activeChatId));
+            const prevUnread = typeof chats[index].unread_count === 'number' ? chats[index].unread_count : 0;
+            const newUnread = isFromOther && !isActiveChat ? prevUnread + 1 : (isActiveChat ? 0 : prevUnread);
+
             const updatedChat = {
                 ...chats[index],
                 last_message: lastMessage,
                 last_user: resolvedLastUser,
                 updated_at: lastMessage.created_at,
+                unread_count: newUnread,
+                ...(isActiveChat ? { last_read_message_id: (lastMessage as any)?.id ?? chats[index].last_read_message_id } : {}),
             };
 
             chats[index] = updatedChat;
@@ -344,6 +390,35 @@ export class Session {
 
     public getWebSocket(): WSClient | null {
         return this.ws;
+    }
+
+    public addOptimisticMessage(
+        chatId: number,
+        content: string,
+        options?: { reply_to?: number; attachment_ids?: number[] }
+    ): void {
+        const myId = get(currentUser);
+        if (myId == null) return;
+        const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const optimistic: ChatMessage = {
+            id: -Math.abs(tempId.slice(-8).split('').reduce((a, c) => a + c.charCodeAt(0), 0)),
+            chat_id: chatId,
+            sender_id: myId,
+            reply_to_message_id: options?.reply_to ?? null,
+            content,
+            is_edited: false,
+            created_at: new Date().toISOString(),
+            edited_at: null,
+            attachments: options?.attachment_ids?.length ? [] : null,
+            reactions: null,
+            status: 'sending',
+            clientId: tempId,
+        };
+        this.updateMessageList(chatId, (prev) =>
+            [...prev, optimistic].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
+        );
     }
 
     public getAccessToken(): string | null {

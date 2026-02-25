@@ -3,43 +3,51 @@
     import { ChatType, type ChatPreview, type Chat, type ChatMember } from '$lib/types/models';
     import { subscribeToPresence } from '$lib/presence';
     import Avatar from '$lib/components/shared/Avatar.svelte';
-    import ChatInfoModal from '$lib/components/forms/modals/ChatInfoModal.svelte';
-    import EditChatModal from '$lib/components/forms/modals/EditChatModal.svelte';
-    import ManageMembersModal from '$lib/components/forms/modals/ManageMembersModal.svelte';
     import { ArrowLeft } from 'lucide-svelte';
-    import ProfileModal from '$lib/components/forms/modals/ProfileModal.svelte';
+    import { formatLastSeen } from '$lib/datetime';
+    import { _, format } from 'svelte-i18n';
+    import { typing } from '$lib/stores/typing';
+    import { currentUser } from '$lib/stores/auth';
+    
+    // Props
+    export let chatContext: {
+        selectedChat: ChatPreview | null;
+        chat: Chat | null;
+        isCreator: boolean;
+        myMembership: ChatMember | undefined;
+        isMobile: boolean;
+        onUserClick: (event: CustomEvent) => void;
+    };
 
-    export let chatPreview: ChatPreview | null = null;
-    export let chat: Chat | null = null;
-    export let isCreator = false;
-    export let myMembership: ChatMember | undefined;
-
-    $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
-        ? chatPreview.other_user?.avatar_url 
-        : chatPreview?.avatar_url;
-    
-    $: displayName = chatPreview?.chat_type === ChatType.DM
-        ? chatPreview.other_user?.name
-        : chatPreview?.name;
-    
-    
-    export let isMobile: boolean = false;
-    
-    let isOnline = false;
-    let chatStatus: string | null = null;
-    let unsubscribePresence: (() => void) | null = null;
-    
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         back: void;
         search: void;
         menu: void;
         userClick: { user: any };
+        openChatInfo: void;
     }>();
-    
-    let showChatInfo = false;
-    let showEditChat = false;
-    let showManageMembers = false;
-    
+
+    // State
+    let isOnline = false;
+    let chatStatus: string | null = null;
+    let unsubscribePresence: (() => void) | null = null;
+    let typingUsers: number[] = [];
+    let unsubscribeTyping: (() => void) | null = null;
+
+    // Computed values
+    $: chatPreview = chatContext.selectedChat;
+    $: isMobile = chatContext.isMobile;
+    $: avatarUrl = chatPreview?.chat_type === ChatType.DM 
+        ? chatPreview.other_user?.avatar_url 
+        : chatPreview?.avatar_url;
+    $: displayName = chatPreview?.chat_type === ChatType.DM
+        ? chatPreview.other_user?.name
+        : chatPreview?.name;
+    $: chatId = chatPreview?.id > 0 ? Number(chatPreview.id) : null;
+    $: typingStatus = getTypingStatus(typingUsers, chatPreview?.chat_type);
+
+    // Reactive statements
     $: {
         isOnline = false;
         chatStatus = null;
@@ -49,79 +57,85 @@
             unsubscribePresence = null;
         }
         
+        if (unsubscribeTyping) {
+            unsubscribeTyping();
+            unsubscribeTyping = null;
+        }
+        
         if (chatPreview?.chat_type === ChatType.DM && chatPreview.other_user?.id) {
             unsubscribePresence = subscribeToPresence(
                 chatPreview.other_user.id,
-                (online, lastSeen) => {
+                (online, lastSeenAt) => {
                     isOnline = online;
-                    chatStatus = lastSeen;
+                    if (online) {
+                        chatStatus = $_('presence.online');
+                    } else if (lastSeenAt) {
+                        chatStatus = formatLastSeen(lastSeenAt, $format) || $_('presence.offline');
+                    } else {
+                        chatStatus = $_('presence.offline');
+                    }
                 }
             );
         } else if (chatPreview) {
             chatStatus = chatPreview.chat_type === ChatType.GROUP 
-                ? `${chatPreview.member_count} участников` 
-                : `${chatPreview.member_count} подписчиков`;
+                ? `${chatPreview.member_count} ${$_('chat_header.members')}` 
+                : `${chatPreview.member_count} ${$_('chat_header.subscribers')}`;
+        }
+        
+        if (chatId) {
+            unsubscribeTyping = typing.subscribe(($typing) => {
+                const chatState = $typing[chatId];
+                if (chatState) {
+                    const now = Date.now();
+                    const allTypingUsers = Object.entries(chatState)
+                        .filter(([_, timestamp]) => now - timestamp < 15000)
+                        .map(([userId, _]) => Number(userId));
+                    
+                    typingUsers = allTypingUsers.filter(userId => userId !== $currentUser);
+                } else {
+                    typingUsers = [];
+                }
+            });
         }
     }
-    
+
+    // Lifecycle hooks
     onDestroy(() => {
         if (unsubscribePresence) {
             unsubscribePresence();
         }
+        if (unsubscribeTyping) {
+            unsubscribeTyping();
+        }
     });
 
-    function handleBack() {
-        dispatch('back');
+    // Utility functions
+    function getTypingStatus(users: number[], chatType?: string): string | null {
+        if (users.length === 0) return null;
+        
+        if (chatType === ChatType.DM) {
+            return users.length === 1 ? $_('typing.is_typing') : $_('typing.are_typing');
+        } else {
+            if (users.length === 1) {
+                return $_('typing.one_user_typing');
+            } else if (users.length === 2) {
+                return $_('typing.two_users_typing');
+            } else {
+                return $format('typing.many_users_typing', { values: { count: users.length } });
+            }
+        }
     }
-    
+
+    // Event handlers
     function handleOpenChatInfo() {
-        showChatInfo = true;
-    }
-    
-    function handleCloseChatInfo() {
-        showChatInfo = false;
-    }
-    
-    function handleEditChat() {
-        showChatInfo = false;
-        showEditChat = true;
-    }
-    
-    function handleManageMembers() {
-        showChatInfo = false;
-        showManageMembers = true;
-    }
-    
-    function handleCloseEditChat() {
-        showEditChat = false;
-        showChatInfo = true;
-    }
-    
-    function handleCloseManageMembers() {
-        showManageMembers = false;
-        showChatInfo = true;
-    }
-    
-    function handleChatUpdated(updatedChat: any) {
-        chatPreview = { ...chatPreview, ...updatedChat };
-        showEditChat = false;
-        showChatInfo = true;
-    }
-    
-    function handleUserClick(event: CustomEvent) {
-        dispatch('userClick', event.detail);
-    }
-    
-    function handleMessageToUser() {
-        // TODO: navigate to DM or open message inputs
-        console.log('Message to user from profile');
+        dispatch('openChatInfo');
     }
 </script>
 
 <div class="chat-header">
     <div class="header-left">
         {#if isMobile}
-            <button class="back-button" on:click={handleBack} aria-label="Назад к списку чатов">
+            <button class="back-button" on:click={() => dispatch('back')} aria-label={$_('chat_header.back_to_chat_list')}>
                 <ArrowLeft size={18} />
             </button>
         {/if}
@@ -130,12 +144,16 @@
             <div class="avatar-container">
                 <Avatar {avatarUrl} />
                 {#if chatPreview.chat_type === ChatType.DM && isOnline}
-                    <span class="online-dot" title="В сети" />
+                    <span class="online-dot" title={$_('chat_info.online')} />
                 {/if}
             </div> 
             <div class="chat-details">
                 <span class="chat-name">{displayName}</span>
-                {#if chatStatus}
+                {#if typingStatus}
+                    <div class="chat-status typing">
+                        <span class="typing-dots">{typingStatus}</span>
+                    </div>
+                {:else if chatStatus}
                     <div class="chat-status" class:online={isOnline}>
                         {chatStatus}
                     </div>
@@ -146,60 +164,11 @@
     </div>
 </div>
 
-{#if chatPreview && (chat || chatPreview.chat_type === ChatType.DM)}
-    {#if showChatInfo}
-        {#if chatPreview.chat_type === ChatType.DM}
-            {#if chatPreview.other_user}
-                <ProfileModal 
-                    user={chatPreview.other_user}
-                    isOpen={showChatInfo}
-                    on:close={handleCloseChatInfo}
-                    on:message={handleMessageToUser}
-                />
-            {/if}
-        {:else}
-            <ChatInfoModal 
-                chat={chat}
-                chatPreview={chatPreview} 
-                isOpen={showChatInfo} 
-                on:close={handleCloseChatInfo}
-                on:edit={handleEditChat}
-                on:manageMembers={handleManageMembers}
-                on:userClick={handleUserClick}
-            />
-        {/if}
-    {/if}
-
-    {#if showEditChat}
-        <EditChatModal 
-            chat={chatPreview} 
-            isOpen={showEditChat} 
-            isCreator={isCreator}
-            myMembership={myMembership}
-            on:close={handleCloseEditChat}
-            on:save={({ detail }) => handleChatUpdated(detail.chat)}
-            on:back={handleCloseEditChat}
-        />
-    {/if}
-
-    {#if showManageMembers}
-        <ManageMembersModal 
-            chat={chat} 
-            isOpen={showManageMembers} 
-            on:close={handleCloseManageMembers}
-            on:back={handleCloseManageMembers}
-            on:userClick={handleUserClick}
-        />
-    {/if}
-{/if}
-
 <style>
     .chat-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        top: 0;
-        z-index: 10;
     }
     
     .header-left {
@@ -256,6 +225,32 @@
         text-overflow: ellipsis;
     }
     
+    .chat-status.typing {
+        color: var(--color-accent);
+        font-style: italic;
+        font-size: 0.75rem;
+        opacity: 0.8;
+        animation: fadeInOut 1.5s ease-in-out infinite;
+    }
+    
+    .typing-dots::after {
+        content: '';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    
+    @keyframes fadeInOut {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
+    
+    @keyframes dots {
+        0% { content: ''; }
+        25% { content: '.'; }
+        50% { content: '..'; }
+        75% { content: '...'; }
+        100% { content: ''; }
+    }
+    
     .chat-status.online {
         color: var(--color-online);
     }
@@ -269,14 +264,14 @@
         border: none;
         border-radius: var(--radius-sm);
         background: transparent;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--color-text);
         cursor: pointer;
         transition: var(--transition);
     }
 
     .back-button:hover {
         background: var(--surface-glass);
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--color-text);
     }
 
     @media (min-width: 768px) {

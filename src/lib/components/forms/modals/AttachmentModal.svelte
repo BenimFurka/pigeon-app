@@ -1,3 +1,4 @@
+<!-- TODO: Paste -->
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { uploadAttachment } from '$lib/api';
@@ -5,34 +6,36 @@
     import { X, Upload, Image, Video, Music, FileText } from 'lucide-svelte';
     import Button from '$lib/components/shared/Button.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
+    import { _, format } from 'svelte-i18n';
+    import { getServerUrl } from '$lib/config';
 
+    // Props
     export let chatId: number;
     export let isOpen: boolean = false;
     export let isMobile: boolean = false;
 
+    // Constants
+    const MAX_FILE_SIZE = 8 * 1024 * 1024;
+
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
         sent: { content: string; attachmentIds: number[] };
     }>();
 
+    // State
     let files: File[] = [];
     let uploadedAttachments: ChatAttachment[] = [];
     let uploadingFiles = new Set<number>();
     let messageContent = '';
-    let inputElement: HTMLTextAreaElement;
-
-    function adjustTextareaHeight() {
-        if (!inputElement) return;
-        inputElement.style.height = 'auto';
-        const maxHeight = 200;
-        const newHeight = Math.min(Math.max(inputElement.scrollHeight, 40), maxHeight);
-        inputElement.style.height = `${newHeight}px`
-    }
-    
     let isDragging = false;
-    let fileInput: HTMLInputElement;
     let error: string | null = null;
 
+    // DOM refs
+    let inputElement: HTMLTextAreaElement;
+    let fileInput: HTMLInputElement;
+
+    // Event handlers
     function handleClose() {
         if (uploadingFiles.size === 0) {
             resetState();
@@ -45,46 +48,6 @@
         if (target.files) {
             addFiles(Array.from(target.files));
         }
-    }
-
-    function addFiles(newFiles: File[]) {
-        const MAX_FILE_SIZE = 8 * 1024 * 1024;
-        const validFiles = newFiles.filter(file => {
-            if (file.size > MAX_FILE_SIZE) {
-                error = `Файл "${file.name}" слишком большой (максимум 8MB)`;
-                return false;
-            }
-            return true;
-        });
-        files = [...files, ...validFiles];
-        error = null;
-        
-        validFiles.forEach((file, index) => {
-            uploadFile(file, files.length - validFiles.length + index);
-        });
-    }
-
-    async function uploadFile(file: File, index: number) {
-        uploadingFiles.add(index);
-        error = null;
-        
-        try {
-            const response = await uploadAttachment(chatId, file);
-            if (response.data) {
-                uploadedAttachments = [...uploadedAttachments, response.data];
-            }
-        } catch (err) {
-            error = err instanceof Error ? err.message : 'Ошибка загрузки файла';
-            files = files.filter((_, i) => i !== index);
-        } finally {
-            uploadingFiles.delete(index);
-        }
-    }
-
-    function removeAttachment(index: number) {
-        uploadedAttachments = uploadedAttachments.filter((_, i) => i !== index);
-        files = files.filter((_, i) => i !== index);
-        uploadingFiles.delete(index);
     }
 
     function handleDragOver(event: DragEvent) {
@@ -114,12 +77,12 @@
 
     function handleSend() {
         if (uploadedAttachments.length === 0 && !messageContent.trim()) {
-            error = 'Добавьте файлы или введите сообщение';
+            error = $_('attachments.add_files_or_message');
             return;
         }
 
         if (uploadingFiles.size > 0) {
-            error = 'Дождитесь завершения загрузки файлов';
+            error = $_('attachments.wait_for_upload');
             return;
         }
 
@@ -131,6 +94,54 @@
 
         resetState();
         dispatch('close');
+    }
+
+    // Utility functions
+    function adjustTextareaHeight() {
+        if (!inputElement) return;
+        inputElement.style.height = 'auto';
+        const maxHeight = 200;
+        const newHeight = Math.min(Math.max(inputElement.scrollHeight, 40), maxHeight);
+        inputElement.style.height = `${newHeight}px`;
+    }
+
+    function addFiles(newFiles: File[]) {
+        const validFiles = newFiles.filter(file => {
+            if (file.size > MAX_FILE_SIZE) {
+                error = $format('attachments.file_too_large', { values: { fileName: file.name, maxSize: '8MB' } });
+                return false;
+            }
+            return true;
+        });
+        files = [...files, ...validFiles];
+        error = null;
+        
+        validFiles.forEach((file, index) => {
+            uploadFile(file, files.length - validFiles.length + index);
+        });
+    }
+
+    async function uploadFile(file: File, index: number) {
+        uploadingFiles.add(index);
+        error = null;
+        
+        try {
+            const response = await uploadAttachment(chatId, file);
+            if (response.data) {
+                uploadedAttachments = [...uploadedAttachments, response.data];
+            }
+        } catch (err) {
+            error = $_('attachments.upload_error');
+            files = files.filter((_, i) => i !== index);
+        } finally {
+            uploadingFiles.delete(index);
+        }
+    }
+
+    function removeAttachment(index: number) {
+        uploadedAttachments = uploadedAttachments.filter((_, i) => i !== index);
+        files = files.filter((_, i) => i !== index);
+        uploadingFiles.delete(index);
     }
 
     function resetState() {
@@ -149,15 +160,21 @@
     }
 
     function formatFileSize(bytes: number): string {
-        if (bytes < 1024) return `${bytes} Б`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+        if (bytes < 1024) return `${bytes} ${$_('attachment_item.bytes')}`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${$_('attachment_item.kb')}`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} ${$_('attachment_item.mb')}`;
+    }
+    
+    function getUrl(path: string): string {
+        const baseUrl = getServerUrl();
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+        return `${baseUrl}/${cleanPath}`;
     }
 </script>
 
 <Modal
     open={isOpen}
-    title="Отправить вложения"
+    title={$_('attachments.send_attachments')}
     showClose={true}
     maxWidth="600px"
     disabled={uploadingFiles.size > 0}
@@ -183,20 +200,20 @@
                 style="display: none;"
             />
             <Upload size={32} />
-            <p>Перетащите файлы сюда или</p>
+            <p>{$_('attachments.drag_files_or')}</p>
             <button
                 type="button"
                 class="select-files-button"
                 on:click={() => fileInput?.click()}
             >
-                Выбрать файлы
+                {$_('attachments.select_files')}
             </button>
-            <p class="hint">Максимальный размер файла: 8MB</p>
+            <p class="hint">{$format('attachments.max_file_size', { values: { size: '8MB' } })}</p>
         </div>
 
         {#if uploadedAttachments.length > 0 || uploadingFiles.size > 0}
             <div class="attachments-list">
-                <h3>Вложения ({uploadedAttachments.length})</h3>
+                <h3>{$format('attachments.attachments_count', { values: { count: uploadedAttachments.length } })}</h3>
                 <div class="attachments-grid">
                     {#each files as file, index}
                         {@const isUploading = uploadingFiles.has(index)}
@@ -206,7 +223,7 @@
                                 {@const Icon = getFileIcon(attachment.mime_type)}
                                 <div class="attachment-preview">
                                     {#if attachment.thumbnail_url}
-                                        <img src={attachment.thumbnail_url} alt={attachment.file_name} />
+                                        <img src={getUrl(attachment.thumbnail_url)} alt={attachment.file_name} />
                                     {:else}
                                         <Icon size={24} />
                                     {/if}
@@ -221,7 +238,7 @@
                                     type="button"
                                     class="remove-button"
                                     on:click={() => removeAttachment(index)}
-                                    aria-label="Удалить"
+                                    aria-label={$_('common.remove')}
                                 >
                                     <X size={16} />
                                 </button>
@@ -231,7 +248,7 @@
                                 </div>
                                 <div class="attachment-info">
                                     <div class="attachment-name">{file.name}</div>
-                                    <div class="attachment-meta">Загрузка...</div>
+                                    <div class="attachment-meta">{$_('common.uploading')}...</div>
                                 </div>
                             {/if}
                         </div>
@@ -246,7 +263,7 @@
                 bind:value={messageContent}
                 on:input={adjustTextareaHeight}
                 bind:this={inputElement}
-                placeholder="Добавьте текст к сообщению..."
+                placeholder={$_('attachments.add_message_text')}
                 class="message-textarea"
                 rows="3"
             ></textarea>
@@ -259,13 +276,13 @@
             variant="outline"
             disabled={uploadingFiles.size > 0}
         >
-            Отмена
+            {$_('common.cancel')}
         </Button>
         <Button
             on:click={handleSend}
             disabled={uploadingFiles.size > 0 || (uploadedAttachments.length === 0 && !messageContent.trim())}
         >
-            Отправить
+            {$_('common.send')}
         </Button>
     </div>
 </Modal>
@@ -296,16 +313,6 @@
         transition: all 0.2s;
         cursor: pointer;
         background: var(--color-bg-elevated);
-    }
-
-    .file-upload-area:hover {
-        border-color: var(--color-accent);
-        background: rgba(var(--color-accent-rgb, 100, 100, 255), 0.05);
-    }
-
-    .file-upload-area.dragging {
-        border-color: var(--color-accent);
-        background: rgba(var(--color-accent-rgb, 100, 100, 255), 0.1);
     }
 
     .file-upload-area p {

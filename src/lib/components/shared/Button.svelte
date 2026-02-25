@@ -1,16 +1,25 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher } from 'svelte';
 	
-	export let disabled: boolean = false;
-	export let style: string = '';
-	export let type: 'button' | 'reset' | 'submit' | null | undefined = 'button';
-	export let variant: 'primary' | 'outline' | 'ghost' | 'danger' | 'text' = 'primary';
-	export let size: 'small' | 'medium' | 'icon' | 'large' = 'medium';
-	export let fullWidth: boolean = false;
-	export let className: string = '';
-	export let ariaLabel: string | undefined = undefined;
+    // Props
+    export let disabled: boolean = false;
+    export let style: string = '';
+    export let type: 'button' | 'reset' | 'submit' | null | undefined = 'button';
+    export let variant: 'primary' | 'outline' | 'ghost' | 'danger' | 'text' = 'primary';
+    export let size: 'small' | 'medium' | 'icon' | 'large' = 'medium';
+    export let fullWidth: boolean = false;
+    export let className: string = '';
+    export let ariaLabel: string | undefined = undefined;
 
-	const dispatch = createEventDispatcher();
+    // Event dispatcher
+    const dispatch = createEventDispatcher();
+
+    // Event handlers
+    function handleClick(event: MouseEvent) {
+        if (!disabled) {
+            dispatch('click', event);
+        }
+    }
 </script>
 
 <button
@@ -19,11 +28,7 @@
 	style={style}
 	aria-label={ariaLabel}
 	class={`btn ${variant} ${size} ${fullWidth ? 'full' : ''} ${className}`.trim()}
-	on:click={(e) => {
-		if (!disabled) {
-			dispatch('click', e);
-		}
-	}}
+	on:click={handleClick}
 >
 	<slot></slot>
 </button>

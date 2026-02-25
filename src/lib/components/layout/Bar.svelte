@@ -1,6 +1,7 @@
 <script lang="ts">
-	export let noCenter: boolean = false;
-	export let style: string = '';
+    // Props
+    export let noCenter: boolean = false;
+    export let style: string = '';
 </script>
 
 <div 
@@ -24,6 +25,9 @@
         height: 45px;
         align-items: center;
         justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
     }
 
     .bar.no-center {

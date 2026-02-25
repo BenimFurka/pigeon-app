@@ -7,25 +7,23 @@
     import { writable, derived } from 'svelte/store';
     import { useSearch } from '$lib/queries/search';
     import Modal from '$lib/components/overlays/Modal.svelte';
-    
+    import { _ } from 'svelte-i18n';
+
+    // Props
     export let isOpen = false;
     export let initialChatType: ChatType = ChatType.GROUP;
     export let initialName: string = '';
     export let initialDescription: string = '';
     export let initialMemberIds: number[] = [];
 
+    // Event dispatcher
     const dispatch = createEventDispatcher<{ 
         created: { chat: ChatPreview };
         close: void;
     }>();
 
-    let chatType: ChatType = initialChatType;
-    let name = initialName;
-    let description = initialDescription;
-    let isPublic = chatType !== ChatType.DM;
-    let membersInput = initialMemberIds.join(', ');
-    let selectedUsers: UserPublic[] = [];
-
+    // Queries and stores
+    const createChat = useCreateChat();
     const memberSearch = writable('');
     const debouncedMemberSearch = derived(memberSearch, ($value, set) => {
         const handle = setTimeout(() => set($value.trim()), 250);
@@ -33,76 +31,28 @@
     }, '');
     const memberSearchQuery = useSearch(debouncedMemberSearch, { scope: 'users', limit: 5 });
 
+    // State
+    let chatType: ChatType = initialChatType;
+    let name = initialName;
+    let description = initialDescription;
+    let isPublic = chatType !== ChatType.DM;
+    let membersInput = initialMemberIds.join(', ');
+    let selectedUsers: UserPublic[] = [];
+
+    // Reactive statements
     $: if (chatType === ChatType.DM) {
         isPublic = false;
     }
-
-    $: fields = getFormFields();
     
-    function getFormFields(): InputItem[] {
-        const baseFields: InputItem[] = [
-            {
-                id: 'chat-type',
-                label: 'Тип чата',
-                type: 'select',
-                value: chatType,
-                options: [
-                    { value: ChatType.DM, label: 'Личный' },
-                    { value: ChatType.GROUP, label: 'Группа' },
-                    { value: ChatType.CHANNEL, label: 'Канал' }
-                ]
-            }
-        ];
-
-        if (chatType !== ChatType.DM) {
-            baseFields.push(
-                {
-                    id: 'chat-name',
-                    label: 'Название',
-                    type: 'text',
-                    placeholder: 'Введите название',
-                    value: name,
-                    required: true
-                },
-                {
-                    id: 'chat-description',
-                    label: 'Описание',
-                    type: 'text',
-                    placeholder: 'Краткое описание (необязательно)',
-                    value: description
-                },
-                {
-                    id: 'chat-public',
-                    label: 'Публичный',
-                    type: 'checkbox',
-                    checked: isPublic
-                }
-            );
-        }
-
-        return baseFields;
-    }
-
+    $: fields = getFormFields();
     $: isFormActive = !$createChat.isPending;
 
-    const createChat = useCreateChat();
-
-    function parseMemberIds(input: string): number[] {
-        return input
-            .split(',')
-            .map((segment) => Number(segment.trim()))
-            .filter((id) => !Number.isNaN(id) && id > 0);
-    }
-
-    function addUser(user: UserPublic) {
-        if (!user?.id) return;
-        if (selectedUsers.some((u) => u.id === user.id)) return;
-        selectedUsers = [...selectedUsers, user];
-        memberSearch.set('');
-    }
-
-    function removeUser(id: number) {
-        selectedUsers = selectedUsers.filter((u) => u.id !== id);
+    // Event handlers
+    function handleChatTypeChange(event: Event) {
+        const target = event.target as HTMLSelectElement;
+        chatType = target.value as ChatType;
+        
+        fields = getFormFields();
     }
 
     async function handleFormSubmit(event: SubmitEvent) {
@@ -124,12 +74,12 @@
         const combinedMemberIds = Array.from(new Set([...memberIds, ...selectedUsers.map((u) => u.id)]));
 
         if (chatType === ChatType.DM && combinedMemberIds.length !== 1) {
-            alert('Укажите одного пользователя для личного чата');
+            alert($_('create_chat.specify_one_user'));
             return;
         }
 
         if (chatType !== ChatType.DM && name.trim().length === 0) {
-            alert('Введите название чата');
+            alert($_('create_chat.enter_chat_name'));
             return;
         }
 
@@ -161,29 +111,93 @@
             console.error(error);
         }
     }
+
+    // Utility functions
+    function getFormFields(): InputItem[] {
+        const baseFields: InputItem[] = [
+            {
+                id: 'chat-type',
+                label: $_('create_chat.chat_type'),
+                type: 'select',
+                value: chatType,
+                onChange: handleChatTypeChange,
+                options: [
+                    { value: ChatType.DM, label: $_('create_chat.type_dm') },
+                    { value: ChatType.GROUP, label: $_('create_chat.type_group') },
+                    { value: ChatType.CHANNEL, label: $_('create_chat.type_channel') }
+                ]
+            }
+        ];
+
+        if (chatType !== ChatType.DM) {
+            baseFields.push(
+                {
+                    id: 'chat-name',
+                    label: $_('create_chat.name'),
+                    type: 'text',
+                    placeholder: $_('create_chat.name_placeholder'),
+                    value: name,
+                    required: true
+                },
+                {
+                    id: 'chat-description',
+                    label: $_('create_chat.description'),
+                    type: 'text',
+                    placeholder: $_('create_chat.description_placeholder'),
+                    value: description
+                },
+                {
+                    id: 'chat-public',
+                    label: $_('create_chat.public'),
+                    type: 'checkbox',
+                    checked: isPublic
+                }
+            );
+        }
+
+        return baseFields;
+    }
+
+    function parseMemberIds(input: string): number[] {
+        return input
+            .split(',')
+            .map((segment) => Number(segment.trim()))
+            .filter((id) => !Number.isNaN(id) && id > 0);
+    }
+
+    function addUser(user: UserPublic) {
+        if (!user?.id) return;
+        if (selectedUsers.some((u) => u.id === user.id)) return;
+        selectedUsers = [...selectedUsers, user];
+        memberSearch.set('');
+    }
+
+    function removeUser(id: number) {
+        selectedUsers = selectedUsers.filter((u) => u.id !== id);
+    }
 </script>
 
-<Modal open={isOpen} title="Создать чат" on:close={() => dispatch('close')} zIndex={1200}>
+<Modal open={isOpen} title={$_('create_chat.create_chat')} on:close={() => dispatch('close')} zIndex={1200}>
     <Form
-        submit={$createChat.isPending ? 'Создание...' : 'Создать чат'}
+        submit={$createChat.isPending ? $_('create_chat.creating') : $_('create_chat.create_chat')}
         fields={fields}
         onSubmit={handleFormSubmit}
         active={isFormActive}
     >
         <svelte:fragment slot="additional-content">
             <div class="member-select">
-                <label for="member-search">Добавить участника</label>
+                <label for="member-search">{$_('create_chat.add_member')}</label>
                 <input
                     type="text"
-                    placeholder="Введите имя пользователя"
+                    placeholder={$_('create_chat.search_user_placeholder')}
                     bind:value={$memberSearch}
                     id="member-search"
                     class="member-search"
                 />
                 {#if $memberSearchQuery.isFetching}
-                    <div class="hint">Поиск...</div>
+                    <div class="hint">{$_('common.searching')}...</div>
                 {:else if $memberSearchQuery.error}
-                    <div class="hint error">Ошибка поиска: {String($memberSearchQuery.error)}</div>
+                    <div class="hint error">{$_('create_chat.search_error')}: {String($memberSearchQuery.error)}</div>
                 {:else if $memberSearchQuery.data?.users?.length}
                     <div class="search-results">
                         {#each $memberSearchQuery.data.users as user (user.id)}
@@ -198,7 +212,7 @@
                         {/each}
                     </div>
                 {:else if $memberSearch.trim().length >= 2}
-                    <div class="hint muted">Не найдено</div>
+                    <div class="hint muted">{$_('common.not_found')}</div>
                 {/if}
 
                 {#if selectedUsers.length}
@@ -206,7 +220,7 @@
                         {#each selectedUsers as user (user.id)}
                             <span class="chip">
                                 {user.name || user.username}
-                                <button type="button" on:click={() => removeUser(user.id)} aria-label="Убрать">×</button>
+                                <button type="button" on:click={() => removeUser(user.id)} aria-label={$_('common.remove')}>×</button>
                             </span>
                         {/each}
                     </div>

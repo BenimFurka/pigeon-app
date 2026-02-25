@@ -54,6 +54,8 @@ pigeon-app/
 │   │   │   │   └── modals/ # Modal components
 │   │   │   ├── layout/    # Layout components
 │   │   │   ├── media/     # Media-related components
+│   │   │   ├── menus/     # Menu components
+│   │   │   ├── icons/     # Icon components
 │   │   │   ├── navigation/ # Navigation components
 │   │   │   ├── overlays/  # Overlay components
 │   │   │   └── shared/    # Shared components
@@ -85,6 +87,7 @@ pigeon-app/
 ├── package.json           # Node.js dependencies
 ├── svelte.config.js       # Svelte configuration
 ├── tsconfig.json          # TypeScript configuration
+├── pwa-assets.config.ts   # PWA assets configuration
 └── vite.config.ts         # Vite configuration
 ```
 
@@ -148,7 +151,7 @@ The application uses a configuration system that can be customized:
 - **WebSocket Settings**: Reconnection delay and other WebSocket options
 - **App Settings**: Default language and version
 
-Configuration is stored in [src/config.ts](src/config.ts) and can be persisted to localStorage.
+Configuration is stored in [src/lib/config.ts](src/lib/config.ts) and can be persisted to localStorage.
 
 ## Development Scripts
 

@@ -15,50 +15,81 @@
     import MemberListItem from '$lib/components/shared/MemberListItem.svelte';
     import { formatLastSeen } from '$lib/datetime';
     import type { UserPublic } from '$lib/types/models';
+    import { _, format } from 'svelte-i18n';
 
+    // Props
     export let chat: Chat;
     export let isOpen = false;
-    
+
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
         back: void;
         userClick: { user: UserPublic };
     }>();
 
+    // Queries and stores
     const queryClient = useQueryClient();
     const presenceStore = { subscribe: presence.subscribe };
-    
-    let searchQuery = '';
-    let selectedUsers: any[] = [];
-    let isSubmitting = false;
-    let error: string | null = null;
-    
-    $: members = chat?.members || [];
     const currentUserQuery = useCurrentProfile();
-    $: currentUser = $currentUserQuery?.data || null;
-    $: myMembership = currentUser ? members.find(m => m.user_id === currentUser.id) : null;
-    $: canManageMembers = Boolean(myMembership?.can_manage_members || chat?.owner_id === currentUser?.id);
-
-    let presenceState: Record<number, PresenceRecord> = {};
-    $: presenceState = $presenceStore ?? {};
-
-    function getPresenceRecord(userId: number) {
-        return presenceState?.[userId];
-    }
-
-    function getStatusText(userId: number) {
-        const record = getPresenceRecord(userId);
-        if (record?.online) {
-            return 'в сети';
-        }
-        return formatLastSeen(record?.lastSeenAt) ?? 'не в сети';
-    }
-
     const searchQueryStore = writable('');
     const searchResults = useSearch(searchQueryStore, {
         scope: 'users',
     });
+
+    // Mutations
+    const addMembersMutation = createMutation({
+        mutationFn: async (userIds: number[]) => {
+            const { makeRequest } = await import('$lib/api');
+            const promises = userIds.map(userId =>
+                makeRequest(`/chats/${chat.id}/members`, { data: { user_id: userId } }, true, 'POST')
+            );
+            const responses = await Promise.all(promises);
+            if (responses.some(res => res.error)) throw new Error($_('manage_members.add_members_error'));
+            return responses.map(res => res.data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+            selectedUsers = [];
+        },
+        onError: (e: any) => {
+            error = e?.message || $_('manage_members.add_members_error');
+        },
+        onSettled: () => {
+            isSubmitting = false;
+        }
+    });
+
+    const removeMemberMutation = createMutation({
+        mutationFn: async (userId: number) => {
+            const { makeRequest } = await import('$lib/api');
+            const res = await makeRequest(`/chats/${chat.id}/members/${userId}`, null, true, 'DELETE');
+            if ((res as any).error) throw new Error((res as any).error.message || $_('manage_members.remove_member_error'));
+            return true;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
+            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+        },
+        onError: (e: any) => {
+            error = e?.message || $_('manage_members.remove_member_error');
+        }
+    });
+
+    // State
+    let searchQuery = '';
+    let selectedUsers: any[] = [];
+    let isSubmitting = false;
+    let error: string | null = null;
+    let presenceState: Record<number, PresenceRecord> = {};
     
+    // Reactive statements
+    $: members = chat?.members || [];
+    $: currentUser = $currentUserQuery?.data || null;
+    $: myMembership = currentUser ? members.find(m => m.user_id === currentUser.id) : null;
+    $: canManageMembers = Boolean(myMembership?.can_manage_members || chat?.owner_id === currentUser?.id);
+    $: presenceState = $presenceStore ?? {};
     $: filteredSearchResults = ($searchResults.data?.users || []).filter((user: any) => 
         !members.some((m: any) => m.user_id === user.id)
     );
@@ -66,7 +97,8 @@
     $: if (searchQuery.trim().length >= 2) {
         searchQueryStore.set(searchQuery);
     }
-    
+
+    // Event handlers
     function handleClose() {
         if (!isSubmitting) {
             searchQuery = '';
@@ -94,29 +126,6 @@
         }
     }
     
-    const addMembersMutation = createMutation({
-        mutationFn: async (userIds: number[]) => {
-            const { makeRequest } = await import('$lib/api');
-            const promises = userIds.map(userId =>
-                makeRequest(`/chats/${chat.id}/members`, { data: { user_id: userId } }, true, 'POST')
-            );
-            const responses = await Promise.all(promises);
-            if (responses.some(res => res.error)) throw new Error('Не удалось добавить участников');
-            return responses.map(res => res.data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
-            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
-            selectedUsers = [];
-        },
-        onError: (e: any) => {
-            error = e?.message || 'Ошибка добавления участников';
-        },
-        onSettled: () => {
-            isSubmitting = false;
-        }
-    });
-
     function handleAddSelected() {
         if (!canManageMembers || selectedUsers.length === 0) return;
         error = null;
@@ -124,22 +133,6 @@
         const ids = selectedUsers.map(u => u.id);
         $addMembersMutation.mutate(ids);
     }
-
-    const removeMemberMutation = createMutation({
-        mutationFn: async (userId: number) => {
-            const { makeRequest } = await import('$lib/api');
-            const res = await makeRequest(`/chats/${chat.id}/members/${userId}`, null, true, 'DELETE');
-            if ((res as any).error) throw new Error((res as any).error.message || 'Не удалось удалить участника');
-            return true;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
-            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
-        },
-        onError: (e: any) => {
-            error = e?.message || 'Ошибка удаления участника';
-        }
-    });
 
     function handleRemoveMember(userId: number) {
         if (!canManageMembers || userId === chat.owner_id) return;
@@ -150,11 +143,24 @@
     function handleUserClick(event: CustomEvent) {
         dispatch('userClick', event.detail);
     }
+
+    // Utility functions
+    function getPresenceRecord(userId: number) {
+        return presenceState?.[userId];
+    }
+
+    function getStatusText(userId: number) {
+        const record = getPresenceRecord(userId);
+        if (record?.online) {
+            return $_('chat_info.online');
+        }
+        return formatLastSeen(record?.lastSeenAt, $format) ?? $_('chat_info.offline');
+    }
 </script>
 
 <Modal
     open={isOpen}
-    title="Управление участниками"
+    title={$_('manage_members.manage_members')}
     showBack={true}
     maxWidth="500px"
     disabled={isSubmitting}
@@ -163,23 +169,23 @@
 >
     <div class="content">
         <div class="search-section">
-            <h3>Добавить участников</h3>
+            <h3>{$_('manage_members.add_members')}</h3>
             <div class="search-box">
                 <Input
                     type="text"
                     bind:value={searchQuery}
-                    placeholder="Найти пользователей..."
+                    placeholder={$_('manage_members.search_users_placeholder')}
                     disabled={isSubmitting}
                 />
             </div>
             {#if selectedUsers.length > 0}
                 <Button on:click={handleAddSelected} disabled={!canManageMembers || isSubmitting}>
-                    Добавить выбранных ({selectedUsers.length})
+                    {$_('manage_members.add_selected')} ({selectedUsers.length})
                 </Button>
             {/if}
             
             {#if $searchResults.isLoading}
-                <div class="loading">Поиск...</div>
+                <div class="loading">{$_('common.searching')}...</div>
             {:else if filteredSearchResults.length > 0}
                 <div class="search-results">
                     {#each filteredSearchResults as user (user.id)}
@@ -197,17 +203,17 @@
                 </div>
             {:else if searchQuery && !isSubmitting}
                 <div class="no-results">
-                    Пользователи не найдены
+                    {$_('manage_members.no_users_found')}
                 </div>
             {/if}
         </div>
         
         <div class="members-section">
-            <h3>Участники ({members?.length || 0})</h3>
+            <h3>{$_('manage_members.members')} ({members?.length || 0})</h3>
             
             {#if members.length === 0}
                 <div class="no-members">
-                    В этом чате пока нет участников
+                    {$_('manage_members.no_members')}
                 </div>
             {:else}
                 <div class="members-list">
@@ -248,7 +254,7 @@
     
     <div slot="footer">
         <Button on:click={handleClose} variant="outline" fullWidth disabled={isSubmitting}>
-            Готово
+            {$_('common.done')}
         </Button>
     </div>
 </Modal>
@@ -319,12 +325,11 @@
     .members-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        border: 1px solid var(--color-border);
+        gap: 0;
         border-radius: 12px;
-        padding: 14px;
+        background-color: var(--color-bg-elevated);
+        padding: 0;
         overflow: hidden;
-        border: 1px solid var(--color-border);
     }
     
     .error-message {

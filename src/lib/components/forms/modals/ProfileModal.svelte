@@ -7,38 +7,43 @@
     import { useCurrentProfile } from '$lib/queries/profile';
     import { presence } from '$lib/stores/presence';
     import type { UserPublic } from '$lib/types/models';
+    import { _, format } from 'svelte-i18n';
 
+    // Props
     export let user: UserPublic;
     export let isOpen = false;
-    
+
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
         message: void;
     }>();
 
+    // Queries and stores
     const currentUserQuery = useCurrentProfile();
-    $: currentUser = $currentUserQuery?.data || null;
-    
     const presenceStore = presence;
-    $: presenceState = $presenceStore ?? {};
-    
+
+    // State
     let isOnline = false;
     let lastSeenText: string | null = null;
-    
-    function getPresenceRecord(userId: number) {
-        return presenceState[userId];
-    }
-    
+
+    // Computed values
+    $: currentUser = $currentUserQuery?.data || null;
+    $: presenceState = $presenceStore ?? {};
+    $: isCurrentUser = currentUser?.id === user?.id;
+
+    // Reactive statements
     $: if (user?.id) {
         const record = getPresenceRecord(user.id);
         isOnline = Boolean(record?.online);
         const lastSeenAt = record?.lastSeenAt || user.last_seen_at;
-        lastSeenText = isOnline ? 'В сети' : (lastSeenAt ? formatLastSeen(lastSeenAt) : null);
+        lastSeenText = isOnline ? $_('chat_info.online') : (lastSeenAt ? formatLastSeen(lastSeenAt, $format) : null);
     } else {
         isOnline = false;
         lastSeenText = null;
     }
     
+    // Event handlers
     function handleClose() {
         dispatch('close');
     }
@@ -46,13 +51,16 @@
     function handleMessageClick() {
         dispatch('message');
     }
-    
-    $: isCurrentUser = currentUser?.id === user?.id;
+
+    // Utility functions
+    function getPresenceRecord(userId: number) {
+        return presenceState[userId];
+    }
 </script>
 
 <Modal
     open={isOpen}
-    title="Профиль пользователя"
+    title={$_('profile_modal.user_profile')}
     showBack={false}
     maxWidth="500px"
     zIndex={149201}
@@ -62,7 +70,7 @@
         <div class="user-avatar-container">
             <Avatar avatarUrl={user.avatar_url} size="xlarge" />
             {#if isOnline}
-                <span class="online-dot" title="В сети" />
+                <span class="online-dot" title={$_('chat_info.online')} />
             {/if}
         </div>
         
@@ -78,7 +86,7 @@
             
             {#if user.bio}
                 <div class="bio">
-                    <h4>О себе</h4>
+                    <h4>{$_('chat_info.about')}</h4>
                     <p>{user.bio}</p>
                 </div>
             {/if}
@@ -89,7 +97,7 @@
         {#if !isCurrentUser}
             <div class="footer-field"> 
                 <Button variant="outline" fullWidth on:click={handleMessageClick}>
-                    Написать
+                    {$_('profile_modal.send_message')}
                 </Button>
             </div>
         {/if}

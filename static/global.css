@@ -10,3 +10,91 @@ body {
 	box-sizing: border-box;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
+
+/* Highlight.js base styles for code blocks */
+.hljs {
+	background: transparent !important;
+	color: #f8f8f2;
+	padding: 0 !important;
+	border-radius: 0 !important;
+	border: none !important;
+}
+
+.hljs-comment,
+.hljs-quote {
+	color: #6272a4;
+	font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+	color: #ff79c6;
+	font-weight: bold;
+}
+
+.hljs-string,
+.hljs-doctag {
+	color: #f1fa8c;
+}
+
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name {
+	color: #bd93f9;
+}
+
+.hljs-function,
+.hljs-title {
+	color: #50fa7b;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title {
+	color: #8be9fd;
+}
+
+.hljs-type,
+.hljs-tag {
+	color: #ff79c6;
+}
+
+.hljs-attribute {
+	color: #50fa7b;
+}
+
+.hljs-regexp,
+.hljs-link {
+	color: #f1fa8c;
+}
+
+.hljs-symbol,
+.hljs-bullet {
+	color: #bd93f9;
+}
+
+.hljs-meta,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+	color: #ffb86c;
+}
+
+.hljs-deletion {
+	background: #ff5555;
+	color: #f8f8f2;
+}
+
+.hljs-addition {
+	background: #50fa7b;
+	color: #f8f8f2;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}

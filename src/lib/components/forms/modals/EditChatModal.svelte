@@ -9,43 +9,26 @@
     import { makeRequest } from '$lib/api';
     import { chatKeys, useUploadChatAvatar } from '$lib/queries/chats';
     import type { ChatMember } from '$lib/types/models';
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let chat: ChatPreview;
     export let isOpen = false;
     export let isCreator = false;
     export let myMembership: ChatMember | undefined;
-    
+
+    // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
         save: { chat: any };
         back: void;
     }>();
 
+    // Queries and stores
     const queryClient = useQueryClient();
     const avatarUploadMutation = useUploadChatAvatar();
-    
-    $: canEditChat = Boolean(isCreator || myMembership?.can_manage_chat);
-    
-    let name = '';
-    let description = '';
-    let isSubmitting = false;
-    let error: string | null = null;
-    let avatarError: string | null = null;
-    let avatarInput: HTMLInputElement | null = null;
-    let isInitialized = false;
-    
-    $: if (isOpen && chat && !isInitialized && !isSubmitting) {
-        name = chat.name || '';
-        description = chat.description || '';
-        isInitialized = true;
-    }
-    
-    $: if (!isOpen) {
-        isInitialized = false;
-    }
-    
-    $: modalTitle = chat?.chat_type === ChatType.GROUP ? 'Редактировать группу' : 'Редактировать канал';
-    
+
+    // Mutations
     const updateChatMutation = createMutation({
         mutationFn: async (data: { name?: string; description?: string }) => {
             const response = await makeRequest(`/chats/${chat.id}`, { data }, true, 'PUT');
@@ -62,13 +45,39 @@
             dispatch('save', { chat: updatedChat });
         },
         onError: (err: any) => {
-            error = err?.message || 'Failed to update chat';
+            error = err?.message || $_('edit_chat.update_error');
         },
         onSettled: () => {
             isSubmitting = false;
         }
     });
+
+    // State
+    let name = '';
+    let description = '';
+    let isSubmitting = false;
+    let error: string | null = null;
+    let avatarError: string | null = null;
+    let isInitialized = false;
+
+    // DOM refs
+    let avatarInput: HTMLInputElement | null = null;
     
+    // Reactive statements
+    $: canEditChat = Boolean(isCreator || myMembership?.can_manage_chat);
+    $: modalTitle = chat?.chat_type === ChatType.GROUP ? $_('edit_chat.edit_group') : $_('edit_chat.edit_channel');
+    
+    $: if (isOpen && chat && !isInitialized && !isSubmitting) {
+        name = chat.name || '';
+        description = chat.description || '';
+        isInitialized = true;
+    }
+    
+    $: if (!isOpen) {
+        isInitialized = false;
+    }
+
+    // Event handlers
     function handleClose() {
         if (!isSubmitting) {
             dispatch('close');
@@ -125,7 +134,7 @@
             const updatedChat = await $avatarUploadMutation.mutateAsync({ chatId: chat.id, file });
             dispatch('save', { chat: updatedChat });
         } catch (error) {
-            avatarError = error instanceof Error ? error.message : 'Не удалось загрузить аватар';
+            avatarError = error instanceof Error ? error.message : $_('edit_chat.avatar_upload_error');
         } finally {
             target.value = '';
         }
@@ -152,7 +161,7 @@
                         disabled={isSubmitting || !canEditChat}
                         on:click={openAvatarPicker}
                     >
-                        Изменить
+                        {$_('edit_chat.change_avatar')}
                     </button>
                     <input
                         class="file-input"
@@ -171,12 +180,12 @@
             
             <div class="form-group">
                 <label for="chat-name">
-                    {chat.chat_type === ChatType.GROUP ? 'Название группы' : 'Название канала'}
+                    {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name') : $_('edit_chat.channel_name')}
                 </label>
                 <Input
                     id="chat-name"
                     bind:value={name}
-                    placeholder={chat.chat_type === ChatType.GROUP ? 'Название группы' : 'Название канала'}
+                    placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name_placeholder') : $_('edit_chat.channel_name_placeholder')}
                     disabled={isSubmitting || !canEditChat}
                     required
                 />
@@ -184,12 +193,12 @@
             
             <div class="form-group">
                 <label for="chat-description">
-                    {chat.chat_type === ChatType.GROUP ? 'Описание группы' : 'Описание канала'}
+                    {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description') : $_('edit_chat.channel_description')}
                 </label>
                 <textarea
                     id="chat-description"
                     bind:value={description}
-                    placeholder={chat.chat_type === ChatType.GROUP ? 'Расскажите о группе' : 'Расскажите о канале'}
+                    placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description_placeholder') : $_('edit_chat.channel_description_placeholder')}
                     disabled={isSubmitting || !canEditChat}
                     rows={3}
                 />
@@ -204,7 +213,7 @@
         
         <div>
             <Button type="submit" fullWidth disabled={isSubmitting || !canEditChat}>
-                {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
+                {isSubmitting ? $_('edit_chat.saving') : $_('edit_chat.save_changes')}
             </Button>
             
             {#if chat.chat_type !== ChatType.DM && isCreator}
@@ -215,7 +224,7 @@
                     on:click={handleDelete}
                     disabled={isSubmitting}
                 >
-                    Удалить {chat.chat_type === ChatType.GROUP ? 'группу' : 'канал'}
+                    {$_('edit_chat.delete')} {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group') : $_('edit_chat.channel')}
                 </Button>
             {/if}
         </div>

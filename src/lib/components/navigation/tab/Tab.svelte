@@ -1,4 +1,5 @@
 <script lang="ts">
+    // Props
     export let text: string = '';
     export let id: string = '';
     export let active: boolean = false;
@@ -32,7 +33,6 @@
     }
 
     .tab.active {
-        color: var(--color-text);
         background: none;
         border-bottom: 2px solid transparent;
     }

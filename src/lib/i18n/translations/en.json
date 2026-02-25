@@ -54,6 +54,112 @@
     },
     "confirmReset": "Reset configuration to defaults?"
   },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "login_email_username": "Email or username",
+    "password": "Password",
+    "display_name": "Display name",
+    "username": "Username",
+    "email_code": "Email code",
+    "enter_email": "Enter your email",
+    "new_password": "New password",
+    "loading": "Loading...",
+    "registering": "Registering...",
+    "register_button": "Register",
+    "verify_email_title": "Check your email and enter the code",
+    "verifying": "Verifying...",
+    "verify": "Verify",
+    "password_reset_title": "Password Reset",
+    "sending": "Sending...",
+    "send_code": "Send Code",
+    "set_new_password_title": "Set New Password",
+    "updating": "Updating...",
+    "reset_password": "Reset Password",
+    "back_to_login": "Back to login",
+    "forgot_password": "Forgot password?"
+  },
+  "chat_element": {
+    "no_messages": "No messages",
+    "unread_count": "unread"
+  },
+  "chat_access": {
+    "loading_chat_info": "Loading chat information…",
+    "joining": "Joining…",
+    "subscribe": "Subscribe",
+    "join_group": "Join Group",
+    "private_chat": "This is a private chat. Get an invitation from the administrator.",
+    "cannot_write_group": "You cannot write messages in this group",
+    "soon": "Coming soon",
+    "messages_unavailable": "Messaging unavailable"
+  },
+  "form": {
+    "submit": "Submit"
+  },
+  "member_list": {
+    "user": "User"
+  },
+  "message": {
+    "delete_confirm": "Delete this message?",
+    "save": "Save",
+    "cancel": "Cancel",
+    "deleted": "Message deleted",
+    "you": "You",
+    "edited_at": "Edited {date}",
+    "edited": "edited",
+    "sending": "Sending",
+    "sent": "Sent",
+    "read": "Read"
+  },
+  "message_list": {
+    "no_messages": "No messages",
+    "start_conversation": "Start a conversation by sending the first message",
+    "no_group_messages": "No messages in group",
+    "start_group_dialog": "Be the first to start a dialog in this group",
+    "no_posts": "No posts",
+    "subscribe_for_updates": "There are no posts yet. Subscribe to not miss updates",
+    "loading": "Loading...",
+    "new_messages": "New messages",
+    "loading_messages": "Loading messages...",
+    "scroll_down": "Scroll down"
+  },
+  "reaction_list": {
+    "remove_reaction": "Remove reaction",
+    "add_reaction": "Add reaction"
+  },
+  "message_input": {
+    "reply_to": "Reply to",
+    "cancel_reply": "Cancel",
+    "attach_file": "Attach file",
+    "write_reply": "Write a reply...",
+    "write_message": "Write a message...",
+    "select_gif": "Select GIF",
+    "open_gif_panel": "Open GIF panel",
+    "send_enter": "Send (Enter)",
+    "send_message": "Send message"
+  },
+  "chat_list": {
+    "search_results": "Search results",
+    "searching": "Searching...",
+    "nothing_found": "Nothing found",
+    "chats": "Chats",
+    "chat": "Chat",
+    "users": "Users",
+    "bot": "bot",
+    "messages": "Messages",
+    "loading_chats": "Loading chats...",
+    "no_chats": "No chats"
+  },
+  "chat_header": {
+    "back_to_chat_list": "Back to chat list",
+    "members": "members",
+    "subscribers": "subscribers"
+  },
+  "sidebar": {
+    "settings": "Settings",
+    "create_chat": "Create Chat",
+    "search_placeholder": "Search..."
+  },
   "common": {
     "language": {
       "en": "English",
@@ -65,6 +171,165 @@
       "audio": "Audio",
       "document": "Document",
       "gif": "GIF"
-    }
+    },
+    "cancel": "Cancel",
+    "send": "Send",
+    "close": "Close",
+    "download": "Download",
+    "remove": "Remove",
+    "done": "Done",
+    "searching": "Searching",
+    "not_found": "Not found",
+    "online": "Online",
+    "offline": "Offline",
+    "uploading": "Uploading",
+    "loading": "Loading"
+  },
+  "attachments": {
+    "send_attachments": "Send Attachments",
+    "add_files_or_message": "Add files or enter a message",
+    "wait_for_upload": "Wait for files to finish uploading",
+    "file_too_large": "File \"{fileName}\" is too large (max {maxSize})",
+    "upload_error": "File upload error",
+    "drag_files_or": "Drag files here or",
+    "select_files": "Select Files",
+    "max_file_size": "Max file size: {size}",
+    "attachments_count": "Attachments ({count})",
+    "add_message_text": "Add text to message..."
+  },
+  "chat_info": {
+    "user_info": "User Information",
+    "group_info": "Group Information",
+    "channel_info": "Channel Information",
+    "online": "Online",
+    "offline": "Offline",
+    "leave_chat_error": "Failed to leave chat",
+    "leave_chat_confirm": "Are you sure you want to leave this chat?",
+    "about": "About",
+    "members": "members",
+    "members_title": "Members",
+    "subscribers": "subscribers",
+    "description": "Description",
+    "add_member": "Add",
+    "manage_members": "Manage",
+    "leave_group": "Leave Group",
+    "leave_channel": "Leave Channel"
+  },
+  "create_chat": {
+    "create_chat": "Create Chat",
+    "creating": "Creating...",
+    "chat_type": "Chat Type",
+    "type_dm": "Direct",
+    "type_group": "Group",
+    "type_channel": "Channel",
+    "name": "Name",
+    "name_placeholder": "Enter name",
+    "description": "Description",
+    "description_placeholder": "Brief description (optional)",
+    "public": "Public",
+    "add_member": "Add Member",
+    "search_user_placeholder": "Enter username",
+    "search_error": "Search error",
+    "specify_one_user": "Specify one user for direct chat",
+    "enter_chat_name": "Enter chat name"
+  },
+  "edit_chat": {
+    "edit_group": "Edit Group",
+    "edit_channel": "Edit Channel",
+    "update_error": "Chat update error",
+    "avatar_upload_error": "Failed to upload avatar",
+    "change_avatar": "Change",
+    "group_name": "Group Name",
+    "channel_name": "Channel Name",
+    "group_name_placeholder": "Group name",
+    "channel_name_placeholder": "Channel name",
+    "group_description": "Group Description",
+    "channel_description": "Channel Description",
+    "group_description_placeholder": "Tell about the group",
+    "channel_description_placeholder": "Tell about the channel",
+    "saving": "Saving...",
+    "save_changes": "Save Changes",
+    "delete": "Delete",
+    "group": "group",
+    "channel": "channel"
+  },
+  "manage_members": {
+    "manage_members": "Manage Members",
+    "add_members_error": "Error adding members",
+    "remove_member_error": "Error removing member",
+    "add_members": "Add Members",
+    "search_users_placeholder": "Search users...",
+    "add_selected": "Add Selected",
+    "no_users_found": "No users found",
+    "members": "Members",
+    "no_members": "No members in this chat yet"
+  },
+  "media_viewer": {
+    "media_viewer": "Media Viewer",
+    "pause": "Pause",
+    "play": "Play",
+    "video_progress": "Video Progress",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "volume": "Volume",
+    "exit_fullscreen": "Exit Fullscreen",
+    "fullscreen": "Fullscreen",
+    "browser_not_support_video": "Your browser does not support video"
+  },
+  "profile_modal": {
+    "user_profile": "User Profile",
+    "send_message": "Send Message"
+  },
+  "datetime": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "was_today_at": "was today at {time}",
+    "was_on_date_at": "was on {date} at {time}"
+  },
+  "modal": {
+    "back": "Back",
+    "edit": "Edit",
+    "close": "Close"
+  },
+  "message_menu": {
+    "reactions": "Reactions",
+    "add_reaction": "Add reaction",
+    "remove_reaction": "Remove reaction",
+    "reply": "Reply",
+    "copy": "Copy",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "gif_picker": {
+    "title": "GIF Picker",
+    "search_placeholder": "Search GIFs...",
+    "load_error": "GIF loading error",
+    "recent": "Recent GIFs",
+    "popular": "Popular GIFs",
+    "no_gifs": "No GIFs yet",
+    "no_results": "Nothing found",
+    "back_to_popular": "Back to popular",
+    "load_more": "Load more"
+  },
+  "attachment_item": {
+    "load_error": "File loading error",
+    "retry": "Retry",
+    "open_video": "Open video",
+    "download_audio": "Download audio",
+    "download_document": "Download document",
+    "bytes": "B",
+    "kb": "KB",
+    "mb": "MB"
+  },
+  "presence": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "typing": {
+    "is_typing": "is typing...",
+    "are_typing": "are typing...",
+    "one_user_typing": "Someone is typing...",
+    "two_users_typing": "Two people are typing...",
+    "many_users_typing": "{count} people are typing..."
   }
 }

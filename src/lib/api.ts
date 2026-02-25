@@ -1,3 +1,4 @@
+/* TODO: translate */
 import type { ApiResponse, ApiError, UserPublic } from "$lib/types/models";
 import { getApiUrl } from "$lib/config";
 import { getIsTauriEnvironment } from "$lib/tauri-env";

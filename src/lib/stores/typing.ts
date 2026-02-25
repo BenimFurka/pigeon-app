@@ -56,9 +56,11 @@ export function getTypingUsers(chatId: number): number[] {
     if (!chatState) return [];
     
     const now = Date.now();
-    return Object.entries(chatState)
+    const result = Object.entries(chatState)
         .filter(([_, timestamp]) => now - timestamp < TYPING_TIMEOUT)
         .map(([userId, _]) => Number(userId));
+    
+    return result;
 }
 
 export function clearTyping() {

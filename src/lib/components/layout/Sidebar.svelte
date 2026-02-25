@@ -1,21 +1,24 @@
 <script lang="ts">
     import { Settings, Plus } from "lucide-svelte";
+    import { _ } from 'svelte-i18n';
 
+    // Props
     export let isSettingsOpen: boolean = false;
     export let onOpenSettings: () => void = () => {};
     export let onOpenCreateChat: () => void = () => {};
 
+    // Event handlers
     function handleToggle() {
         onOpenSettings();
     }
-</script>    
+</script>
 
 <div class="sidebar">
     <div class="sidebar-actions">
         <button
             class="sidebar-button"
-            title="Создать чат"
-            aria-label="Создать чат"
+            title={$_('sidebar.create_chat')}
+            aria-label={$_('sidebar.create_chat')}
             on:click={onOpenCreateChat}
         >
             <Plus size={20} />
@@ -23,8 +26,8 @@
         <button
             class="sidebar-button {isSettingsOpen ? 'active' : ''}"
             on:click={handleToggle}
-            title="Настройки"
-            aria-label="Настройки"
+            title={$_('sidebar.settings')}
+            aria-label={$_('sidebar.settings')}
         >
             <Settings size={20} />
         </button>
@@ -42,7 +45,7 @@
         background-color: var(--color-bg-elevated);
         width: 42px;
         min-width: 0;
-        height: 100%;
+        height: var(--window-height);
         z-index: 5;
         gap: 10px;
     }
