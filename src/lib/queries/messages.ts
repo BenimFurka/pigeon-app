@@ -2,6 +2,7 @@ import { createQuery } from '@tanstack/svelte-query';
 import { get } from 'svelte/store';
 import { makeRequest } from '$lib/api';
 import { reactions } from '$lib/stores/reactions';
+import { loggedIn } from '$lib/stores/auth';
 import type { Message } from '$lib/types/models';
 
 export type GetMessagesParams = {
@@ -63,6 +64,6 @@ export function useMessages(
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
-    ...options,
+    enabled: (options?.enabled !== false) && get(loggedIn),
   });
 }

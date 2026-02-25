@@ -7,7 +7,10 @@
     import { formatLastSeen } from '$lib/datetime';
     import { _, format } from 'svelte-i18n';
     import { typing } from '$lib/stores/typing';
-    import { currentUser } from '$lib/stores/auth';
+    import { useCurrentProfile } from '$lib/queries/profile';
+    
+    // Profile query
+    const profileQuery = useCurrentProfile();
     
     // Props
     export let chatContext: {
@@ -91,7 +94,7 @@
                         .filter(([_, timestamp]) => now - timestamp < 15000)
                         .map(([userId, _]) => Number(userId));
                     
-                    typingUsers = allTypingUsers.filter(userId => userId !== $currentUser);
+                    typingUsers = allTypingUsers.filter(userId => userId !== $profileQuery.data?.id);
                 } else {
                     typingUsers = [];
                 }

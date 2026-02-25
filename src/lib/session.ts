@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { loggedIn, refreshTokens, currentUser, shouldRefreshTokens } from '$lib/stores/auth';
+import { loggedIn, refreshTokens, shouldRefreshTokens } from '$lib/stores/auth';
 import { typing } from '$lib/stores/typing';
 import { presence } from '$lib/stores/presence';
 import { reactions } from '$lib/stores/reactions';
@@ -12,6 +12,7 @@ import { queryClient } from '$lib/query';
 import { messageKeys } from '$lib/queries/messages';
 import { chatKeys } from '$lib/queries/chats';
 import { profileKeys } from '$lib/queries/profile';
+import { useCurrentProfile } from '$lib/queries/profile';
 import { makeRequest } from '$lib/api';
 
 const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000;
@@ -24,6 +25,11 @@ export class Session {
     private loggedInUnsubscribe: (() => void) | null = null;
     
     private constructor() {}
+
+    private getCurrentUserId(): number | null {
+        const profileData = queryClient.getQueryData(profileKeys.current()) as any;
+        return profileData?.id || null;
+    }
 
     public static getInstance(): Session {
         if (!Session.instance) {
@@ -114,17 +120,39 @@ export class Session {
     }
 
     private handleWebSocketClose(): void {
-        //this.ws = null;
+        console.log('[Session] WebSocket disconnected');
+        
+        if (get(loggedIn) && this.hasValidTokens()) {
+            console.log('[Session] Attempting to reconnect WebSocket...');
+            setTimeout(() => {
+                if (get(loggedIn) && this.hasValidTokens()) {
+                    this.initializeAuthenticatedSession().catch((e) => {
+                        console.error('Failed to reconnect WebSocket:', e);
+                    });
+                }
+            }, 3000);
+        }
     }
 
     private handleWebSocketError(): void {
-        //this.ws = null;
+        console.log('[Session] WebSocket error occurred');
+
+        if (get(loggedIn) && this.hasValidTokens()) {
+            setTimeout(() => {
+                if (get(loggedIn) && this.hasValidTokens() && !this.isWebSocketConnected()) {
+                    console.log('[Session] WSClient failed to reconnect...');
+                    this.initializeAuthenticatedSession().catch((e) => {
+                        console.error('Failed to force reconnect:', e);
+                    });
+                }
+            }, 5000);
+        }
     }
 
     private handleNewMessage(data: any): void {
         const chatId = data.message.chat_id as number;
         const serverMsg = data.message as ChatMessage & { status?: string };
-        const myId = get(currentUser);
+        const myId = this.getCurrentUserId();
         this.updateMessageList(chatId, (prev) => {
             const optimistic = prev.find(
                 (m) =>
@@ -183,7 +211,6 @@ export class Session {
     }
 
     private handleAuthenticated(data: any): void {
-        currentUser.set(data.user_id);
         presence.setOnline(data.user_id);
         this.ws?.send({ type: 'get_online_list', data: {} });
     }
@@ -193,14 +220,14 @@ export class Session {
     }
 
     private handleMessageRead(data: { chat_id: number; message_id: number; reader_id: number }): void {
-        const me = get(currentUser);
+        const me = this.getCurrentUserId();
         if (me != null && data.reader_id !== me) {
             setReadUpTo(data.chat_id, data.message_id);
         }
     }
 
     private handleAllMessagesRead(data: { chat_id: number; user_id: number }): void {
-        const me = get(currentUser);
+        const me = this.getCurrentUserId();
         if (me != null && data.user_id !== me) {
             setAllRead(data.chat_id);
         }
@@ -288,7 +315,7 @@ export class Session {
                 }
             }
 
-            const me = get(currentUser);
+            const me = this.getCurrentUserId();
             const isFromOther = me != null && (lastMessage as any)?.sender_id !== me;
             const isActiveChat = Number(chatId) === Number(get(activeChatId));
             const prevUnread = typeof chats[index].unread_count === 'number' ? chats[index].unread_count : 0;
@@ -337,11 +364,14 @@ export class Session {
             }
 
             if (!previousValue && isLoggedIn) {
-                if (!this.ws) {
-                    this.initializeAuthenticatedSession().catch((e) => {
-                        console.error('Failed to initialize session after login:', e);
-                    });
-                }
+                this.initializeAuthenticatedSession().catch((e) => {
+                    console.error('Failed to initialize session after login:', e);
+                    setTimeout(() => {
+                        if (get(loggedIn)) {
+                            this.initializeAuthenticatedSession().catch(console.error);
+                        }
+                    }, 2000);
+                });
             }
             previousValue = isLoggedIn;
         });
@@ -373,7 +403,6 @@ export class Session {
             this.loggedInUnsubscribe = null;
         }
 
-        currentUser.set(null);
         presence.clear?.(); 
         typing.clear?.();
         
@@ -392,12 +421,23 @@ export class Session {
         return this.ws;
     }
 
+    public isWebSocketConnected(): boolean {
+        return this.ws !== null;
+    }
+
+    public async forceReconnectWebSocket(): Promise<void> {
+        if (get(loggedIn) && this.hasValidTokens()) {
+            console.log('[Session] Force reconnecting WebSocket...');
+            await this.initializeAuthenticatedSession();
+        }
+    }
+
     public addOptimisticMessage(
         chatId: number,
         content: string,
         options?: { reply_to?: number; attachment_ids?: number[] }
     ): void {
-        const myId = get(currentUser);
+        const myId = this.getCurrentUserId();
         if (myId == null) return;
         const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const optimistic: ChatMessage = {

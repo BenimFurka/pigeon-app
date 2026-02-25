@@ -2,6 +2,7 @@ import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-qu
 import { get } from 'svelte/store';
 import { makeRequest, uploadUserAvatar } from '$lib/api';
 import { presence } from '$lib/stores/presence';
+import { loggedIn } from '$lib/stores/auth';
 import type { UserPublic } from '$lib/types/models';
 import { avatarKeys } from './avatar';
 
@@ -37,7 +38,7 @@ export function useProfile(id: number, options?: { enabled?: boolean }) {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    ...options,
+    enabled: (options?.enabled !== false) && get(loggedIn),
   });
 }
 
@@ -51,6 +52,7 @@ export function useCurrentProfile() {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: get(loggedIn),
   });
 }
 

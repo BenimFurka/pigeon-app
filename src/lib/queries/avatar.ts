@@ -1,5 +1,7 @@
 import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { get } from 'svelte/store';
 import { getServerUrl } from '$lib/config';
+import { loggedIn } from '$lib/stores/auth';
 
 export const avatarKeys = {
   all: ['avatars'] as const,
@@ -45,7 +47,7 @@ export function useAvatar(avatarUrl: string | undefined | null, options?: { enab
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
     retry: 1,
-    ...options,
+    enabled: (options?.enabled !== false) && get(loggedIn),
   });
 }
 

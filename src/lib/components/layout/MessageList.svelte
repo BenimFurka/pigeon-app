@@ -2,7 +2,7 @@
     import Message from '$lib/components/shared/Message.svelte';
     import { fetchMessages, messageKeys, useMessages } from '$lib/queries/messages';
     import { useChat } from '$lib/queries/chats';
-    import { currentUser } from '$lib/stores/auth';
+    import { useCurrentProfile } from '$lib/queries/profile';
     import type { Message as MessageType, ChatMember } from '$lib/types/models';
     import { queryClient } from '$lib/query';
     import { formatDateHeader } from '$lib/datetime';
@@ -10,6 +10,9 @@
     import { ChatType } from '$lib/types/models';
     import { session } from '$lib/session';
     import { _, format } from 'svelte-i18n';
+    
+    // Profile query
+    const profileQuery = useCurrentProfile();
     
     // Props
     export let chatContext: {
@@ -72,7 +75,7 @@
         return groups;
     }, [] as { dateHeader: string; messages: MessageType[] }[]);
     $: firstUnreadMessageId = lastReadMessageId != null
-        ? (messageList.find((m) => m.id > 0 && m.id > lastReadMessageId! && m.sender_id !== $currentUser)?.id ?? null)
+        ? (messageList.find((m) => m.id > 0 && m.id > lastReadMessageId! && m.sender_id !== $profileQuery.data?.id)?.id ?? null)
         : null;
 
     // Reactive statements
@@ -363,7 +366,7 @@
 
                 <Message
                     message={message}
-                    currentUserId={$currentUser}
+                    currentUserId={$profileQuery.data?.id}
                     myMembership={myMembership}
                     groupPosition={groupPosition}
                     showSender={groupPosition === 'start' || groupPosition === 'single'}

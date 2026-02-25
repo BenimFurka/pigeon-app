@@ -1,5 +1,5 @@
 import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
-import { derived, writable, type Readable } from 'svelte/store';
+import { derived, writable, type Readable, get } from 'svelte/store';
 import {
     searchGifs,
     getTrendingGifs,
@@ -12,6 +12,7 @@ import {
     type GifListParams,
 } from '$lib/gifs';
 import type { ChatAttachment, GifItem, RecentGif, RecentGifsResponse } from '$lib/types/models';
+import { loggedIn } from '$lib/stores/auth';
 
 export const gifKeys = {
     all: ['gifs'] as const,
@@ -31,7 +32,7 @@ function getNextPageParam(lastPageCount: number, lastOffset: number): number | u
 
 export function useTrendingGifsQuery(options?: GifInfiniteQueryOptions) {
     const limit = options?.limit ?? 24;
-    const enabled = options?.enabled ?? true;
+    const enabled = (options?.enabled ?? true) && get(loggedIn);
 
     return createInfiniteQuery({
         initialPageParam: options?.offset ?? 0,
@@ -47,7 +48,7 @@ export function useTrendingGifsQuery(options?: GifInfiniteQueryOptions) {
 
 export function useRecentGifsQuery(options?: GifInfiniteQueryOptions) {
     const limit = options?.limit ?? 24;
-    const enabled = options?.enabled ?? true;
+    const enabled = (options?.enabled ?? true) && get(loggedIn);
 
     return createInfiniteQuery({
         initialPageParam: options?.offset ?? 0,
@@ -80,7 +81,7 @@ export function useSearchGifsQuery(termStore: Readable<string>, options?: Search
 
     const queryOptions = derived([termStore, enabledStore], ([$term, $enabled]) => {
         const term = $term?.trim() ?? '';
-        const enabled = $enabled && term.length >= minTermLength;
+        const enabled = $enabled && term.length >= minTermLength && get(loggedIn);
 
         return {
             initialPageParam: options?.offset ?? 0,

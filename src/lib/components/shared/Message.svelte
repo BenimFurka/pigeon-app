@@ -564,6 +564,11 @@
                     
                     {#if !(messageReactions && messageReactions.length > 0)}
                         <div class="bubble-footer">
+                            {#if message.edited_at}
+                                <span class="edited-time" title={$format('message.edited_at', { values: { date: new Date(message.edited_at).toLocaleString() } })}>
+                                    {$_('message.edited')}
+                                </span>
+                            {/if}
                             <span class="time">{timeStr}</span>
                             {#if statusIcon === 'sending'}
                                 <span class="status-icon" title={$_('message.sending')}><Clock infinite={true} size={14} /></span>
@@ -588,6 +593,11 @@
                         />
                         
                         <div class="bubble-footer">
+                            {#if message.edited_at}
+                                <span class="edited-time" title={$format('message.edited_at', { values: { date: new Date(message.edited_at).toLocaleString() } })}>
+                                    {$_('message.edited')}
+                                </span>
+                            {/if}
                             <span class="time">{timeStr}</span>
                             {#if statusIcon === 'sending'}
                                 <span class="status-icon" title={$_('message.sending')}><Clock infinite={true} size={14} /></span>
@@ -848,6 +858,10 @@
     }
     .status-icon.read {
         opacity: 1;
+    }
+
+    .edited-time {
+        margin-top: auto;
     }
 
     .message-row {

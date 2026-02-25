@@ -1,7 +1,8 @@
 import { createQuery } from '@tanstack/svelte-query';
-import { derived, type Readable } from 'svelte/store';
+import { derived, type Readable, get } from 'svelte/store';
 import { makeRequest } from '$lib/api';
 import type { ChatPreview, Message, UserPublic } from '$lib/types/models';
+import { loggedIn } from '$lib/stores/auth';
 
 export interface SearchResults {
   users: UserPublic[];
@@ -33,7 +34,7 @@ export function useSearch(termStore: Readable<string>, options?: UseSearchOption
 
   const queryOptions = derived(termStore, (rawTerm) => {
     const term = rawTerm.trim();
-    const enabled = (options?.enabled ?? true) && term.length >= 2;
+    const enabled = (options?.enabled ?? true) && term.length >= 2 && get(loggedIn);
 
     return {
       queryKey: searchKeys.params(term || '', scope, limit),

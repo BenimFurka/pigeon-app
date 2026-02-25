@@ -3,7 +3,6 @@ import type { ApiResponse, AuthResponse } from '$lib/types/models';
 import { makeRequest } from '$lib/api';
 
 export const loggedIn = writable<boolean>(false);
-export const currentUser = writable<number | null>(null);
 export const authError = writable<string | null>(null);
 
 export const emailForVerification = writable<string>('');
@@ -34,7 +33,6 @@ export async function login(login: string, password: string) {
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
         updateTokenTimestamp();
-        currentUser.set(user.id);
         loggedIn.set(true);
         needsEmailVerification.set(false);
         return true;
@@ -49,7 +47,6 @@ export async function verifyEmail(email: string, code: string) {
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
         updateTokenTimestamp();
-        currentUser.set(user.id);
         loggedIn.set(true);
     }
 }
@@ -65,7 +62,6 @@ export async function verifyPasswordReset(email: string, code: string, new_passw
         localStorage.setItem('access_token', access_token);
         localStorage.setItem('refresh_token', refresh_token);
         updateTokenTimestamp();
-        currentUser.set(user.id);
         loggedIn.set(true);
         return true;
     }
@@ -74,7 +70,6 @@ export async function verifyPasswordReset(email: string, code: string, new_passw
 
 export async function logout() {
     loggedIn.set(false);
-    currentUser.set(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
 }

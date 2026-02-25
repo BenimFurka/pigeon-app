@@ -3,6 +3,7 @@ import { makeRequest, uploadChatAvatar } from '$lib/api';
 import type { Chat, ChatPreview } from '$lib/types/models';
 import { presence } from '$lib/stores/presence';
 import { get } from 'svelte/store';
+import { loggedIn } from '$lib/stores/auth';
 
 export const chatKeys = {
   all: ['chats'] as const,
@@ -34,7 +35,7 @@ export function useChats(options?: { enabled?: boolean }) {
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
-    ...options,
+    enabled: (options?.enabled !== false) && get(loggedIn),
   });
 }
 
@@ -64,7 +65,7 @@ export function useChat(chatId: number, options?: { enabled?: boolean }) {
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
-    ...options,
+    enabled: (options?.enabled !== false) && get(loggedIn),
   });
 }
 
