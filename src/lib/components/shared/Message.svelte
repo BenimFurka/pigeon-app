@@ -1,25 +1,29 @@
 <script lang="ts">
-    import type { Message, ChatMember, MessageAttachment } from '$lib/types/models';
+    import type { Message, ChatMember, MessageMedia } from '$lib/types/models';
     import Avatar from '$lib/components/shared/Avatar.svelte';
     import MessageMenu from '$lib/components/menus/MessageMenu.svelte';
-    import AttachmentList from '$lib/components/media/AttachmentList.svelte';
+    import MediaList from '$lib/components/media/MediaList.svelte';
     import ReactionList from '$lib/components/shared/ReactionList.svelte';
+    import Textarea from '$lib/components/shared/Textarea.svelte';
     import { formatMessageTime } from '$lib/datetime';
-    import { useProfile } from '$lib/queries/profile';
+    import { useProfile, useCurrentProfile } from '$lib/queries/profile';
     import { reactions } from '$lib/stores/reactions';
     import { readReceipts } from '$lib/stores/readReceipts';
     import { menuStore, menuActions } from '$lib/stores/menu';
+    import { polls } from '$lib/stores/polls';
+    import { pendingEditMessageId } from '$lib/stores/hotkeys';
     import { createEventDispatcher, onMount } from 'svelte';
     import type { UserPublic } from '$lib/types/models';
-    import { session } from '$lib/session';
+    import { wsService } from '$lib/ws-service';
     import { _ } from 'svelte-i18n';
     import { format } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
+    import { getMediaTypeName } from '$lib/utils/media';
     import {Check, CheckCheck } from 'lucide-svelte';
     import Clock from '$lib/components/icons/Clock.svelte';
     import MarkdownIt from 'markdown-it';
     import hljs from 'highlight.js';
-
+    
     // Props
     export let message: Message;
     export let showSender: boolean = true;
@@ -34,6 +38,7 @@
 
     // State
     let sender: UserPublic | null = null;
+    const profileQuery = useCurrentProfile();
     let replyToUser: UserPublic | null = null;
     let isEditing = false;
     let editContent = '';
@@ -53,6 +58,7 @@
         breaks: false,
         xhtmlOut: false,
     });
+    md.disable(['lheading']);
     
     md.renderer.rules.fence = function(tokens: any[], idx: number, options: any, env: any) {
         const token = tokens[idx];
@@ -103,6 +109,13 @@
         return content;
     };
 
+    md.renderer.rules.bullet_list_open = function() { return '<ul>'; };
+    md.renderer.rules.bullet_list_close = function() { return '</ul>'; };
+    md.renderer.rules.ordered_list_open = function() { return '<ol>'; };
+    md.renderer.rules.ordered_list_close = function() { return '</ol>'; };
+    md.renderer.rules.list_item_open = function() { return '<li>'; };
+    md.renderer.rules.list_item_close = function() { return '</li>'; };
+
     // Queries
     $: senderQuery = message.sender_id ? useProfile(message.sender_id, { enabled: !!message.sender_id && !isOwn }) : null;
     $: replyToUserQuery = replyToMessage?.sender_id ? useProfile(replyToMessage.sender_id, { enabled: !!replyToMessage?.sender_id }) : null;
@@ -119,17 +132,40 @@
     $: canEdit = isOwn;
     $: canDelete = isOwn || Boolean(myMembership?.can_manage_messages);
     $: timeStr = formatMessageTime(message.created_at, $format);
-    $: hasMediaAttachments = hasMediaFiles(message.attachments || undefined);
-    $: shouldExpandBubble = hasMediaAttachments || (message.attachments && message.attachments.length > 0);
+    $: hasMediaAttachments = hasMediaFiles(message.media || undefined);
+    $: shouldExpandBubble = hasMediaAttachments || (message.media && message.media.length > 0);
+    $: pollMedia = message.media?.find(m => m.type === 'Poll') as any;
+    $: allowRevote = pollMedia?.allow_revote ?? false;
+    $: hasVoted = currentUserId && $polls[message.id]?.hasVoted[currentUserId] || false;
     $: renderedContent = message.content ? (() => {
         const normalized = normalizeMarkdown(message.content);
         const processed = md.render(normalized).trim().replace(/<\/div>\s*\n/g, '</div>');
         return processed;
     })() : '';
+    $: renderedReplyContent = replyToMessage?.content ? (() => {
+        const normalized = normalizeMarkdown(replyToMessage.content);
+        const processed = md.render(normalized).trim().replace(/<\/div>\s*\n/g, '</div>');
+        return processed;
+    })() : '';
+
+    $: isServiceMessage = Boolean(
+        message.new_chat_members ||
+        message.left_chat_member ||
+        message.new_chat_title ||
+        message.delete_chat_photo ||
+        message.chat_created_type ||
+        message.migrate_to_chat_id ||
+        message.migrate_from_chat_id ||
+        message.pinned_message
+    );
+    $: serviceMessageText = getServiceMessageText();
 
     // Reactive statements
     $: if (senderQuery && $senderQuery?.data) {
         sender = $senderQuery.data;
+    }
+    $: if (isOwn && $profileQuery?.data) {
+        sender = $profileQuery.data;
     }
     $: if (replyToUserQuery && $replyToUserQuery?.data) {
         replyToUser = $replyToUserQuery.data;
@@ -209,32 +245,16 @@
         return result.join('\n');
     }
 
-    function hasMediaFiles(attachments: MessageAttachment[] | undefined): boolean {
-        if (!attachments || attachments.length === 0) return false;
+    function hasMediaFiles(media: MessageMedia[] | undefined): boolean {
+        if (!media || media.length === 0) return false;
         
-        return attachments.some(attachment => {
-            const mimeType = attachment.mime_type?.toLowerCase() || '';
-            const fileType = attachment.file_type?.toLowerCase() || '';
-            
-            return fileType === 'image' || fileType === 'gif' || fileType === 'video' ||
-                   mimeType.startsWith('image/') || mimeType.startsWith('video/') ||
-                   fileType === 'gif' || mimeType.includes('gif');
+        return media.some(item => {
+            return item.type === 'Photo' || item.type === 'Video' || item.type === 'Gif';
         });
     }
 
     function isMobileDevice(): boolean {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-
-    function getAttachmentType(attachment: MessageAttachment): string {
-        const mimeType = attachment.mime_type.toLowerCase();
-        const fileType = attachment.file_type.toLowerCase();
-        
-        if (fileType === 'gif' || mimeType.includes('gif')) return 'gif';
-        if (mimeType.startsWith('image/')) return 'image';
-        if (mimeType.startsWith('video/')) return 'video';
-        if (mimeType.startsWith('audio/')) return 'audio';
-        return 'document';
     }
 
     function getUrl(path: string): string {
@@ -243,9 +263,28 @@
         return `${baseUrl}/${cleanPath}`;
     }
 
-    function getAttachmentTypeName(attachment: MessageAttachment): string {
-        const type = getAttachmentType(attachment);
-        return $_(`common.attachmentTypes.${type}`);
+    function getServiceMessageText(): string {
+        if (message.new_chat_members && message.new_chat_members.length > 0) {
+            const names = message.new_chat_members.map(m => m.name || m.username).join(', ');
+            return `${names} ${message.new_chat_members.length === 1 ? $_('message.joined') : $_('message.joined_plural')}`;
+        }
+        if (message.left_chat_member) {
+            const name = message.left_chat_member.name || message.left_chat_member.username;
+            return `${name} ${$_('message.left')}`;
+        }
+        if (message.new_chat_title) {
+            return `${$_('message.chat_renamed')} "${message.new_chat_title}"`;
+        }
+        if (message.delete_chat_photo) {
+            return $_('message.photo_removed');
+        }
+        if (message.chat_created_type) {
+            return message.chat_created_type === 'group' ? $_('message.group_created') : $_('message.channel_created');
+        }
+        if (message.pinned_message) {
+            return $_('message.pinned');
+        }
+        return message.content || '';
     }
 
     function fallbackCopy(text: string) {
@@ -273,19 +312,15 @@
     }
 
     function handleAddReaction(emoji: string) {
-        const ws = session.getWebSocket();
-        if (ws) {
-            ws.send({
-                type: 'add_reaction',
-                data: { message_id: message.id, emoji }
-            });
-        }
+        wsService.send({
+            type: 'add_reaction',
+            data: { message_id: message.id, emoji }
+        });
     }
 
     function handleRemoveReaction(emoji: string) {
-        const ws = session.getWebSocket();
-        if (ws && currentUserId) {
-            ws.send({
+        if (currentUserId) {
+            wsService.send({
                 type: 'remove_reaction',
                 data: { message_id: message.id, emoji }
             });
@@ -294,13 +329,26 @@
 
     function handleEdit() {
         isEditing = true;
-        editContent = message.content;
+        editContent = message.content || '';
+    }
+
+    // External edit request (e.g. ArrowUp hotkey for last own message)
+    $: if ($pendingEditMessageId === message.id && canEdit && !isEditing) {
+        handleEdit();
+        pendingEditMessageId.set(null);
+    }
+
+    function handleEditKeyDown(event: KeyboardEvent) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSaveEdit();
+        }
+        if (event.key === 'Escape') handleCancelEdit();
     }
 
     function handleSaveEdit() {
-        const ws = session.getWebSocket();
-        if (ws && editContent.trim()) {
-            ws.send({
+        if (editContent.trim()) {
+            wsService.send({
                 type: 'edit_message',
                 data: {
                     message_id: message.id,
@@ -318,14 +366,15 @@
 
     function handleDelete() {
         if (confirm($_('message.delete_confirm'))) {
-            const ws = session.getWebSocket();
-            if (ws) {
-                ws.send({
-                    type: 'delete_message',
-                    data: { message_id: message.id }
-                });
-            }
+            wsService.send({
+                type: 'delete_message',
+                data: { message_id: message.id }
+            });
         }
+    }
+
+    function handleUnvote() {
+        wsService.unvotePoll(message.id);
     }
 
     function handleCopy() {
@@ -353,13 +402,22 @@
     function openMenu(e: MouseEvent | TouchEvent) {
         e.preventDefault();
         
+        if (isScrolling) {
+            return;
+        }
+        
+        const mediaViewer = document.querySelector('.media-viewer-backdrop');
+        if (mediaViewer) {
+            return;
+        }
+        
         if (e.type === 'contextmenu' && hasTouchEnded && touchDuration > 300) {
             return;
         }
         
         const target = e.target as Element;
-        const interactiveElement = target.closest('button, .reply-preview, .reactions-footer-row, .reaction-item, .time, .status-icon, .spoiler, a, .edit-container, .edit-textarea');
-        if (interactiveElement) {
+        const preventMenuElement = target.closest('[data-prevent-menu]');
+        if (preventMenuElement) {
             return;
         }
         
@@ -406,7 +464,7 @@
         const deltaX = Math.abs(touch.clientX - touchStartX);
         const deltaY = Math.abs(touch.clientY - touchStartY);
         
-        if (deltaX > 10 || deltaY > 10) {
+        if (deltaX > 15 || deltaY > 15) {
             isScrolling = true;
         }
     }
@@ -429,6 +487,11 @@
             return;
         }
         
+        const mediaViewer = document.querySelector('.media-viewer-backdrop');
+        if (mediaViewer) {
+            return;
+        }
+        
         if (touchDuration > 300) {
             return;
         }
@@ -441,18 +504,8 @@
             return;
         }
         
-        const modalElement = target.closest('[role="dialog"], .modal, .overlay, .backdrop');
-        if (modalElement) {
-            return;
-        }
-        
-        const attachmentElement = target.closest('.attachment-container');
-        if (attachmentElement) {
-            return;
-        }
-        
-        const interactiveElement = target.closest('button, .reply-preview, .reactions-footer-row, .reaction-item, .time, .status-icon, .spoiler, a, .edit-container, .edit-textarea');
-        if (interactiveElement) {
+        const preventMenuElement = target.closest('[data-prevent-menu]');
+        if (preventMenuElement) {
             return;
         }
         
@@ -468,7 +521,7 @@
     </symbol>
 </svg>
 
-<div class="message {isOwn ? 'own' : 'other'} {groupPosition} {isDeleted ? 'deleted' : ''}"
+<div class="message {isOwn ? 'own' : 'other'} {groupPosition} {isDeleted ? 'deleted' : ''} {isServiceMessage ? 'service' : ''}"
      data-message-id={message.id}
      data-sender-id={message.sender_id}
      data-timestamp={message.created_at}
@@ -478,62 +531,71 @@
      on:touchmove={handleTouchMove}
      on:touchend={handleTouchEnd}
      role="presentation">
-    
-    {#if (groupPosition === 'single' || groupPosition === 'end') && sender}
-        <div class="avatar-wrapper">
-            <Avatar 
-                avatarUrl={sender.avatar_url} 
-                size="small" 
-                className="message-avatar"
-            />
+
+    {#if isServiceMessage}
+        <div class="service-message">
+            <span class="service-text">{serviceMessageText}</span>
         </div>
-    {/if}
-    
-    <div class="message-content">
-        {#if showSender}
-            <div class="sender">
-                {sender?.name || sender?.username || ''}
+    {:else}
+        {#if (groupPosition === 'single' || groupPosition === 'end') && sender}
+            <div class="avatar-wrapper">
+                <Avatar
+                    avatarUrl={sender.avatar_url}
+                    size="small"
+                    className="message-avatar"
+                />
             </div>
         {/if}
-        
-        {#if isEditing}
-            <div class="edit-container">
-                <input 
-                    type="text" 
-                    bind:value={editContent}
-                    class="edit-input"
-                    on:keydown={(e) => {
-                        if (e.key === 'Enter') handleSaveEdit();
-                        if (e.key === 'Escape') handleCancelEdit();
-                    }}
-                />
-                <div class="edit-actions">
-                    <button class="edit-btn save" on:click={handleSaveEdit}>{$_('message.save')}</button>
-                    <button class="edit-btn cancel" on:click={handleCancelEdit}>{$_('message.cancel')}</button>
+
+        <div class="message-content">
+            {#if showSender}
+                <div class="sender">
+                    {sender?.name || sender?.username || ''}
                 </div>
-            </div>
-        {:else if isDeleted}
-            <div class="content deleted">
-                <em>{$_('message.deleted')}</em>
-            </div>
-        {:else}
-            <div class="content bubble {shouldExpandBubble ? 'has-attachments' : ''} {hasMediaAttachments ? 'has-media' : ''}">
+            {/if}
+
+            {#if isEditing}
+                <div class="edit-container" data-prevent-menu>
+                    {#if message.media && message.media.length > 0}
+                        <div class="edit-media">
+                            <MediaList media={message.media} {isOwn} {currentUserId} {message} />
+                        </div>
+                    {/if}
+                    <Textarea
+                        bind:value={editContent}
+                        class="edit-input"
+                        rows={1}
+                        on:keydown={handleEditKeyDown}
+                    />
+                    <div class="edit-actions">
+                        <button class="edit-btn save" data-prevent-menu on:click|stopPropagation={handleSaveEdit}>{$_('message.save')}</button>
+                        <button class="edit-btn cancel" data-prevent-menu on:click|stopPropagation={handleCancelEdit}>{$_('message.cancel')}</button>
+                    </div>
+                </div>
+            {:else if isDeleted}
+                <div class="content deleted">
+                    <em>{$_('message.deleted')}</em>
+                </div>
+            {:else}
+                <div class="content bubble {shouldExpandBubble ? 'has-attachments' : ''} {hasMediaAttachments ? 'has-media' : ''}">
                 {#if message.reply_to_message_id && replyToMessage}
                     <button 
                         class="reply-preview" 
-                        on:click={() => dispatch('scrollTo', { messageId: replyToMessage.id })}
+                        data-prevent-menu
+                        on:click|stopPropagation={() => dispatch('scrollTo', { messageId: replyToMessage.id })}
                         on:keydown={(e) => e.key === 'Enter' && dispatch('scrollTo', { messageId: replyToMessage.id })}
                         type="button"
                     >
-                        {#if replyToMessage.attachments && replyToMessage.attachments.length > 0}
+                        {#if replyToMessage.media && replyToMessage.media.length > 0 && (replyToMessage.media[0].type === 'Photo' || replyToMessage.media[0].type === 'Video' || replyToMessage.media[0].type === 'Gif')}
                             <div class="reply-attachment-preview">
-                                {#if replyToMessage.attachments[0].thumbnail_url}
-                                    <img 
-                                        src={getUrl(replyToMessage.attachments[0].thumbnail_url)} 
-                                        alt="" 
-                                        class="reply-thumbnail"
-                                    />
-                                {/if}
+                                <img 
+                                    src={getUrl(replyToMessage.media[0].type === 'Gif'
+                                        ? (replyToMessage.media[0].preview_url || replyToMessage.media[0].file_url)
+                                        : (replyToMessage.media[0].thumbnail_url || replyToMessage.media[0].file_url)
+                                    )} 
+                                    alt="" 
+                                    class="reply-thumbnail"
+                                />
                             </div>
                         {/if}
                         <div class="reply-content-container">
@@ -541,25 +603,25 @@
                                 {replyToMessage.sender_id === currentUserId ? $_('message.you') : (replyToUser?.name || replyToUser?.username || $_('member_list.user'))}
                             </div>
                             <div class="reply-content">
-                                {#if replyToMessage.attachments && replyToMessage.attachments.length > 0}
-                                    <em class="attachment-type">{getAttachmentTypeName(replyToMessage.attachments[0])}</em>
-                                    {#if replyToMessage.content} {replyToMessage.content}{/if}
+                                {#if replyToMessage.media && replyToMessage.media.length > 0}
+                                    <em class="attachment-type">{getMediaTypeName(replyToMessage.media[0], $_)}</em>
+                                    {#if replyToMessage.content} <span class="reply-text-content">{@html renderedReplyContent}</span>{/if}
                                 {:else}
-                                    {replyToMessage.content}
+                                    <span class="reply-text-content">{@html renderedReplyContent}</span>
                                 {/if}
                             </div>
                         </div>
                     </button>
                 {/if}
                 
-                {#if message.attachments && message.attachments.length > 0}
-                    <AttachmentList attachments={message.attachments} {isOwn} />
+                {#if message.media && message.media.length > 0}
+                    <MediaList media={message.media} {isOwn} {currentUserId} {message} />
                 {/if}
                 
                 
                 <div class="message-row">
                     {#if message.content}
-                        <div class="message-text" role="button" tabindex="0" on:click={handleSpoilerClick} on:keydown={(e) => e.key === 'Enter' && handleSpoilerClick(e)}>{@html renderedContent}</div>
+                        <div class="message-text" role="button" tabindex="0" on:click|stopPropagation={handleSpoilerClick} on:keydown={(e) => e.key === 'Enter' && handleSpoilerClick(e)}>{@html renderedContent}</div>
                     {/if}
                     
                     {#if !(messageReactions && messageReactions.length > 0)}
@@ -618,8 +680,9 @@
                 {/if}
             </div>
         {/if}
-        
-    </div>
+
+        </div>
+    {/if}
 </div>
 
 {#if isMenuOpen && !isDeleted}
@@ -633,11 +696,14 @@
         messageId={message.id}
         {currentUserId}
         existingReactions={messageReactions}
+        {allowRevote}
+        {hasVoted}
         on:close={menuActions.closeMenu}
         on:reply={() => { menuActions.closeMenu(); handleReplyClick(); }}
         on:edit={() => { menuActions.closeMenu(); handleEdit(); }}
         on:copy={() => { menuActions.closeMenu(); handleCopy(); }}
         on:delete={() => { menuActions.closeMenu(); handleDelete(); }}
+        on:unvote={() => { menuActions.closeMenu(); handleUnvote(); }}
         on:addReaction={(e) => { handleAddReaction(e.detail.emoji); }}
         on:removeReaction={(e) => { handleRemoveReaction(e.detail.emoji); }}
     />
@@ -650,31 +716,59 @@
         gap: 8px;
         position: relative;
     }
-    
+
     .message.other {
-        padding-left: 52px;
+        padding-left: 44px;
     }
-    
+
     .message.own {
-        padding-right: 52px;
+        padding-right: 44px;
     }
-    
+
     .message.other:has(.avatar-wrapper) {
-        padding-left: 12px;
+        padding-left: 4px;
     }
-    
+
     .message.own:has(.avatar-wrapper) {
-        padding-right: 12px;
+        padding-right: 4px;
     }
-    
+
     .message:hover {
         background: rgba(0, 0, 0, 0.08);
     }
-    
+
     .message.own { flex-direction: row-reverse; }
-    
+
     .message:is(.middle, .end) .sender {
         display: none;
+    }
+
+    .message.service {
+        padding: 8px 0 8px 0;
+        justify-content: center;
+    }
+
+    .message.service:hover {
+        background: transparent;
+    }
+
+    .service-message {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 4px 12px;
+        background: var(--color-bg-elevated);
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+        color: var(--color-text);
+        opacity: 0.8;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .service-text {
+        font-weight: 500;
     }
 
     .message-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -744,18 +838,6 @@
         filter: blur(1px);
     }
     
-    .reply-thumbnail-placeholder {
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.9em;
-        color: rgba(255, 255, 255, 0.6);
-    }
-    
     .reply-content-container {
         flex: 1;
         min-width: 0;
@@ -787,6 +869,89 @@
         color: rgba(255, 255, 255, 0.7);
         font-style: italic;
     }
+    
+    .reply-text-content {
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1;
+        height: 1em;
+    }
+    
+    .reply-text-content :global(*) {
+        display: inline !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    
+    .reply-text-content :global(p) {
+        display: inline;
+        margin: 0;
+    }
+    
+    .reply-text-content :global(h1),
+    .reply-text-content :global(h2),
+    .reply-text-content :global(h3),
+    .reply-text-content :global(h4),
+    .reply-text-content :global(h5),
+    .reply-text-content :global(h6) {
+        display: inline;
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+    }
+    
+    .reply-text-content :global(ul),
+    .reply-text-content :global(ol) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .reply-text-content :global(li) {
+        display: inline;
+        margin: 0;
+    }
+    
+    .reply-text-content :global(code) {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1px 3px;
+        border-radius: 2px;
+        font-size: 0.9em;
+    }
+    
+    .reply-text-content :global(blockquote) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .reply-text-content :global(table) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .reply-text-content :global(tr),
+    .reply-text-content :global(td),
+    .reply-text-content :global(th) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .reply-text-content :global(img) {
+        display: inline;
+        max-height: 1em;
+        vertical-align: middle;
+    }
 
     .content {
         white-space: pre-line;
@@ -801,7 +966,7 @@
         flex-direction: column;
         align-items: flex-end;
         position: relative;
-        max-width: 60%;
+        max-width: min(100%, 480px);
         padding: 6px 10px 4px 10px;
         line-height: 1.2;
         background: var(--bubble-bg, rgba(255,255,255,0.06));
@@ -809,17 +974,88 @@
         word-wrap: break-word;
         overflow-wrap: break-word;
     }
+
+    .bubble.has-media {
+        padding: 0;
+    }
+
+    .bubble.has-media :global(.media-list) {
+        margin-bottom: 0;
+        gap: 0;
+    }
+
+    .bubble.has-media :global(.visual-media-group) {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .bubble.has-media :global(.other-media-group) {
+        width: 100%;
+        gap: 0;
+    }
+
+    .bubble.has-media :global(.poll-container) {
+        border-radius: 0;
+    }
+
+    .bubble.has-media :global(.reply-preview) {
+        padding: 4px 8px;
+        margin: 6px;
+        margin-bottom: 6px;
+    }
+
+    .bubble.has-media :global(.message-text) {
+        padding: 6px 10px 4px 10px;
+    }
+
+    .bubble.has-media :global(.bubble-footer) {
+        padding: 0 10px 4px 10px;
+    }
+
+    .bubble.has-media :global(.reactions-footer-row) {
+        padding: 0;
+    }
+
+    .bubble.has-media :global(.reactions-footer-row) :global(.reactions) {
+        padding: 0 10px 4px 10px;
+    }
     
-    .bubble.has-attachments {
-        max-width: 85%;
-        min-width: 200px;
-        width: fit-content;
+    .message.own .bubble {
+        max-width: min(calc(100% - 20px), 480px);
+    }
+    
+    .message.other .bubble {
+        max-width: min(calc(100% - 20px), 480px);
+    }
+    
+    .message.own:has(.avatar-wrapper) .bubble {
+        max-width: min(calc(100% - 20px), 480px);
+    }
+    
+    .message.other:has(.avatar-wrapper) .bubble {
+        max-width: min(calc(100% - 20px), 480px);
     }
     
     .bubble.has-media {
-        max-width: 90%;
-        min-width: 220px;
+        max-width: min(calc(100% - 20px), 800px);
+        min-width: 100px;
         width: fit-content;
+    }
+    
+    .message.own:has(.avatar-wrapper) .bubble.has-attachments {
+        max-width: min(calc(100% - 20px), 85%);
+    }
+    
+    .message.other:has(.avatar-wrapper) .bubble.has-attachments {
+        max-width: min(calc(100% - 20px), 85%);
+    }
+    
+    .message.own:has(.avatar-wrapper) .bubble.has-media {
+        max-width: min(calc(100% - 12px), 800px);
+    }
+
+    .message.other:has(.avatar-wrapper) .bubble.has-media {
+        max-width: min(calc(100% - 12px), 800px);
     }
  
     .other .bubble { --bubble-bg: var(--color-bg-elevated); }
@@ -902,15 +1138,33 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        max-width: min(100%, 480px);
+        padding: 8px;
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-accent);
+        border-radius: var(--radius-sm);
+    }
+
+    .edit-media {
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: var(--radius-sm);
+        opacity: 0.95;
+    }
+
+    .edit-media :global(.media-list) {
+        pointer-events: none;
     }
     
     .edit-input {
-        background: var(--color-bg-elevated);
-        border: 1px solid var(--color-accent);
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
         border-radius: 4px;
         padding: 8px;
         color: var(--color-text);
         font-size: 14px;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .edit-actions {
@@ -1013,8 +1267,10 @@
         line-height: 1.4;
         white-space: pre-wrap;
         word-wrap: break-word;
-        overflow-wrap: break-word;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         flex: 1;
+        min-width: 0;
     }
     
     .message-text :global(code) {
@@ -1023,6 +1279,9 @@
         border-radius: 3px;
         font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 0.9em;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     
     .message-text :global(.line-content code) {
@@ -1030,6 +1289,51 @@
         padding: 0;
         font-size: inherit;
         line-height: inherit;
+    }
+
+    .message-text :global(hr) {
+        display: block;
+        width: 100%;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.25);
+        margin: 0.6em 0;
+        height: 0;
+    }
+
+    .message-text :global(pre) {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .message-text :global(table) {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        border-collapse: collapse;
+        margin: 0.4em 0;
+        font-size: 0.9em;
+    }
+
+    .message-text :global(th),
+    .message-text :global(td) {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 4px 8px;
+        text-align: left;
+    }
+
+    .message-text :global(th) {
+        font-weight: 600;
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .message-text :global(img) {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
     }
     
     .message-text :global(.hljs-keyword) {
@@ -1087,6 +1391,61 @@
         color: inherit;
         text-shadow: none;
     }
+    
+    .message-text :global(h1),
+    .message-text :global(h2),
+    .message-text :global(h3),
+    .message-text :global(h4),
+    .message-text :global(h5),
+    .message-text :global(h6) {
+        margin: 0.5em 0 0.25em 0;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    
+    .message-text :global(h1) { font-size: 1.5em; }
+    .message-text :global(h2) { font-size: 1.3em; }
+    .message-text :global(h3) { font-size: 1.15em; }
+    .message-text :global(h4) { font-size: 1.05em; }
+    .message-text :global(h5) { font-size: 0.95em; }
+    .message-text :global(h6) { font-size: 0.85em; }
+    
+    .message-text :global(ul),
+    .message-text :global(ol) {
+        margin: 0 !important;
+        padding-left: 1.5em !important;
+    }
+
+    .message-text :global(li) {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1.4;
+    }
+    
+    .message-text :global(ul li) {
+        list-style-type: disc;
+    }
+    
+    .message-text :global(ol li) {
+        list-style-type: decimal;
+    }
+    
+    .message-text :global(blockquote) {
+        margin: 0.5em 0;
+        padding-left: 1em;
+        border-left: 3px solid rgba(255, 255, 255, 0.3);
+        opacity: 0.8;
+    }
+    
+    .message-text :global(a) {
+        color: inherit;
+        text-decoration: underline;
+        opacity: 0.9;
+    }
+    
+    .message-text :global(a:hover) {
+        opacity: 1;
+    }
 
     .own * {
         color: var(--color-button-text);
@@ -1111,24 +1470,18 @@
     }
     
     @media (max-width: 768px) {
-        .bubble.has-attachments {
-            max-width: 95%;
-            min-width: 180px;
-            width: fit-content;
-        }
-        
         .bubble.has-media {
-            max-width: 98%;
-            min-width: 200px;
+            max-width: min(98%, 600px);
+            min-width: 80px;
             width: fit-content;
         }
     }
-    
+
     @media (max-width: 480px) {
         .bubble.has-attachments,
         .bubble.has-media {
-            max-width: 100%;
-            min-width: 160px;
+            max-width: min(100%, 500px);
+            min-width: 60px;
             width: fit-content;
         }
     }

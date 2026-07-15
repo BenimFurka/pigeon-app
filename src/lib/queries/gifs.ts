@@ -5,13 +5,12 @@ import {
     getTrendingGifs,
     getRecentGifs,
     addRecentGif,
-    createGifAttachment,
-    createGifAttachmentFromRecent,
-    mapGifToAttachmentPayload,
+    uploadGif,
+    uploadGifFromRecent,
     recentGifToGifItem,
     type GifListParams,
 } from '$lib/gifs';
-import type { ChatAttachment, GifItem, RecentGif, RecentGifsResponse } from '$lib/types/models';
+import type { GifItem, RecentGif, RecentGifsResponse, GifMedia } from '$lib/types/models';
 import { loggedIn } from '$lib/stores/auth';
 
 export const gifKeys = {
@@ -99,30 +98,23 @@ export function useSearchGifsQuery(termStore: Readable<string>, options?: Search
     return createInfiniteQuery(queryOptions);
 }
 
-export function useSendGifMutation(chatId: number) {
+/**
+ * Upload GIF and return GifMedia metadata
+ * Use this to prepare a GIF for sending, then use the returned GifMedia in MessageMedia when sending via WebSocket
+ */
+export function useUploadGifMutation() {
     const queryClient = useQueryClient();
 
     return createMutation({
-        mutationFn: async (payload: GifItem | RecentGif): Promise<ChatAttachment> => {
+        mutationFn: async (payload: GifItem | RecentGif): Promise<GifMedia> => {
             const isRecentGif = 'gif_id' in payload;
-            
+
             if (isRecentGif) {
                 const recentGif = payload as RecentGif;
-                
-                const attachment = await createGifAttachmentFromRecent(chatId, recentGif);
-                
-                await addRecentGif(recentGifToGifItem(recentGif));
-                
-                return attachment;
+                return uploadGifFromRecent(recentGif);
             } else {
                 const gifItem = payload as GifItem;
-                const gifPayload = mapGifToAttachmentPayload(gifItem);
-                
-                const attachment = await createGifAttachment(chatId, gifPayload);
-                
-                await addRecentGif(gifItem);
-                
-                return attachment;
+                return uploadGif(gifItem);
             }
         },
         onSuccess: () => {

@@ -1,13 +1,20 @@
 <script lang="ts">
     import { session } from '$lib/session';
-    import type { Message, MessageAttachment } from '$lib/types/models';
-    import { createEventDispatcher, onMount } from 'svelte';
-    import { Send, Paperclip, ImagePlay } from 'lucide-svelte';
+    import { wsService } from '$lib/ws-service';
+    import type { Message, MessageMedia, GifMedia } from '$lib/types/models';
+    import { createEventDispatcher, onMount, tick } from 'svelte';
+    import { Send, Paperclip, ImagePlay, Smile } from 'lucide-svelte';
     import AttachmentModal from '$lib/components/forms/modals/AttachmentModal.svelte';
     import GifPicker from '$lib/components/media/GifPicker.svelte';
+    import EmojiPicker from '$lib/components/media/EmojiPicker.svelte';
     import type { GifItem } from '$lib/types/models';
     import { _ } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
+    import { getMediaTypeName } from '$lib/utils/media';
+    import { hotkeys, matchesHotkey, pendingEditMessageId } from '$lib/stores/hotkeys';
+    import { queryClient } from '$lib/query';
+    import { messageKeys } from '$lib/queries/messages';
+    import { useCurrentProfile } from '$lib/queries/profile';
     
     // Props
     export let chatId: number | null = null;
@@ -27,33 +34,18 @@
     let attachmentModalOpen = false;
     let gifDropdownOpen = false;
     let gifButtonRef: HTMLButtonElement;
+    let emojiPickerOpen = false;
+    let emojiButtonRef: HTMLButtonElement;
     let isTyping = false;
     let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+    let pastedText = '';
+    let pastedFiles: File[] = [];
+
+    const profileQuery = useCurrentProfile();
 
     // Computed values
     $: replyToMessage = chatContext.replyToMessage;
     $: isMobile = chatContext.isMobile;
-
-    // Utility functions
-    function isMobileDevice(): boolean {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-
-    function getAttachmentType(attachment: MessageAttachment): string {
-        const mimeType = attachment.mime_type.toLowerCase();
-        const fileType = attachment.file_type.toLowerCase();
-        
-        if (fileType === 'gif' || mimeType.includes('gif')) return 'gif';
-        if (mimeType.startsWith('image/')) return 'image';
-        if (mimeType.startsWith('video/')) return 'video';
-        if (mimeType.startsWith('audio/')) return 'audio';
-        return 'document';
-    }
-
-    function getAttachmentTypeName(attachment: MessageAttachment): string {
-        const type = getAttachmentType(attachment);
-        return $_(`common.attachmentTypes.${type}`);
-    }
 
     function getUrl(path: string): string {
         const baseUrl = getServerUrl();
@@ -63,27 +55,38 @@
 
     function adjustTextareaHeight() {
         if (!inputElement) return;
-        inputElement.style.height = 'auto';
-        const maxHeight = 200;
-        const newHeight = Math.min(Math.max(inputElement.scrollHeight, 40), maxHeight);
-        inputElement.style.height = `${newHeight}px`;
         
-        if (inputElement.scrollHeight > maxHeight) {
-            inputElement.style.overflowY = 'auto';
+        const currentOverflow = inputElement.style.overflowY;
+        inputElement.style.overflowY = 'hidden';
+        inputElement.style.height = 'auto';
+        
+        const maxHeight = 200;
+        const minHeight = 40;
+        
+        if (!inputValue.trim()) {
+            inputElement.style.height = `${minHeight}px`;
         } else {
-            inputElement.style.overflowY = 'hidden';
+            const scrollHeight = inputElement.scrollHeight;
+            const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+            inputElement.style.height = `${newHeight}px`;
+            
+            if (scrollHeight > maxHeight) {
+                inputElement.style.overflowY = 'auto';
+            }
         }
     }
 
     // Event handlers
-    function handleSubmit(attachmentIds?: number[]) {
+    function handleSubmit(attachmentIds?: number[], media?: MessageMedia[]) {
         if (!chatId) {
-            if (!inputValue.trim() && !attachmentIds?.length) {
+            if (!inputValue.trim() && !attachmentIds?.length && !media?.length) {
                 return;
             }
-            dispatch('ephemeralSend', { content: inputValue.trim(), attachmentIds });
+            dispatch('ephemeralSend', { content: inputValue.trim(), attachmentIds, media });
             inputValue = '';
-            adjustTextareaHeight();
+            queueMicrotask(() => {
+                adjustTextareaHeight();
+            });
             dispatch('clearReply');
             chatContext.onClearReply();
             
@@ -95,22 +98,18 @@
             return;
         }
         
-        const ws = session.getWebSocket();
-        if (!ws) {
-            console.error('WebSocket not connected');
-            return;
-        }
-        
         if (inputValue.trim().startsWith('ws-custom:')) {
             try {
                 const jsonStr = inputValue.trim().substring('ws-custom:'.length).trim();
                 const customMessage = JSON.parse(jsonStr);
                 
-                ws.send(customMessage);
+                wsService.send(customMessage);
                 
                 console.log('Custom WebSocket message sent:', customMessage);
                 inputValue = '';
-                adjustTextareaHeight();
+                queueMicrotask(() => {
+                    adjustTextareaHeight();
+                });
                 dispatch('clearReply');
                 chatContext.onClearReply();
                 
@@ -125,7 +124,7 @@
             }
         }
         
-        if (!inputValue.trim() && !attachmentIds?.length) {
+        if (!inputValue.trim() && !attachmentIds?.length && !media?.length) {
             return;
         }
 
@@ -133,16 +132,26 @@
         session.addOptimisticMessage(chatId, content, {
             reply_to: replyToMessage?.id ?? undefined,
             attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
+            media: media?.length ? media : undefined,
         });
 
-        ws.send({
+        const messageData: any = {
+            chat_id: chatId,
+            content,
+            reply_to: replyToMessage?.id,
+        };
+
+        if (attachmentIds?.length) {
+            messageData.attachment_ids = attachmentIds;
+        }
+
+        if (media?.length) {
+            messageData.media = media;
+        }
+
+        wsService.send({
             type: 'send_message',
-            data: {
-                chat_id: chatId,
-                content,
-                reply_to: replyToMessage?.id,
-                attachment_ids: attachmentIds?.length ? attachmentIds : undefined
-            }
+            data: messageData
         });
         
         console.log('WebSocket message sent:', {
@@ -151,12 +160,15 @@
                 chat_id: chatId,
                 content: inputValue.trim(),
                 reply_to: replyToMessage?.id,
-                attachment_ids: attachmentIds?.length ? attachmentIds : undefined
+                attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
+                media: media?.length ? media : undefined
             }
         });
         
         inputValue = '';
-        adjustTextareaHeight();
+        queueMicrotask(() => {
+            adjustTextareaHeight();
+        });
         dispatch('clearReply');
         chatContext.onClearReply();
         
@@ -169,16 +181,19 @@
         }
     }
 
-    function handleAttachmentSent(event: CustomEvent<{ content: string; attachmentIds: number[] }>) {
-        const { content, attachmentIds } = event.detail;
+    function handleAttachmentSent(event: CustomEvent<{ content: string; media: MessageMedia[] }>) {
+        const { content, media } = event.detail;
         inputValue = content;
-        handleSubmit(attachmentIds);
+        handleSubmit(undefined, media);
+        attachmentModalOpen = false;
+        pastedText = '';
+        pastedFiles = [];
     }
 
-    function handleGifSelected(event: CustomEvent<{ gif: GifItem; attachmentId: number }>) {
-        const { gif, attachmentId } = event.detail;
+    function handleGifSelected(event: CustomEvent<{ gif: GifItem; media: GifMedia }>) {
+        const { gif, media } = event.detail;
         dispatch('gifSelected', { gif });
-        handleSubmit([attachmentId]);
+        handleSubmit(undefined, [media]);
     }
 
     function openAttachmentModal() {
@@ -199,7 +214,67 @@
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             handleSubmit();
+            return;
         }
+
+        if (
+            matchesHotkey(event, $hotkeys.edit_last_message) &&
+            !inputValue.trim() &&
+            chatId
+        ) {
+            event.preventDefault();
+            requestEditLastMessage();
+            return;
+        }
+    }
+
+    function requestEditLastMessage() {
+        if (!chatId) return;
+        const myId = $profileQuery?.data?.id;
+        if (myId == null) return;
+
+        const messages = queryClient.getQueryData<Message[]>(messageKeys.list(chatId)) || [];
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const m = messages[i];
+            if (m.sender_id === myId && m.id > 0 && !m.new_chat_members && !m.left_chat_member) {
+                pendingEditMessageId.set(m.id);
+                return;
+            }
+        }
+    }
+
+    function toggleEmojiPicker(event: MouseEvent) {
+        event.stopPropagation();
+        emojiPickerOpen = !emojiPickerOpen;
+        if (emojiPickerOpen) gifDropdownOpen = false;
+    }
+
+    function handleEmojiSelect(event: CustomEvent<{ emoji: string }>) {
+        const emoji = event.detail.emoji;
+        const el = inputElement;
+        if (el) {
+            const start = el.selectionStart ?? inputValue.length;
+            const end = el.selectionEnd ?? inputValue.length;
+            inputValue = inputValue.slice(0, start) + emoji + inputValue.slice(end);
+            queueMicrotask(() => {
+                if (!inputElement) return;
+                const pos = start + emoji.length;
+                inputElement.focus();
+                inputElement.setSelectionRange(pos, pos);
+                adjustTextareaHeight();
+            });
+        } else {
+            inputValue += emoji;
+        }
+        emojiPickerOpen = false;
+    }
+
+    export function focus() {
+        inputElement?.focus();
+    }
+
+    export function getValue(): string {
+        return inputValue;
     }
     
     function handleInput() {
@@ -221,14 +296,44 @@
         
         adjustTextareaHeight();
     }
+
+    function handlePaste(event: ClipboardEvent) {
+        if (!chatId) return;
+        
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const files: File[] = [];
+        
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file' && item.type) {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+
+        if (files.length > 0) {
+            event.preventDefault();
+            
+            pastedText = inputValue;
+            pastedFiles = files;
+            inputValue = '';
+            queueMicrotask(() => {
+                adjustTextareaHeight();
+            });
+            attachmentModalOpen = true;
+            
+            inputElement?.blur();
+        }
+    }
     
     function sendTyping(isTyping: boolean) {
         if (!chatId) return;
         
-        const ws = session.getWebSocket();
-        if (!ws) return;
-        
-        ws.send({
+        wsService.send({
             type: 'typing',
             data: {
                 chat_id: chatId,
@@ -241,8 +346,6 @@
         chatContext.onClearReply();
     }
 
-
-
     // Reactive statements
     $: if (inputElement) {
         adjustTextareaHeight();
@@ -252,19 +355,16 @@
 <div class="message-input-container">
     {#if replyToMessage}
         <div class="reply-preview">
-            {#if replyToMessage.attachments && replyToMessage.attachments.length > 0}
+            {#if replyToMessage.media && replyToMessage.media.length > 0 && (replyToMessage.media[0].type === 'Photo' || replyToMessage.media[0].type === 'Video' || replyToMessage.media[0].type === 'Gif')}
                 <div class="reply-attachment-preview">
-                    {#if replyToMessage.attachments[0].thumbnail_url}
-                        <img 
-                            src={getUrl(replyToMessage.attachments[0].thumbnail_url)} 
-                            alt="" 
-                            class="reply-thumbnail"
-                        />
-                    {:else}
-                        <div class="reply-thumbnail-placeholder">
-                            {getAttachmentTypeName(replyToMessage.attachments[0]).charAt(0).toUpperCase()}
-                        </div>
-                    {/if}
+                    <img 
+                        src={getUrl(replyToMessage.media[0].type === 'Gif'
+                            ? (replyToMessage.media[0].preview_url || replyToMessage.media[0].file_url)
+                            : (replyToMessage.media[0].thumbnail_url || replyToMessage.media[0].file_url)
+                        )} 
+                        alt="" 
+                        class="reply-thumbnail"
+                    />
                 </div>
             {/if}
             <div class="reply-info">
@@ -272,8 +372,8 @@
                 
                 <div class="reply-content-container">
                     <div class="reply-content">
-                        {#if replyToMessage.attachments && replyToMessage.attachments.length > 0}
-                            <em class="attachment-type">{getAttachmentTypeName(replyToMessage.attachments[0])}</em>
+                        {#if replyToMessage.media && replyToMessage.media.length > 0}
+                            <em class="attachment-type">{getMediaTypeName(replyToMessage.media[0], $_)}</em>
                             {#if replyToMessage.content} {replyToMessage.content}{/if}
                         {:else}
                             {replyToMessage.content}
@@ -303,10 +403,31 @@
             placeholder={replyToMessage ? $_('message_input.write_reply') : $_('message_input.write_message')}
             on:keydown={handleKeyDown}
             on:input={handleInput}
+            on:paste={handlePaste}
             class="message-input"
             rows="1"
         ></textarea>
         
+
+        <div class="gif-button-container">
+            <button
+                bind:this={emojiButtonRef}
+                class="gif-button"
+                on:click={toggleEmojiPicker}
+                title={$_('message_input.select_emoji')}
+                aria-label={$_('message_input.select_emoji')}
+                type="button"
+            >
+                <Smile size={18} />
+            </button>
+            <EmojiPicker
+                isOpen={emojiPickerOpen}
+                isMobile={isMobile}
+                triggerButton={emojiButtonRef}
+                on:close={() => (emojiPickerOpen = false)}
+                on:select={handleEmojiSelect}
+            />
+        </div>
 
         <div class="gif-button-container">
             <button
@@ -323,7 +444,6 @@
             
             {#if chatId}
                 <GifPicker
-                    chatId={chatId}
                     isOpen={gifDropdownOpen}
                     isMobile={isMobile}
                     triggerButton={gifButtonRef}
@@ -353,7 +473,13 @@
             chatId={chatId}
             isOpen={attachmentModalOpen}
             isMobile={isMobile}
-            on:close={() => attachmentModalOpen = false}
+            initialContent={pastedText}
+            initialFiles={pastedFiles}
+            on:close={() => {
+                attachmentModalOpen = false;
+                pastedText = '';
+                pastedFiles = [];
+            }}
             on:sent={handleAttachmentSent}
         />
     {/if}
@@ -400,20 +526,6 @@
         height: 2.5em;
         border-radius: var(--radius-sm);
         object-fit: cover;
-        flex-shrink: 0;
-    }
-    
-    .reply-thumbnail-placeholder {
-        width: 2.5em;
-        height: 2.5em;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 0.9em;
-        color: rgba(255, 255, 255, 0.6);
         flex-shrink: 0;
     }
     

@@ -1,4 +1,5 @@
-import { registerSW } from 'virtual:pwa-register';
+// TODO: fix
+/*import { registerSW } from 'virtual:pwa-register';
 
 export const updateSW =
   typeof window !== 'undefined'
@@ -13,9 +14,9 @@ export const updateSW =
         },
       })
     : () => {};
-
+*/
 export function initPWA() {
-  if (typeof window === 'undefined') return;
+  /*if (typeof window === 'undefined') return;
 
   let deferredPrompt: any = null;
 
@@ -44,9 +45,9 @@ export function initPWA() {
         { once: true } as any
       );
     }
-  });
+  }); */
 }
-
+/*
 export function isRunningAsPWA(): boolean {
   if (typeof window === 'undefined') return false;
 
@@ -55,4 +56,4 @@ export function isRunningAsPWA(): boolean {
     (window.navigator as any).standalone === true ||
     document.referrer.includes('android-app://')
   );
-}
+}*/

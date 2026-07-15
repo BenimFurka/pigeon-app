@@ -4,6 +4,8 @@
     "nav": {
       "profile": "Профиль",
       "appearance": "Внешний вид",
+      "hotkeys": "Горячие клавиши",
+      "notifications": "Уведомления",
       "config": "Конфигурация"
     },
     "profile": {
@@ -19,18 +21,39 @@
       "save": "Сохранить профиль",
       "logout": "Выйти из аккаунта",
       "updateError": "Не удалось обновить профиль",
-      "avatarError": "Не удалось загрузить аватар"
+      "avatarError": "Не удалось загрузить аватар",
+      "avatar": "Аватар",
+      "information": "Информация",
+      "account": "Аккаунт"
     },
     "appearance": {
       "sectionTitle": "Внешний вид",
       "themeTitle": "Тема интерфейса",
       "themeCurrentDark": "Текущая тема: Тёмная",
       "themeCurrentLight": "Текущая тема: Светлая",
-      "toggle": "Переключить"
+      "toggle": "Переключить",
+      "accentTitle": "Акцентный цвет",
+      "accentHint": "Оттенок (hue) акцентной палитры. Остальные цвета интерфейса строятся от него.",
+      "accentReset": "Сбросить"
+    },
+    "hotkeys": {
+      "sectionTitle": "Горячие клавиши",
+      "sectionHint": "Нажмите на сочетание, затем введите новое. Esc отменяет.",
+      "edit_last_message": "Редактировать последнее сообщение",
+      "toggle_settings": "Открыть / закрыть настройки",
+      "pressKey": "Нажмите клавишу…",
+      "reset": "Сбросить по умолчанию"
+    },
+    "notifications": {
+      "sectionTitle": "Уведомления",
+      "enableTitle": "Включить уведомления",
+      "enableHint": "Показывать всплывающие уведомления при получении новых сообщений",
+      "soundTitle": "Звук уведомлений",
+      "soundHint": "Воспроизводить звук при получении новых сообщений"
     },
     "config": {
       "sectionTitle": "Конфигурация",
-      "savePrompt": "Есть несохранённые изменения. Сохраните их, чтобы применить настройки.",
+      "savePrompt": "Есть несохранённые изменения.",
       "saving": "Сохранение...",
       "save": "Сохранить",
       "api": "API",
@@ -109,7 +132,15 @@
     "edited": "изменено",
     "sending": "Отправка",
     "sent": "Доставлено",
-    "read": "Прочитано"
+    "read": "Прочитано",
+    "joined": "вступил(а) в чат",
+    "joined_plural": "вступили в чат",
+    "left": "покинул(а) чат",
+    "chat_renamed": "Чат переименован в",
+    "photo_removed": "Фото чата удалено",
+    "group_created": "Группа создана",
+    "channel_created": "Канал создан",
+    "pinned": "закрепил(а) сообщение"
   },
   "message_list": {
     "no_messages": "Нет сообщений",
@@ -134,9 +165,38 @@
     "write_reply": "Напишите ответ...",
     "write_message": "Напишите сообщение...",
     "select_gif": "Выбрать GIF",
+    "select_emoji": "Эмодзи",
     "open_gif_panel": "Открыть GIF-панель",
     "send_enter": "Отправить (Enter)",
     "send_message": "Отправить сообщение"
+  },
+  "emoji_picker": {
+    "title": "Эмодзи",
+    "search": "Поиск эмодзи…",
+    "smileys": "Смайлики",
+    "gestures": "Жесты",
+    "hearts": "Сердечки",
+    "animals": "Животные",
+    "food": "Еда",
+    "travel": "Путешествия",
+    "objects": "Объекты",
+    "symbols": "Символы"
+  },
+  "avatar_editor": {
+    "title": "Редактировать аватар",
+    "loading": "Загрузка…",
+    "zoom": "Масштаб",
+    "hint": "Перетащите для изменения позиции, прокрутите или используйте ползунок для масштабирования.",
+    "apply": "Применить",
+    "saving": "Сохранение…",
+    "load_error": "Не удалось загрузить изображение",
+    "save_error": "Не удалось сохранить изображение"
+  },
+  "connection": {
+    "connected": "Подключено",
+    "connecting": "Подключение…",
+    "disconnected": "Нет подключения к серверу",
+    "error": "Ошибка подключения"
   },
   "chat_list": {
     "search_results": "Результаты по запросу",
@@ -153,7 +213,8 @@
   "chat_header": {
     "back_to_chat_list": "Назад к списку чатов",
     "members": "участников",
-    "subscribers": "подписчиков"
+    "subscribers": "подписчиков",
+    "more_options": "Ещё опции"
   },
   "sidebar": {
     "settings": "Настройки",
@@ -165,12 +226,16 @@
       "en": "English",
       "ru": "Russian"
     },
-    "attachmentTypes": {
+    "mediaTypes": {
       "image": "Изображение",
       "video": "Видео",
       "audio": "Аудио",
       "document": "Документ",
-      "gif": "GIF"
+      "gif": "GIF",
+      "poll": "Опрос",
+      "location": "Местоположение",
+      "contact": "Контакт",
+      "sticker": "Стикер"
     },
     "cancel": "Отмена",
     "send": "Отправить",
@@ -182,20 +247,29 @@
     "not_found": "Не найдено",
     "online": "В сети",
     "offline": "Не в сети",
+    "unmute": "Включить звук",
+    "mute": "Выключить звук",
+    "volume": "Громкость",
+    "exit_fullscreen": "Выйти из полноэкранного режима",
+    "fullscreen": "Полноэкранный режим",
+    "browser_not_support_video": "Ваш браузер не поддерживает видео",
     "uploading": "Загрузка",
     "loading": "Загрузка"
   },
   "attachments": {
     "send_attachments": "Отправить вложения",
-    "add_files_or_message": "Добавьте файлы или введите сообщение",
-    "wait_for_upload": "Дождитесь завершения загрузки файлов",
-    "file_too_large": "Файл \"{fileName}\" слишком большой (максимум {maxSize})",
-    "upload_error": "Ошибка загрузки файла",
     "drag_files_or": "Перетащите файлы сюда или",
     "select_files": "Выбрать файлы",
     "max_file_size": "Максимальный размер файла: {size}",
-    "attachments_count": "Вложения ({count})",
-    "add_message_text": "Добавьте текст к сообщению..."
+    "add_files_or_message": "Добавьте файлы или введите сообщение",
+    "wait_for_upload": "Дождитесь завершения загрузки файлов",
+    "upload_error": "Ошибка загрузки файла",
+    "file_too_large": "Файл \"{fileName}\" слишком большой (максимум {maxSize})",
+    "attachments_count": "{count, plural, one {# вложение} few {# вложения} many {# вложений} other {# вложения}}",
+    "add_message_text": "Добавьте текст к сообщению...",
+    "file_upload": "Загрузка файлов",
+    "message": "Сообщение",
+    "add_more_files": "Добавить ещё"
   },
   "chat_info": {
     "user_info": "Информация о пользователе",
@@ -203,66 +277,95 @@
     "channel_info": "Информация о канале",
     "online": "В сети",
     "offline": "Не в сети",
-    "leave_chat_error": "Не удалось покинуть чат",
-    "leave_chat_confirm": "Вы уверены, что хотите покинуть этот чат?",
     "about": "О себе",
+    "description": "Описание",
     "members": "участников",
     "members_title": "Участники",
-    "subscribers": "подписчиков",
-    "description": "Описание",
     "add_member": "Добавить",
     "manage_members": "Управление",
+    "subscribers": "подписчиков",
+    "leave_chat_confirm": "Вы уверены, что хотите покинуть этот чат?",
+    "leave_chat_error": "Не удалось покинуть чат",
     "leave_group": "Покинуть группу",
-    "leave_channel": "Покинуть канал"
+    "leave_channel": "Покинуть канал",
+    "avatar": "Аватар",
+    "basic_info": "Основная информация",
+    "group_details": "Детали группы",
+    "channel_details": "Детали канала",
+    "actions": "Действия"
   },
   "create_chat": {
     "create_chat": "Создать чат",
     "creating": "Создание...",
     "chat_type": "Тип чата",
-    "type_dm": "Личный",
+    "type_dm": "Личное сообщение",
     "type_group": "Группа",
     "type_channel": "Канал",
     "name": "Название",
-    "name_placeholder": "Введите название",
+    "name_placeholder": "Введите название чата",
     "description": "Описание",
-    "description_placeholder": "Краткое описание (необязательно)",
+    "description_placeholder": "Введите описание (необязательно)",
     "public": "Публичный",
-    "add_member": "Добавить участника",
-    "search_user_placeholder": "Введите имя пользователя",
+    "add_member": "Добавить участников",
+    "search_user_placeholder": "Поиск пользователей...",
     "search_error": "Ошибка поиска",
-    "specify_one_user": "Укажите одного пользователя для личного чата",
-    "enter_chat_name": "Введите название чата"
+    "specify_one_user": "Пожалуйста, укажите ровно одного пользователя для личных сообщений",
+    "enter_chat_name": "Пожалуйста, введите название чата",
+    "chat_settings": "Настройки чата",
+    "member_selection": "Выбор участников"
   },
   "edit_chat": {
     "edit_group": "Редактировать группу",
     "edit_channel": "Редактировать канал",
-    "update_error": "Ошибка обновления чата",
-    "avatar_upload_error": "Не удалось загрузить аватар",
-    "change_avatar": "Изменить",
+    "change_avatar": "Изменить аватар",
     "group_name": "Название группы",
-    "channel_name": "Название канала",
-    "group_name_placeholder": "Название группы",
-    "channel_name_placeholder": "Название канала",
+    "group_name_placeholder": "Введите название группы",
     "group_description": "Описание группы",
+    "group_description_placeholder": "Введите описание группы",
+    "channel_name": "Название канала",
+    "channel_name_placeholder": "Введите название канала",
     "channel_description": "Описание канала",
-    "group_description_placeholder": "Расскажите о группе",
-    "channel_description_placeholder": "Расскажите о канале",
+    "channel_description_placeholder": "Введите описание канала",
     "saving": "Сохранение...",
     "save_changes": "Сохранить изменения",
+    "update_error": "Не удалось обновить чат",
+    "avatar_upload_error": "Не удалось загрузить аватар",
     "delete": "Удалить",
-    "group": "группу",
-    "channel": "канал"
+    "group": "Группа",
+    "channel": "Канал",
+    "avatar": "Аватар",
+    "chat_information": "Информация о чате",
+    "actions": "Действия"
   },
   "manage_members": {
     "manage_members": "Управление участниками",
-    "add_members_error": "Ошибка добавления участников",
-    "remove_member_error": "Ошибка удаления участника",
     "add_members": "Добавить участников",
     "search_users_placeholder": "Найти пользователей...",
     "add_selected": "Добавить выбранных",
-    "no_users_found": "Пользователи не найдены",
     "members": "Участники",
-    "no_members": "В этом чате пока нет участников"
+    "no_members": "В этом чате пока нет участников",
+    "no_users_found": "Пользователи не найдены",
+    "add_members_error": "Не удалось добавить участников",
+    "remove_member_error": "Не удалось удалить участника",
+    "edit_permissions": "Изменить права",
+    "remove_member": "Удалить участника",
+    "update_permissions_error": "Не удалось обновить права",
+    "can_send_messages": "Отправлять сообщения",
+    "can_manage_messages": "Управлять сообщениями",
+    "can_manage_members": "Управлять участниками",
+    "can_manage_chat": "Управлять чатом"
+  },
+  "edit_permissions": {
+    "title": "Изменить права участника",
+    "update_error": "Не удалось обновить права",
+    "can_send_messages": "Отправлять сообщения",
+    "can_send_messages_desc": "Разрешить отправку сообщений в чат",
+    "can_manage_messages": "Управлять сообщениями",
+    "can_manage_messages_desc": "Разрешить редактирование и удаление сообщений",
+    "can_manage_members": "Управлять участниками",
+    "can_manage_members_desc": "Разрешить добавление и удаление участников",
+    "can_manage_chat": "Управлять чатом",
+    "can_manage_chat_desc": "Разрешить изменение настроек чата"
   },
   "media_viewer": {
     "media_viewer": "Просмотр медиа",
@@ -295,10 +398,12 @@
     "reactions": "Реакции",
     "add_reaction": "Добавить реакцию",
     "remove_reaction": "Удалить реакцию",
+    "more_emoji": "Больше эмодзи",
     "reply": "Ответить",
     "copy": "Копировать",
     "edit": "Редактировать",
-    "delete": "Удалить"
+    "delete": "Удалить",
+    "unvote": "Отменить голос"
   },
   "gif_picker": {
     "title": "Выбор GIF",
@@ -331,5 +436,35 @@
     "one_user_typing": "Кто-то печатает...",
     "two_users_typing": "Два человека печатают...",
     "many_users_typing": "{count} человек печатают..."
+  },
+  "poll": {
+    "create_poll": "Создать опрос",
+    "question": "Вопрос",
+    "question_placeholder": "Введите ваш вопрос...",
+    "options": "Варианты ответа",
+    "option_placeholder": "Вариант {number}",
+    "add_option": "Добавить вариант",
+    "allow_multiple": "Разрешить несколько вариантов",
+    "multiple_choice": "Несколько вариантов",
+    "anonymous": "Анонимный",
+    "quiz_mode": "Режим викторины",
+    "quiz": "Викторина",
+    "explanation": "Пояснение",
+    "explanation_placeholder": "Объясните правильный ответ (необязательно)...",
+    "close_period": "Закрыть голосование через (минут)",
+    "close_period_placeholder": "Введите минуты",
+    "close_period_help": "Оставьте пустым, чтобы голосование было открыто постоянно",
+    "mark_as_correct": "Отметить как правильный ответ",
+    "create": "Создать опрос",
+    "votes": "голосов",
+    "results": "Результаты",
+    "vote": "Голосовать",
+    "closed": "Закрыто",
+    "public": "Публичное",
+    "basic_settings": "Основные настройки",
+    "poll_settings": "Настройки опроса",
+    "quiz_settings": "Настройки викторины",
+    "allow_revote": "Разрешить переголосование",
+    "unvote": "Отменить голос"
   }
 }

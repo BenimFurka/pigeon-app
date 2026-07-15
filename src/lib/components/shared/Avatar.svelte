@@ -55,6 +55,13 @@
 
     // Lifecycle hooks
     onMount(() => {
+        const rect = container.getBoundingClientRect();
+        const isAlreadyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+        if (isAlreadyVisible) {
+            isVisible = true;
+            return;
+        }
+
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -80,39 +87,37 @@
             alt="" 
             class="avatar"
             on:error={handleImageError}
-            style="width: 100%; height: 100%;"
         />
     {:else}
         <img 
             src={fallbackImage} 
             alt="" 
             class="avatar fallback"
-            style="width: 100%; height: 100%;"
         />
     {/if}
 </div>
 
 <style>
-	.avatar {
-		width: 40px;
-		height: 40px;
-		border-radius: 10px;
-		display: inline-block;
-		vertical-align: middle;
-		display: flex;
-		outline: none;
-		border: none;
-		flex-shrink: 0;
-		background-color: var(--surface-glass);
-	}
- 
 	.avatar-container { 
-		object-fit: cover;
+		--avatar-radius: 22.7%;
 		position: relative; 
 		overflow: hidden;
+		border-radius: var(--avatar-radius);
         -moz-user-select: none;
         -khtml-user-select: none;
         -webkit-user-select: none;
         user-select: none;
+	}
+
+	.avatar {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		border-radius: var(--avatar-radius);
+		display: block;
+		outline: none;
+		border: none;
+		flex-shrink: 0;
+		background-color: transparent;
 	}
 </style>

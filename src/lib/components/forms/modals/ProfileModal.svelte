@@ -2,7 +2,6 @@
     import { createEventDispatcher } from 'svelte';
     import { formatLastSeen } from '$lib/datetime';
     import Avatar from '$lib/components/shared/Avatar.svelte';
-    import Button from '$lib/components/shared/Button.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
     import { useCurrentProfile } from '$lib/queries/profile';
     import { presence } from '$lib/stores/presence';
@@ -68,7 +67,7 @@
 >
     <div class="content">
         <div class="user-avatar-container">
-            <Avatar avatarUrl={user.avatar_url} size="xlarge" />
+            <Avatar avatarUrl={user.avatar_url} size={120} />
             {#if isOnline}
                 <span class="online-dot" title={$_('chat_info.online')} />
             {/if}
@@ -95,10 +94,14 @@
     
     <div slot="footer">
         {#if !isCurrentUser}
-            <div class="footer-field"> 
-                <Button variant="outline" fullWidth on:click={handleMessageClick}>
+            <div class="footer-field">
+                <button
+                    type="button"
+                    class="btn outline full"
+                    on:click={handleMessageClick}
+                >
                     {$_('profile_modal.send_message')}
-                </Button>
+                </button>
             </div>
         {/if}
     </div>
@@ -121,7 +124,7 @@
         position: relative;
         width: 120px;
         height: 120px;
-        margin: 0 auto 20px;
+        margin: 0 auto;
         display: flex;
         justify-content: center;
         align-items: center;

@@ -88,23 +88,125 @@ export interface ChatMember {
     last_read_message_id: number | null;
 }
 
-export interface ChatAttachment {
-    id: number;
-    chat_id: number;
-    uploaded_by: number;
-    file_type: string;
+export interface PhotoMedia {
+    type: 'Photo';
+    file_id: string;
     file_url: string;
-    file_name: string;
+    width: number;
+    height: number;
     file_size: number;
-    mime_type: string;
-    thumbnail_url: string | null;
-    width: number | null;
-    height: number | null;
-    duration: number | null;
-    created_at: string;
+    thumbnail_url?: string | null;
+    spoiler: boolean;
 }
 
-export interface GifAttachmentPayload {
+export interface DocumentMedia {
+    type: 'Document';
+    file_id: string;
+    file_url: string;
+    file_name: string;
+    mime_type: string;
+    file_size: number;
+    thumbnail_url?: string | null;
+}
+
+export interface VideoMedia {
+    type: 'Video';
+    file_id: string;
+    file_url: string;
+    width: number;
+    height: number;
+    duration?: number | null;
+    file_size: number;
+    thumbnail_url?: string | null;
+    supports_streaming: boolean;
+}
+
+export interface AudioMedia {
+    type: 'Audio';
+    file_id: string;
+    file_url: string;
+    duration?: number | null;
+    file_name?: string | null;
+    mime_type: string;
+    file_size: number;
+    thumbnail_url?: string | null;
+}
+
+export interface VoiceMedia {
+    type: 'Voice';
+    file_id: string;
+    file_url: string;
+    duration?: number | null;
+    file_size: number;
+    waveform?: number[] | null;
+}
+
+export interface PollMedia {
+    type: 'Poll';
+    id: number;
+    question: string;
+    options: PollOption[];
+    allows_multiple: boolean;
+    anonymous: boolean;
+    is_quiz: boolean;
+    explanation?: string | null;
+    close_period?: number | null;
+    correct_option_indexes?: number[] | null;
+    has_voted?: boolean;
+    user_voted_options?: number[];
+    allow_revote: boolean;
+}
+
+export interface GeoMedia {
+    type: 'Geo';
+    latitude: number;
+    longitude: number;
+    title?: string | null;
+    address?: string | null;
+}
+
+export interface ContactMedia {
+    type: 'Contact';
+    phone_number: string;
+    first_name: string;
+    last_name?: string | null;
+    vcard?: string | null;
+}
+
+export interface StickerMedia {
+    type: 'Sticker';
+    file_id: string;
+    file_url: string;
+    width: number;
+    height: number;
+    emoji?: string | null;
+    set_name?: string | null;
+}
+
+export interface GifMedia {
+    type: 'Gif';
+    file_id: string;
+    file_url: string;
+    width: number;
+    height: number;
+    duration?: number | null;
+    file_size: number;
+    preview_url?: string | null;
+}
+
+export type MessageMedia = 
+    | PhotoMedia
+    | DocumentMedia
+    | VideoMedia
+    | AudioMedia
+    | VoiceMedia
+    | PollMedia
+    | GeoMedia
+    | ContactMedia
+    | StickerMedia
+    | GifMedia;
+
+export interface GifSearchResult {
     id: string;
     title: string;
     url: string;
@@ -116,7 +218,9 @@ export interface GifAttachmentPayload {
     search_query?: string;
 }
 
-export interface GifItem extends GifAttachmentPayload {}
+export type GifItem = GifSearchResult;
+
+export interface GifAttachmentPayload extends GifSearchResult {}
 
 export interface RecentGif {
     id: number;
@@ -151,22 +255,6 @@ export interface RecentGifsResponse {
     pagination: GifListPagination;
 }
 
-export interface MessageAttachment {
-    id: number;
-    chat_id: number;
-    uploaded_by: number;
-    file_type: string;
-    file_url: string;
-    file_name: string;
-    file_size: number;
-    mime_type: string;
-    thumbnail_url: string | null;
-    width: number | null;
-    height: number | null;
-    duration: number | null;
-    created_at: string;
-}
-
 export interface MessageReaction {
     id: number;
     message_id: number;
@@ -186,10 +274,18 @@ export interface Message {
     is_edited: boolean;
     created_at: string;
     edited_at: string | null;
-    attachments: MessageAttachment[] | null;
+    media: MessageMedia[] | null;
     reactions: MessageReaction[] | null;
     status?: MessageStatus;
     clientId?: string;
+    new_chat_members?: UserPublic[] | null;
+    left_chat_member?: UserPublic | null;
+    new_chat_title?: string | null;
+    delete_chat_photo?: boolean | null;
+    chat_created_type?: string | null;
+    migrate_to_chat_id?: number | null;
+    migrate_from_chat_id?: number | null;
+    pinned_message?: Message | null;
 }
 
 export interface Poll {
@@ -202,15 +298,18 @@ export interface Poll {
     is_quiz: boolean;
     explanation: string | null;
     is_closed: boolean;
+    allow_revote: boolean;
     created_at: string;
 }
 
 export interface PollOption {
-    id: number;
-    poll_id: number;
+    id?: number;
+    poll_id?: number;
     text: string;
-    is_correct: boolean | null;
-    votes_count: number;
+    votes_count?: number;
+    is_correct?: boolean | null;
+    voters?: User[] | null;
+    voters_count?: number;
 }
 
 export interface PaginatedResponse<T> {

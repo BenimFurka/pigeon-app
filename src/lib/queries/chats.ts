@@ -1,6 +1,6 @@
 import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 import { makeRequest, uploadChatAvatar } from '$lib/api';
-import type { Chat, ChatPreview } from '$lib/types/models';
+import type { Chat, ChatPreview, ChatMember } from '$lib/types/models';
 import { presence } from '$lib/stores/presence';
 import { get } from 'svelte/store';
 import { loggedIn } from '$lib/stores/auth';
@@ -10,6 +10,7 @@ export const chatKeys = {
   lists: () => [...chatKeys.all, 'list'] as const,
   previews: () => [...chatKeys.lists(), 'previews'] as const,
   detail: (id: number) => [...chatKeys.all, 'detail', id] as const,
+  members: (id: number) => [...chatKeys.detail(id), 'members'] as const,
 };
 
 export function useChats(options?: { enabled?: boolean }) {
@@ -105,6 +106,70 @@ export function useUploadChatAvatar() {
     onSuccess: (updatedChat: any, { chatId }) => {
       queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
       queryClient.setQueryData(chatKeys.detail(chatId), updatedChat);
+    },
+  });
+}
+
+export function useChatMembers(chatId: number, options?: { enabled?: boolean }) {
+  return createQuery({
+    queryKey: chatKeys.members(chatId),
+    queryFn: async (): Promise<ChatMember[]> => {
+      const res = await makeRequest<ChatMember[]>(`/chats/${chatId}/members`, null, true, 'GET');
+      if (!res.data) throw new Error('No members in response');
+      return res.data;
+    },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    enabled: (options?.enabled !== false) && get(loggedIn),
+  });
+}
+
+export function useAddMember() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async ({ chatId, userId }: { chatId: number; userId: number }) => {
+      const res = await makeRequest<ChatMember>(`/chats/${chatId}/members`, { data: { user_id: userId } }, true, 'POST');
+      if (!res.data) throw new Error('Failed to add member');
+      return res.data;
+    },
+    onSuccess: (_, { chatId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.members(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.detail(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+    },
+  });
+}
+
+export function useRemoveMember() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async ({ chatId, userId }: { chatId: number; userId: number }) => {
+      const res = await makeRequest(`/chats/${chatId}/members/${userId}`, null, true, 'DELETE');
+      if ((res as any).error) throw new Error((res as any).error?.message || 'Failed to remove member');
+      return true;
+    },
+    onSuccess: (_, { chatId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.members(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.detail(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
+    },
+  });
+}
+
+export function useUpdateMemberPermissions() {
+  const queryClient = useQueryClient();
+
+  return createMutation({
+    mutationFn: async ({ chatId, userId, permissions }: { chatId: number; userId: number; permissions: Partial<Pick<ChatMember, 'role' | 'can_send_messages' | 'can_manage_messages' | 'can_manage_members' | 'can_manage_chat'>> }) => {
+      const res = await makeRequest<ChatMember>(`/chats/${chatId}/members/${userId}`, { data: permissions }, true, 'PUT');
+      if (!res.data) throw new Error('Failed to update member permissions');
+      return res.data;
+    },
+    onSuccess: (_, { chatId }) => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.members(chatId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.detail(chatId) });
     },
   });
 }

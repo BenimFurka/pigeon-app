@@ -4,7 +4,7 @@ const initialConfig = {
   server: {
     secure: window.location.protocol === 'https:',
     host: window.location.hostname,
-    port: 8443,
+    port: window.location.protocol === 'https:' ? 7443 : 8443,
     apiPath: '/api',
     apiVer: 'v1'
   },
@@ -15,7 +15,11 @@ const initialConfig = {
   
   app: {
     defaultLanguage: 'en',
-    version: '1.0.0'
+    version: '1.0.0',
+    notifications: {
+      enabled: true,
+      sound: true
+    }
   }
 };
 
@@ -28,7 +32,17 @@ export function loadConfigFromStorage(): void {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      config.set({ ...initialConfig, ...parsed });
+      if (!parsed.app?.notifications) {
+        localStorage.removeItem(STORAGE_KEY);
+        config.set(initialConfig);
+        return;
+      }
+      
+      config.set({
+        server: { ...initialConfig.server, ...parsed.server },
+        websocket: { ...initialConfig.websocket, ...parsed.websocket },
+        app: { ...initialConfig.app, ...parsed.app }
+      });
     }
   } catch (error) {
     console.warn('Failed to load config from storage:', error);

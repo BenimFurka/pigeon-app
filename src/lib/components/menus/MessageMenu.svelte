@@ -1,7 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, tick } from 'svelte';
-    import { Reply, Copy, Pencil, Trash2 } from 'lucide-svelte';
+    import { Reply, Copy, Pencil, Trash2, RotateCcw, Plus } from 'lucide-svelte';
     import { _ } from 'svelte-i18n';
+    import EmojiPicker from '$lib/components/media/EmojiPicker.svelte';
 
     // Props
     export let x: number = 0;
@@ -13,6 +14,8 @@
     export let messageId: number | null = null;
     export let currentUserId: number | null = null;
     export let existingReactions: any[] = [];
+    export let allowRevote: boolean = false;
+    export let hasVoted: boolean = false;
 
     // Event dispatcher
     const dispatch = createEventDispatcher();
@@ -24,6 +27,8 @@
     let menuEl: HTMLDivElement | null = null;
     let adjustedX = x;
     let adjustedY = y;
+    let showEmojiPicker = false;
+    let moreEmojiBtn: HTMLButtonElement | null = null;
 
     // Utility functions
     function adjustPosition() {
@@ -92,7 +97,7 @@
         }
     }
 
-    function onAction(type: 'reply' | 'edit' | 'copy' | 'delete') {
+    function onAction(type: 'reply' | 'edit' | 'copy' | 'delete' | 'unvote') {
         dispatch(type);
         dispatch('close');
     }
@@ -105,7 +110,17 @@
         } else {
             dispatch('addReaction', { emoji, messageId });
         }
+        showEmojiPicker = false;
         dispatch('close');
+    }
+
+    function openFullEmojiPicker(e: MouseEvent) {
+        e.stopPropagation();
+        showEmojiPicker = true;
+    }
+
+    function handleEmojiSelect(e: CustomEvent<{ emoji: string }>) {
+        onReaction(e.detail.emoji);
     }
 
     // Lifecycle hooks
@@ -148,9 +163,25 @@
                     <span class="reaction-emoji">{emoji}</span>
                 </button>
             {/each}
+            <!--TODO: <button
+                bind:this={moreEmojiBtn}
+                class="reaction-btn more"
+                on:click={openFullEmojiPicker}
+                title={$_('message_menu.more_emoji')}
+                type="button"
+            >
+                <Plus size={16} />
+            </button>-->
         </div>
         <div class="divider"></div>
     </div>
+
+    <EmojiPicker
+        isOpen={showEmojiPicker}
+        triggerButton={moreEmojiBtn}
+        on:select={handleEmojiSelect}
+        on:close={() => (showEmojiPicker = false)}
+    />
     
     {#if canReply}
     <button class="item" on:click={() => onAction('reply')}>
@@ -162,6 +193,12 @@
         <Copy size={16} class="icon" />
         <span>{$_('message_menu.copy')}</span>
     </button>
+    {#if allowRevote && hasVoted}
+    <button class="item" on:click={() => onAction('unvote')}>
+        <RotateCcw size={16} class="icon" />
+        <span>{$_('message_menu.unvote')}</span>
+    </button>
+    {/if}
     {#if canEdit || canDelete}
         <div class="divider"></div>
         {#if canEdit}
@@ -209,7 +246,7 @@
 
     .reactions-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 4px;
         padding: 4px 12px;
     }

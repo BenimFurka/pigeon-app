@@ -3,7 +3,10 @@ import { get } from 'svelte/store';
 import { makeRequest } from '$lib/api';
 import { reactions } from '$lib/stores/reactions';
 import { loggedIn } from '$lib/stores/auth';
+import { storePollFromMessage } from '$lib/queries/polls';
+import { profileKeys } from './profile';
 import type { Message } from '$lib/types/models';
+import { queryClient } from '$lib/query';
 
 export type GetMessagesParams = {
   limit?: number;
@@ -28,6 +31,11 @@ function buildQueryString(params?: GetMessagesParams): string {
   return qs ? `?${qs}` : '';
 }
 
+function getCurrentUserId(): number | null {
+  const profileData = queryClient.getQueryData(profileKeys.current()) as any;
+  return profileData?.id || null;
+}
+
 export async function fetchMessages(chatId: number, params?: GetMessagesParams): Promise<Message[]> {
   const res = await makeRequest<Message[]>(
     `/chats/${chatId}/messages${buildQueryString(params)}`,
@@ -39,12 +47,20 @@ export async function fetchMessages(chatId: number, params?: GetMessagesParams):
   
   const reactionsStore = get(reactions);
   const newReactionsState = { ...reactionsStore };
+  const currentUserId = getCurrentUserId();
   
   res.data.forEach(message => {
     if (message.reactions && message.reactions.length > 0) {
       newReactionsState[message.id] = message.reactions;
     } else {
       delete newReactionsState[message.id];
+    }
+    
+    if (message.media && message.media.length > 0) {
+      const pollMedia = message.media.find(m => m.type === 'Poll');
+      if (pollMedia) {
+        storePollFromMessage(message, currentUserId);
+      }
     }
   });
   

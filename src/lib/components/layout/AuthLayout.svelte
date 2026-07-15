@@ -15,7 +15,8 @@
     import { writable } from 'svelte/store';
     import type { InputItem } from '$lib/types/components';
     import { onMount } from 'svelte';
-    import { _, locale } from 'svelte-i18n';
+    import { _ } from 'svelte-i18n';
+    import { session } from '$lib/session';
 
     // Stores
     const isLoading = writable(false);
@@ -93,7 +94,10 @@
 		try {
 			const formData = new FormData(event.target as HTMLFormElement);
 			updateFormData(formData, loginData);
-			await login(loginData.login, loginData.password);
+			const success = await login(loginData.login, loginData.password);
+			if (success) {
+				await session.initialize();
+			}
 		} finally {
 			isLoading.set(false);
 		}
@@ -124,6 +128,7 @@
 			const formData = new FormData(event.target as HTMLFormElement);
 			updateFormData(formData, verifyData);
 			await verifyEmail(registerData.email, verifyData.code);
+			await session.initialize();
 		} finally {
 			isLoading.set(false);
 		}
@@ -148,12 +153,15 @@
 		try {
 			const formData = new FormData(event.target as HTMLFormElement);
 			updateFormData(formData, resetPasswordData);
-			await verifyPasswordReset(
+			const success = await verifyPasswordReset(
 				forgotPasswordData.email, 
 				resetPasswordData.code, 
 				resetPasswordData.new_password
 			);
-			if (!$authError) switchView('login');
+			if (success) {
+				await session.initialize();
+				switchView('login');
+			}
 		} finally {
 			isLoading.set(false);
 		}

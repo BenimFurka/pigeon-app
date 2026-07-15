@@ -1,23 +1,34 @@
 <script lang="ts">
   import { createEventDispatcher, type ComponentType } from 'svelte';
-  import { User, Palette, Settings as SettingsIcon, Globe, Wifi } from 'lucide-svelte';
+  import { User, Palette, Settings as SettingsIcon, Globe, Wifi, Bell, Keyboard } from 'lucide-svelte';
   import Modal from '$lib/components/overlays/Modal.svelte';
-  import Button from '$lib/components/shared/Button.svelte';
+  
   import Avatar from '$lib/components/shared/Avatar.svelte';
+  import AvatarEditorModal from '$lib/components/forms/modals/AvatarEditorModal.svelte';
   import config, { saveConfigToStorage, resetConfig } from '$lib/config';
   import { useCurrentProfile, useUpdateCurrentProfile, useUploadAvatar } from '$lib/queries/profile';
   import { theme, type Theme } from '$lib/stores/theme';
+  import { accentHue, DEFAULT_HUE } from '$lib/stores/accent';
+  import {
+    hotkeys,
+    formatHotkey,
+    bindingFromEvent,
+    type HotkeyAction,
+    type HotkeyBinding,
+    DEFAULT_HOTKEYS,
+  } from '$lib/stores/hotkeys';
   import { logout, loggedIn } from '$lib/stores/auth';
   import { SUPPORTED_LOCALES, changeLocale } from '$lib/i18n';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
+    import Textarea from '$lib/components/shared/Textarea.svelte';
 
   // Props
   export let open: boolean = false;
   export let zIndex: number = 1000;
 
   // Types
-  type SettingsSection = 'profile' | 'appearance' | 'config';
+  type SettingsSection = 'profile' | 'appearance' | 'hotkeys' | 'notifications' | 'config';
   type NavItem = { id: SettingsSection; labelKey: string; icon: ComponentType };
 
   // Event dispatcher
@@ -34,7 +45,14 @@
   const navItems: NavItem[] = [
     { id: 'profile', labelKey: 'settings.nav.profile', icon: User },
     { id: 'appearance', labelKey: 'settings.nav.appearance', icon: Palette },
+    { id: 'hotkeys', labelKey: 'settings.nav.hotkeys', icon: Keyboard },
+    { id: 'notifications', labelKey: 'settings.nav.notifications', icon: Bell },
     { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
+  ];
+
+  const HOTKEY_ACTIONS: { action: HotkeyAction; labelKey: string }[] = [
+    { action: 'edit_last_message', labelKey: 'settings.hotkeys.edit_last_message' },
+    { action: 'toggle_settings', labelKey: 'settings.hotkeys.toggle_settings' },
   ];
 
   // State
@@ -51,6 +69,9 @@
   let isConfigDirty = false;
   let isSavingConfig = false;
   let configError: string | null = null;
+  let showAvatarEditor = false;
+  let avatarEditFile: File | null = null;
+  let capturingHotkey: HotkeyAction | null = null;
 
   // DOM refs
   let avatarInput: HTMLInputElement | null = null;
@@ -86,6 +107,7 @@
     localConfig = null;
     configInitialized = false;
     isConfigDirty = false;
+    stopCaptureHotkey();
     activeSection = $loggedIn ? 'profile' : 'appearance';
   }
 
@@ -123,18 +145,26 @@
     avatarInput?.click();
   }
 
-  async function handleAvatarChange(event: Event) {
+  function handleAvatarChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
 
     avatarError = null;
+    avatarEditFile = file;
+    showAvatarEditor = true;
+    target.value = '';
+  }
+
+  async function handleAvatarEdited(event: CustomEvent<{ file: File }>) {
+    avatarError = null;
     try {
-      await $avatarMutation.mutateAsync(file);
+      await $avatarMutation.mutateAsync(event.detail.file);
     } catch (error) {
       avatarError = error instanceof Error ? error.message : get(t)('settings.profile.avatarError');
     } finally {
-      target.value = '';
+      showAvatarEditor = false;
+      avatarEditFile = null;
     }
   }
 
@@ -150,14 +180,76 @@
     configError = null;
     
     try {
+      const serverChanged = 
+        localConfig.server.host !== $config.server.host ||
+        localConfig.server.port !== $config.server.port ||
+        localConfig.server.secure !== $config.server.secure ||
+        localConfig.server.apiPath !== $config.server.apiPath ||
+        localConfig.server.apiVer !== $config.server.apiVer;
+      
       config.set(localConfig);
       saveConfigToStorage();
       isConfigDirty = false;
+      
+      if (serverChanged) {
+        const { session } = await import('$lib/session');
+        const { queryClient } = await import('$lib/query');
+        const { wsService } = await import('$lib/ws-service');
+        
+        wsService.disconnect();
+        queryClient.clear();
+        session.clearSession();
+        dispatch('close');
+      }
     } catch (error) {
       configError = error instanceof Error ? error.message : 'Failed to save configuration';
     } finally {
       isSavingConfig = false;
     }
+  }
+
+  function stopCaptureHotkey() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', onHotkeyCapture, true);
+    }
+    capturingHotkey = null;
+  }
+
+  function startCaptureHotkey(action: HotkeyAction) {
+    if (capturingHotkey === action) {
+      stopCaptureHotkey();
+      return;
+    }
+    stopCaptureHotkey();
+    capturingHotkey = action;
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', onHotkeyCapture, true);
+    }
+  }
+
+  function onHotkeyCapture(event: KeyboardEvent) {
+    if (!capturingHotkey) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      stopCaptureHotkey();
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const binding = bindingFromEvent(event);
+    if (!binding) return;
+    hotkeys.updateBinding(capturingHotkey, binding);
+    stopCaptureHotkey();
+  }
+
+  function resetHotkeys() {
+    hotkeys.reset();
+    stopCaptureHotkey();
+  }
+
+  function setAccentHue(value: number) {
+    accentHue.set(value);
   }
 
   function handleConfigReset() {
@@ -188,6 +280,12 @@
     return `${protocol}://${conf.server.host}:${conf.server.port}${conf.server.apiPath}/${conf.server.apiVer}/ws`;
   }
   
+  function checkIfConfigDirty() {
+    if (!localConfig) return;
+    
+    isConfigDirty = JSON.stringify(localConfig) !== JSON.stringify($config);
+  }
+
   function updateServerField(field: keyof typeof $config.server, value: any) {
     if (!localConfig) return;
 
@@ -198,7 +296,7 @@
         [field]: value,
       },
     };
-    isConfigDirty = true;
+    checkIfConfigDirty();
   }
 
   function updateWebsocketField(field: keyof typeof $config.websocket, value: any) {
@@ -211,7 +309,23 @@
         [field]: value,
       },
     };
-    isConfigDirty = true;
+    checkIfConfigDirty();
+  }
+
+  function updateNotificationsField(field: keyof typeof $config.app.notifications, value: any) {
+    if (!localConfig) return;
+
+    localConfig = {
+      ...localConfig,
+      app: {
+        ...localConfig.app,
+        notifications: {
+          ...localConfig.app.notifications,
+          [field]: value,
+        },
+      },
+    };
+    checkIfConfigDirty();
   }
 
   function updateAppField(field: keyof typeof $config.app, value: any) {
@@ -224,7 +338,7 @@
         [field]: value,
       },
     };
-    isConfigDirty = true;
+    checkIfConfigDirty();
 
     if (field === 'defaultLanguage' && typeof value === 'string') {
       changeLocale(value);
@@ -273,81 +387,98 @@
             <div class="section-error">{profileQueryError}</div>
           {:else if currentProfile}
             <div class="profile-block">
-              <div class="avatar-block">
-                <Avatar avatarUrl={currentProfile.avatar_url} size="xlarge" />
-                <Button
-                  variant="outline"
-                  on:click={openAvatarPicker}
-                  disabled={$avatarMutation.isPending}
-                  className="avatar-button"
-                >
-                  <span>{$t('settings.profile.updateAvatar')}</span>
-                </Button>
-                <input
-                  class="file-input"
-                  type="file"
-                  accept="image/*"
-                  bind:this={avatarInput}
-                  on:change={handleAvatarChange}
-                />
-                {#if avatarError}
-                  <div class="section-error">{avatarError}</div>
-                {/if}
+              <div class="profile-group">
+                <div class="group-header">
+                  <User size={18} />
+                  <span>{$t('settings.profile.avatar')}</span>
+                </div>
+                <div class="avatar-block">
+                  <Avatar avatarUrl={currentProfile.avatar_url} size="xlarge" />
+                  <button
+                    on:click={openAvatarPicker}
+                    disabled={$avatarMutation.isPending}
+                    class="avatar-button btn"
+                  >
+                    <span>{$t('settings.profile.updateAvatar')}</span>
+                  </button>
+                  <input
+                    class="file-input"
+                    type="file"
+                    accept="image/*"
+                    bind:this={avatarInput}
+                    on:change={handleAvatarChange}
+                  />
+                  {#if avatarError}
+                    <div class="section-error">{avatarError}</div>
+                  {/if}
+                </div>
               </div>
 
-              <div class="profile-form">
-                <label for="profile-name" class="field-label">{$t('settings.profile.nameLabel')}</label>
-                <input
-                  id="profile-name"
-                  type="text"
-                  placeholder={$t('settings.profile.namePlaceholder')}
-                  bind:value={localName}
-                />
+              <div class="profile-group">
+                <div class="group-header">
+                  <User size={18} />
+                  <span>{$t('settings.profile.information')}</span>
+                </div>
+                <div class="profile-form">
+                  <label for="profile-name" class="field-label">{$t('settings.profile.nameLabel')}</label>
+                  <input
+                    id="profile-name"
+                    type="text"
+                    placeholder={$t('settings.profile.namePlaceholder')}
+                    bind:value={localName}
+                  />
 
-                <label for="profile-username" class="readonly-label">{$t('settings.profile.usernameLabel')}</label>
-                <input
-                  id="profile-username"
-                  class="readonly-input"
-                  value={`@${currentProfile.username}`}
-                  readonly
-                />
+                  <label for="profile-username" class="readonly-label">{$t('settings.profile.usernameLabel')}</label>
+                  <input
+                    id="profile-username"
+                    class="readonly-input"
+                    value={`@${currentProfile.username}`}
+                    readonly
+                  />
 
-                <label for="profile-bio" class="textarea-label">{$t('settings.profile.bioLabel')}</label>
-                <textarea
-                  id="profile-bio"
-                  bind:value={localBio}
-                  placeholder={$t('settings.profile.bioPlaceholder')}
-                  rows={4}
-                ></textarea>
+                  <label for="profile-bio" class="textarea-label">{$t('settings.profile.bioLabel')}</label>
+                  <Textarea
+                    id="profile-bio"
+                    bind:value={localBio}
+                    placeholder={$t('settings.profile.bioPlaceholder')}
+                    rows={4}
+                  />
 
-                {#if profileError}
-                  <div class="section-error">{profileError}</div>
-                {/if}
+                  {#if profileError}
+                    <div class="section-error">{profileError}</div>
+                  {/if}
 
-                <div class="section-actions">
-                  <Button
-                    variant="primary"
-                    on:click={handleProfileSave}
-                    disabled={!isProfileDirty || $updateProfile.isPending}
-                  >
-                    {#if $updateProfile.isPending}
-                      <span>{$t('settings.profile.saving')}</span>
-                    {:else}
-                      <span>{$t('settings.profile.save')}</span>
-                    {/if}
-                  </Button>
+                  <div class="section-actions">
+                    <button
+                      class="btn primary"
+                      on:click={handleProfileSave}
+                      disabled={!isProfileDirty || $updateProfile.isPending}
+                    >
+                      {#if $updateProfile.isPending}
+                        <span>{$t('settings.profile.saving')}</span>
+                      {:else}
+                        <span>{$t('settings.profile.save')}</span>
+                      {/if}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="profile-group">
+                <div class="group-header">
+                  <SettingsIcon size={18} />
+                  <span>{$t('settings.profile.account')}</span>
+                </div>
+                <div class="account-block">
+                  <button class="btn danger" on:click={handleLogout}>
+                    <span>{$t('settings.profile.logout')}</span>
+                  </button>
                 </div>
               </div>
             </div>
           {/if}
 
           <div class="separator"></div>
-
-          <div class="account-block">
-            <Button variant="danger" on:click={handleLogout}>
-              <span>{$t('settings.profile.logout')}</span>
-            </Button>
-          </div>
         </section>
 
       {:else if activeSection === 'appearance'}
@@ -364,9 +495,107 @@
                     : $t('settings.appearance.themeCurrentLight')}
                 </div>
               </div>
-              <Button variant="outline" on:click={toggleTheme}>
+              <button class ="btn" on:click={toggleTheme}>
                 <span>{$t('settings.appearance.toggle')}</span>
-              </Button>
+              </button>
+            </div>
+
+            <div class="appearance-row accent-row">
+              <div class="accent-info">
+                <div class="row-title">{$t('settings.appearance.accentTitle')}</div>
+                <div class="row-hint">{$t('settings.appearance.accentHint')}</div>
+              </div>
+              <div class="accent-controls">
+                <div
+                  class="accent-swatch"
+                  style={`background: hsl(${$accentHue}, 45%, 52%)`}
+                  title={`HSL(${$accentHue}, 45%, 52%)`}
+                ></div>
+                <input
+                  class="hue-slider"
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="1"
+                  value={$accentHue}
+                  on:input={(e) => setAccentHue(Number(e.currentTarget.value))}
+                  aria-label={$t('settings.appearance.accentTitle')}
+                />
+                <button class="btn text" on:click={() => setAccentHue(DEFAULT_HUE)}>
+                  <span>{$t('settings.appearance.accentReset')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      {:else if activeSection === 'hotkeys'}
+        <section class="section">
+          <h3>{$t('settings.hotkeys.sectionTitle')}</h3>
+          <div class="row-hint">{$t('settings.hotkeys.sectionHint')}</div>
+
+          <div class="appearance-block">
+            {#each HOTKEY_ACTIONS as item}
+              <div class="appearance-row">
+                <div>
+                  <div class="row-title">{$t(item.labelKey)}</div>
+                </div>
+                <button
+                  type="button"
+                  class="hotkey-capture"
+                  class:capturing={capturingHotkey === item.action}
+                  on:click={() => startCaptureHotkey(item.action)}
+                >
+                  {#if capturingHotkey === item.action}
+                    {$t('settings.hotkeys.pressKey')}
+                  {:else}
+                    {formatHotkey($hotkeys[item.action])}
+                  {/if}
+                </button>
+              </div>
+            {/each}
+
+            <div class="section-actions">
+              <button class="btn text" on:click={resetHotkeys}>
+                <span>{$t('settings.hotkeys.reset')}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+      {:else if activeSection === 'notifications'}
+        <section class="section">
+          <h3>{$t('settings.notifications.sectionTitle')}</h3>
+
+          <div class="appearance-block">
+            <div class="appearance-row">
+              <div>
+                <div class="row-title">{$t('settings.notifications.enableTitle')}</div>
+                <div class="row-hint">{$t('settings.notifications.enableHint')}</div>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={localConfig?.app?.notifications?.enabled ?? true}
+                  on:change={(e) => updateNotificationsField('enabled', e.currentTarget?.checked ?? false)}
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="appearance-row">
+              <div>
+                <div class="row-title">{$t('settings.notifications.soundTitle')}</div>
+                <div class="row-hint">{$t('settings.notifications.soundHint')}</div>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={localConfig?.app?.notifications?.sound ?? true}
+                  on:change={(e) => updateNotificationsField('sound', e.currentTarget?.checked ?? false)}
+                />
+                <span class="slider"></span>
+              </label>
             </div>
           </div>
         </section>
@@ -380,8 +609,8 @@
               {#if isConfigDirty}
                 <div class="config-prompt">
                   <div class="prompt-text">{$t('settings.config.savePrompt')}</div>
-                  <Button
-                    variant="primary"
+                  <button
+                    class="btn primary"
                     on:click={handleConfigSave}
                     disabled={isSavingConfig}
                   >
@@ -390,7 +619,7 @@
                     {:else}
                       <span>{$t('settings.config.save')}</span>
                     {/if}
-                  </Button>
+                  </button>
                 </div>
               {/if}
 
@@ -503,9 +732,9 @@
               {/if}
 
               <div class="section-actions">
-                <Button variant="text" on:click={handleConfigReset} disabled={isSavingConfig}>
+                <button class="btn text" on:click={handleConfigReset} disabled={isSavingConfig}>
                   <span>{$t('settings.config.reset')}</span>
-                </Button>
+                </button>
               </div>
             </div>
           {:else}
@@ -516,6 +745,19 @@
     </div>
   </div>
 </Modal>
+
+{#if showAvatarEditor && avatarEditFile}
+  <AvatarEditorModal
+    open={showAvatarEditor}
+    file={avatarEditFile}
+    zIndex={zIndex + 50}
+    on:close={() => {
+      showAvatarEditor = false;
+      avatarEditFile = null;
+    }}
+    on:save={handleAvatarEdited}
+  />
+{/if}
 
 <style>
   .settings-modal {
@@ -542,13 +784,14 @@
     border: none;
     border-radius: 8px;
     color: var(--color-text);
+    background: var(--surface-glass);
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease;
     text-align: left;
   }
 
   .settings-nav button:hover {
-    background: var(--surface-glass);
+    backdrop-filter: var(--hover-filter);
   }
 
   .settings-nav button.active {
@@ -577,12 +820,6 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-  }
-
-  @media (min-width: 720px) {
-    .profile-block {
-      flex-direction: row;
-    }
   }
 
   .avatar-block {
@@ -709,6 +946,33 @@
     gap: 20px;
   }
 
+  .config-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    background-image: 
+            linear-gradient(var(--surface-glass), var(--surface-glass)),
+            linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 4px 12px;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 500px;
+    width: calc(100vw - 40px);
+  }
+
+  .prompt-text {
+    color: var(--color-text);
+    text-align: center;
+  }
+
+  .profile-group,
   .config-group {
     display: flex;
     flex-direction: column;
@@ -749,6 +1013,124 @@
     box-shadow: 0 0 0 2px var(--color-danger-soft);
   }
 
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-border);
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  input:checked + .slider {
+    background-color: var(--color-accent);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(24px);
+  }
+
+  .accent-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .accent-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .accent-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid var(--color-border);
+    box-shadow: 0 0 0 2px var(--color-accent-soft);
+  }
+
+  .hue-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    outline: none;
+    appearance: none;
+    background: linear-gradient(
+      to right,
+      hsl(0, 70%, 50%),
+      hsl(60, 70%, 50%),
+      hsl(120, 70%, 50%),
+      hsl(180, 70%, 50%),
+      hsl(240, 70%, 50%),
+      hsl(300, 70%, 50%),
+      hsl(360, 70%, 50%)
+    );
+  }
+
+  .hue-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid var(--color-accent);
+    cursor: pointer;
+  }
+
+  .hotkey-capture {
+    min-width: 120px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--color-border);
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .hotkey-capture:hover {
+    border-color: var(--color-accent);
+  }
+
+  .hotkey-capture.capturing {
+    border-style: solid;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
   @media (max-width: 640px) {
     .settings-modal {
       flex-direction: column;
@@ -765,6 +1147,7 @@
 
     .settings-content {
       padding-right: 0;
+      padding-bottom: 80px;
     }
 
     .appearance-row {

@@ -76,7 +76,6 @@
     tabindex="-1"
     on:click={handleBackdropClick}
     on:keydown={handleBackdropKeydown}
-    transition:fade
 >
     <div class="modal-panel" role="dialog" aria-modal="true" style={`max-width: ${maxWidth};`}>
         <header class="modal-header">
@@ -273,6 +272,12 @@
             max-height: 100vh;
             min-height: 100%;
             box-shadow: none;
+            background-image: none;
+            background-color: var(--color-bg-elevated);
+        }
+
+        .modal-header {
+            background-color: var(--surface-glass);
         }
     }
 </style>

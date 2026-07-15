@@ -67,7 +67,7 @@
             </div>
         </div>
     </div>
-    <div class="member-actions">
+    <div class="member-actions" on:click|stopPropagation>
         <slot name="actions" />
     </div>
 </div>

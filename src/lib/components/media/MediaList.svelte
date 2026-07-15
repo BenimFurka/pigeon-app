@@ -1,11 +1,16 @@
 <script lang="ts">
-    import type { MessageAttachment } from '$lib/types/models';
-    import AttachmentItem from './AttachmentItem.svelte';
-    import { onMount, tick } from 'svelte';
+    import type { MessageMedia, Message, PhotoMedia, GifMedia, StickerMedia, VideoMedia } from '$lib/types/models';
+    import MediaItem from './MediaItem.svelte';
+    import { createEventDispatcher, onMount, tick } from 'svelte';
+    import { _ } from 'svelte-i18n';
 
-    // Props
-    export let attachments: MessageAttachment[];
+    export let media: MessageMedia[];
+    export let maxItems: number = 10;
     export let isOwn: boolean = false;
+    export let currentUserId: number | null = null;
+    export let message: Message | null = null;
+
+    const dispatch = createEventDispatcher();
 
     // State
     let containerMaxWidth: number | null = null;
@@ -13,44 +18,84 @@
     let mutationObserver: MutationObserver | null = null;
 
     // Computed values
-    $: mediaAttachments = attachments.filter(attachment => {
-        const mimeType = attachment.mime_type?.toLowerCase() || '';
-        const fileType = attachment.file_type?.toLowerCase() || '';
-        return fileType === 'image' || fileType === 'gif' || fileType === 'video' ||
-               mimeType.startsWith('image/') || mimeType.startsWith('video/') ||
-               fileType === 'gif' || mimeType.includes('gif');
-    });
+    $: visualMedia = media.filter(m => 
+        m.type === 'Photo' || m.type === 'Video' || m.type === 'Gif' || m.type === 'Sticker'
+    );
+    
+    $: otherMedia = media.filter(m => 
+        m.type !== 'Photo' && m.type !== 'Video' && m.type !== 'Gif' && m.type !== 'Sticker'
+    );
 
-    $: documentAttachments = attachments.filter(attachment => {
-        const mimeType = attachment.mime_type?.toLowerCase() || '';
-        const fileType = attachment.file_type?.toLowerCase() || '';
-        return !(fileType === 'image' || fileType === 'gif' || fileType === 'video' ||
-                mimeType.startsWith('image/') || mimeType.startsWith('video/') ||
-                fileType === 'gif' || mimeType.includes('gif'));
-    });
+    $: mediaLayout = calculateMediaLayout(visualMedia, containerMaxWidth);
+    $: displayVisualMedia = visualMedia.slice(0, maxItems);
+    $: hasMoreVisual = visualMedia.length > maxItems;
+    $: hasMoreOther = otherMedia.length > maxItems;
 
-    $: mediaLayout = calculateMediaLayout(mediaAttachments, containerMaxWidth);
-
-    function calculateMediaLayout(attachments: MessageAttachment[], maxWidth: number | null) {
-        if (!attachments.length || !maxWidth) {
+    function calculateMediaLayout(visualMedia: MessageMedia[], maxWidth: number | null) {
+        if (!visualMedia.length || !maxWidth) {
             return { width: null, height: null, layout: [] };
         }
 
-        const items = attachments.map(attachment => ({
-            w: attachment.width || 200,
-            h: attachment.height || 200
-        }));
+        const items = visualMedia.map(m => {
+            let width = 200, height = 200;
+
+            switch (m.type) {
+                case 'Photo': {
+                    const photo = m as PhotoMedia;
+                    width = photo.width || 200;
+                    height = photo.height || 200;
+                    break;
+                }
+                case 'Video': {
+                    const video = m as VideoMedia;
+                    width = video.width || 200;
+                    height = video.height || 200;
+                    break;
+                }
+                case 'Gif': {
+                    const gif = m as GifMedia;
+                    width = gif.width || 200;
+                    height = gif.height || 200;
+                    break;
+                }
+                case 'Sticker': {
+                    const sticker = m as StickerMedia;
+                    width = sticker.width || 200;
+                    height = sticker.height || 200;
+                    break;
+                }
+                default:
+                    width = 200;
+                    height = 200;
+            }
+
+            return { w: width, h: height };
+        });
 
         const layout = createAlbumLayout({
             items,
             maxWidth,
-            minWidth: 100,
+            minWidth: 50,
             spacing: 2,
-            maxHeight: maxWidth * 1.5,
+            maxHeight: 1200,
             forMedia: true
         });
 
-        return layout;
+        if (visualMedia.length === 1) {
+            return layout;
+        }
+
+        const layoutWithPercents = {
+            width: layout.width,
+            height: layout.height,
+            layout: layout.layout.map(item => ({
+                ...item,
+                xPercent: (item.x / layout.width) * 100,
+                widthPercent: (item.width / layout.width) * 100
+            }))
+        };
+
+        return layoutWithPercents;
     }
 
     function createAlbumLayout(options: {
@@ -68,7 +113,8 @@
         if (count === 1) {
             const item = items[0];
             const aspectRatio = item.w / item.h;
-            const width = Math.min(item.w, maxWidth);
+            const reasonableMaxWidth = Math.max(maxWidth, 800);
+            const width = Math.min(item.w, reasonableMaxWidth);
             const height = width / aspectRatio;
             return {
                 width,
@@ -191,29 +237,85 @@
         };
     }
 
+    function getParentChain(element: HTMLElement | null): string[] {
+        const chain: string[] = [];
+        let current = element;
+        
+        while (current && current !== document.body) {
+            chain.push(`${current.tagName.toLowerCase()}${current.className ? '.' + current.className.split(' ').join('.') : ''}`);
+            current = current.parentElement;
+        }
+        
+        return chain;
+    }
+
     const updateMaxWidth = async () => {
         if (containerElement) {
             const bubbleElement = containerElement.closest('.bubble.has-media');
+
             if (bubbleElement) {
+                const actualWidth = bubbleElement.clientWidth;
+
+                if (actualWidth > 0) {
+                    if (actualWidth !== containerMaxWidth) {
+                        containerMaxWidth = actualWidth;
+                    }
+                    return true;
+                }
+
                 const computedStyle = window.getComputedStyle(bubbleElement);
                 const maxWidth = computedStyle.getPropertyValue('max-width');
-                
+
                 if (maxWidth && maxWidth !== 'none') {
                     let newMaxWidth: number | null = null;
-                    
+
                     if (maxWidth.includes('%')) {
                         const parentWidth = bubbleElement.parentElement?.clientWidth || window.innerWidth;
                         newMaxWidth = Math.round(parentWidth * parseFloat(maxWidth) / 100);
                     } else {
                         newMaxWidth = parseInt(maxWidth) || null;
                     }
-                    
+
+                    if (newMaxWidth !== null && (isNaN(newMaxWidth) || newMaxWidth <= 0)) {
+                        newMaxWidth = 400;
+                    }
+
                     if (newMaxWidth !== containerMaxWidth) {
                         containerMaxWidth = newMaxWidth;
                     }
                     return true;
+                } else {
+                    const parentWidth = bubbleElement.parentElement?.clientWidth || window.innerWidth;
+                    const fallbackWidth = parentWidth > 400 ? parentWidth : 400;
+                    if (fallbackWidth !== containerMaxWidth) {
+                        containerMaxWidth = fallbackWidth;
+                    }
+                    return true;
                 }
+            } else {
+                const messageBubble = containerElement.closest('.message, .bubble, [class*="message"], [class*="bubble"]');
+
+                if (messageBubble) {
+                    const messageWidth = messageBubble.clientWidth;
+                    const fallbackWidth = messageWidth > 100 ? messageWidth : 400;
+                    if (fallbackWidth !== containerMaxWidth) {
+                        containerMaxWidth = fallbackWidth;
+                    }
+                } else {
+                    const windowWidth = window.innerWidth;
+                    const reasonableWidth = Math.min(windowWidth * 0.8, 600);
+                    const fallbackWidth = reasonableWidth > 200 ? reasonableWidth : 400;
+                    if (fallbackWidth !== containerMaxWidth) {
+                        containerMaxWidth = fallbackWidth;
+                    }
+                }
+                return true;
             }
+        }
+
+        const defaultWidth = 400;
+        if (containerMaxWidth !== defaultWidth) {
+            containerMaxWidth = defaultWidth;
         }
         return false;
     };
@@ -270,68 +372,121 @@
             cleanup?.();
         };
     });
+    function handleMediaClick(event: CustomEvent) {
+        const { media: clickedMedia } = event.detail;
+        dispatch('mediaClick', { 
+            media: clickedMedia, 
+            allMedia: media,
+            index: media.indexOf(clickedMedia)
+        });
+    }
+
+    function handleMediaView(event: CustomEvent) {
+        const { media: viewedMedia } = event.detail;
+        dispatch('mediaView', { 
+            media: viewedMedia, 
+            allMedia: media,
+            index: media.indexOf(viewedMedia)
+        });
+    }
 </script>
 
-{#if attachments && attachments.length > 0}
-    <div class="attachments-list" bind:this={containerElement}>
-        {#if mediaAttachments.length > 0}
-            <div class="media-group" style="width: {mediaLayout.width}px; height: {mediaLayout.height}px;">
+{#if media && media.length > 0}
+    <div class="media-list" bind:this={containerElement}>
+        {#if visualMedia.length > 0}
+            <div class="visual-media-group" style="width: {visualMedia.length === 1 ? mediaLayout.width + 'px' : '100%'}; height: {mediaLayout.height}px;">
                 {#each mediaLayout.layout as item (item.item)}
-                    <div 
+                    <div
                         class="album-item"
-                        style="left: {item.x}px; top: {item.y}px; width: {item.width}px; height: {item.height}px;"
+                        style="left: {visualMedia.length === 1 ? item.x + 'px' : item.xPercent + '%'}; top: {item.y}px; width: {visualMedia.length === 1 ? item.width + 'px' : item.widthPercent + '%'}; height: {item.height}px;"
                     >
-                        <AttachmentItem 
-                            attachment={mediaAttachments[item.item]} 
-                            {isOwn} 
-                            width={item.width} 
-                            height={item.height}
+                        <MediaItem
+                            media={visualMedia[item.item]}
+                            width={visualMedia.length === 1 ? item.width : null}
+                            height={visualMedia.length === 1 ? item.height : null}
+                            isInAlbum={true}
+                            {currentUserId}
+                            {message}
+                            on:mediaClick={handleMediaClick}
+                            on:view={handleMediaView}
                         />
                     </div>
                 {/each}
+                
+                {#if hasMoreVisual}
+                    <div class="more-items">
+                        <span>+{visualMedia.length - maxItems}</span>
+                    </div>
+                {/if}
             </div>
         {/if}
         
-        {#if documentAttachments.length > 0}
-            <div class="documents-group">
-                {#each documentAttachments as attachment (attachment.id)}
-                    <AttachmentItem {attachment} {isOwn} />
+        {#if otherMedia.length > 0}
+            <div class="other-media-group">
+                {#each otherMedia.slice(0, maxItems) as mediaItem (mediaItem.type + JSON.stringify(mediaItem))}
+                    <MediaItem 
+                        media={mediaItem} 
+                        {currentUserId}
+                        {message}
+                        on:mediaClick={handleMediaClick}
+                        on:view={handleMediaView}
+                    />
                 {/each}
+                
+                {#if hasMoreOther}
+                    <div class="more-items-text">
+                        <span>+{otherMedia.length - maxItems} {$_('media.more_items')}</span>
+                    </div>
+                {/if}
             </div>
         {/if}
     </div>
 {/if}
 
 <style>
-    .attachments-list {
+    .media-list {
         display: flex;
         flex-direction: column;
         gap: 8px;
         margin-bottom: 8px;
+        width: 100%;
         max-width: 100%;
         min-width: 0;
         overflow: hidden;
     }
 
-    .media-group {
+    .visual-media-group {
         position: relative;
         border-radius: 12px;
         overflow: hidden;
         background: transparent;
+        min-width: 50px;
+        min-height: 30px;
+        max-height: 1200px;
+        width: 100%;
     }
 
     .album-item {
         position: absolute;
         overflow: hidden;
         border-radius: 8px;
+        box-sizing: border-box;
     }
 
-    .album-item :global(.attachment-container) {
+    .album-item :global(.media-item) {
         width: 100%;
         height: 100%;
+        border: none;
+        border-radius: 0;
+        min-width: 0;
+        min-height: 0;
     }
 
-    .documents-group {
+    .album-item :global(.media-item.in-album) {
+        border-radius: 0;
+    }
+
+    .other-media-group {
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -339,6 +494,61 @@
         min-width: 0;
         overflow: hidden;
     }
+
+    .more-items {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        pointer-events: none;
+        z-index: 5;
+    }
+
+    .more-items-text {
+        padding: 8px;
+        text-align: center;
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: var(--surface-glass);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 768px) {
+        .media-list {
+            gap: 6px;
+        }
+        
+        .other-media-group {
+            gap: 6px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .media-list {
+            gap: 4px;
+        }
+        
+        .other-media-group {
+            gap: 4px;
+        }
+        
+        .more-items {
+            bottom: 4px;
+            right: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+        
+        .more-items-text {
+            padding: 6px;
+            font-size: 0.8rem;
+        }
+    }
 </style>
-
-

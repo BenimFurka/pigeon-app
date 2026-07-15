@@ -5,11 +5,14 @@
     import Button from '$lib/components/shared/Button.svelte';
     import Input from '$lib/components/shared/Input.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
+    import AvatarEditorModal from '$lib/components/forms/modals/AvatarEditorModal.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { makeRequest } from '$lib/api';
     import { chatKeys, useUploadChatAvatar } from '$lib/queries/chats';
     import type { ChatMember } from '$lib/types/models';
     import { _ } from 'svelte-i18n';
+    import { Image as ImageIcon, Settings, Trash2 } from 'lucide-svelte';
+    import Textarea from '$lib/components/shared/Textarea.svelte';
 
     // Props
     export let chat: ChatPreview;
@@ -59,6 +62,8 @@
     let error: string | null = null;
     let avatarError: string | null = null;
     let isInitialized = false;
+    let showAvatarEditor = false;
+    let avatarEditFile: File | null = null;
 
     // DOM refs
     let avatarInput: HTMLInputElement | null = null;
@@ -124,19 +129,30 @@
         avatarInput?.click();
     }
     
-    async function handleAvatarChange(event: Event) {
+    function handleAvatarChange(event: Event) {
         const target = event.currentTarget as HTMLInputElement;
         const file = target.files?.[0];
         if (!file) return;
 
         avatarError = null;
+        avatarEditFile = file;
+        showAvatarEditor = true;
+        target.value = '';
+    }
+
+    async function handleAvatarEdited(event: CustomEvent<{ file: File }>) {
+        avatarError = null;
         try {
-            const updatedChat = await $avatarUploadMutation.mutateAsync({ chatId: chat.id, file });
+            const updatedChat = await $avatarUploadMutation.mutateAsync({
+                chatId: chat.id,
+                file: event.detail.file
+            });
             dispatch('save', { chat: updatedChat });
         } catch (error) {
             avatarError = error instanceof Error ? error.message : $_('edit_chat.avatar_upload_error');
         } finally {
-            target.value = '';
+            showAvatarEditor = false;
+            avatarEditFile = null;
         }
     }
 </script>
@@ -151,57 +167,63 @@
     on:back={handleBack}
 >
     <form on:submit={handleSubmit}>
-        <div class="form-content">
-            <div class="avatar-upload">
-                <div class="avatar-preview">
-                    <Avatar avatarUrl={chat.avatar_url} size="xlarge" />
-                    <button 
-                        type="button" 
-                        class="change-avatar" 
-                        disabled={isSubmitting || !canEditChat}
-                        on:click={openAvatarPicker}
-                    >
-                        {$_('edit_chat.change_avatar')}
-                    </button>
-                    <input
-                        class="file-input"
-                        type="file"
-                        accept="image/*"
-                        bind:this={avatarInput}
-                        on:change={handleAvatarChange}
-                    />
-                    {#if avatarError}
-                        <div class="avatar-error">
-                            {avatarError}
-                        </div>
-                    {/if}
+        <div class="edit-chat-content">
+                <div class="avatar-upload">
+                    <div class="avatar-preview">
+                        <Avatar avatarUrl={chat.avatar_url} size="xlarge" />
+                        <button 
+                            type="button" 
+                            class="change-avatar" 
+                            disabled={isSubmitting || !canEditChat}
+                            on:click={openAvatarPicker}
+                        >
+                            {$_('edit_chat.change_avatar')}
+                        </button>
+                        <input
+                            class="file-input"
+                            type="file"
+                            accept="image/*"
+                            bind:this={avatarInput}
+                            on:change={handleAvatarChange}
+                        />
+                        {#if avatarError}
+                            <div class="avatar-error">
+                                {avatarError}
+                            </div>
+                        {/if}
+                    </div>
                 </div>
-            </div>
             
-            <div class="form-group">
-                <label for="chat-name">
-                    {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name') : $_('edit_chat.channel_name')}
-                </label>
-                <Input
-                    id="chat-name"
-                    bind:value={name}
-                    placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name_placeholder') : $_('edit_chat.channel_name_placeholder')}
-                    disabled={isSubmitting || !canEditChat}
-                    required
-                />
-            </div>
-            
-            <div class="form-group">
-                <label for="chat-description">
-                    {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description') : $_('edit_chat.channel_description')}
-                </label>
-                <textarea
-                    id="chat-description"
-                    bind:value={description}
-                    placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description_placeholder') : $_('edit_chat.channel_description_placeholder')}
-                    disabled={isSubmitting || !canEditChat}
-                    rows={3}
-                />
+            <div class="edit-chat-group">
+                <div class="group-header">
+                    <Settings size={18} />
+                    <span>{$_('edit_chat.chat_information')}</span>
+                </div>
+                <div class="form-group">
+                    <label for="chat-name">
+                        {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name') : $_('edit_chat.channel_name')}
+                    </label>
+                    <Input
+                        id="chat-name"
+                        bind:value={name}
+                        placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_name_placeholder') : $_('edit_chat.channel_name_placeholder')}
+                        disabled={isSubmitting || !canEditChat}
+                        required
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label for="chat-description">
+                        {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description') : $_('edit_chat.channel_description')}
+                    </label>
+                    <Textarea
+                        id="chat-description"
+                        bind:value={description}
+                        placeholder={chat.chat_type === ChatType.GROUP ? $_('edit_chat.group_description_placeholder') : $_('edit_chat.channel_description_placeholder')}
+                        disabled={isSubmitting || !canEditChat}
+                        rows={3}
+                    />
+                </div>
             </div>
             
             {#if error}
@@ -211,30 +233,68 @@
             {/if}
         </div>
         
-        <div>
-            <Button type="submit" fullWidth disabled={isSubmitting || !canEditChat}>
-                {isSubmitting ? $_('edit_chat.saving') : $_('edit_chat.save_changes')}
-            </Button>
-            
-            {#if chat.chat_type !== ChatType.DM && isCreator}
-                <Button 
-                    type="button" 
-                    variant="danger" 
-                    fullWidth 
-                    on:click={handleDelete}
-                    disabled={isSubmitting}
-                >
-                    {$_('edit_chat.delete')} {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group') : $_('edit_chat.channel')}
+        <div class="edit-chat-group">
+            <div class="group-header">
+                <Settings size={18} />
+                <span>{$_('edit_chat.actions')}</span>
+            </div>
+            <div>
+                <Button type="submit" fullWidth disabled={isSubmitting || !canEditChat}>
+                    {isSubmitting ? $_('edit_chat.saving') : $_('edit_chat.save_changes')}
                 </Button>
-            {/if}
+                
+                {#if chat.chat_type !== ChatType.DM && isCreator}
+                    <Button 
+                        type="button" 
+                        variant="danger" 
+                        fullWidth 
+                        on:click={handleDelete}
+                        disabled={isSubmitting}
+                    >
+                        {$_('edit_chat.delete')} {chat.chat_type === ChatType.GROUP ? $_('edit_chat.group') : $_('edit_chat.channel')}
+                    </Button>
+                {/if}
+            </div>
         </div>
     </form>
 </Modal>
 
+{#if showAvatarEditor && avatarEditFile}
+    <AvatarEditorModal
+        open={showAvatarEditor}
+        file={avatarEditFile}
+        zIndex={1100}
+        on:close={() => {
+            showAvatarEditor = false;
+            avatarEditFile = null;
+        }}
+        on:save={handleAvatarEdited}
+    />
+{/if}
+
 <style>
-    .form-content {
+    .edit-chat-content {
         display: flex;
         flex-direction: column;
+        gap: 20px;
+    }
+
+    .edit-chat-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-glass);
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 4px;
     }
     
     .avatar-upload {
@@ -245,6 +305,9 @@
     
     .avatar-preview {
         position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
     }
     
@@ -294,24 +357,7 @@
         font-weight: 500;
         color: var(--color-text);
     }
-    
-    textarea {
-        width: 100%;
-        padding: 10px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--color-border);
-        background: var(--color-bg-elevated);
-        color: var(--color-text);
-        font-family: inherit;
-        font-size: 0.95rem;
-        resize: vertical;
-    }
-    
-    textarea:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-    
+
     .error-message {
         color: var(--color-danger);
         padding: 10px 12px;

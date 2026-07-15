@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { ChatPreview, MessageAttachment } from '$lib/types/models';
+    import type { ChatPreview, MessageMedia } from '$lib/types/models';
     import { useQueryClient } from '@tanstack/svelte-query';
     import Avatar from '$lib/components/shared/Avatar.svelte';
     import { createEventDispatcher, onDestroy } from 'svelte';
@@ -9,6 +9,8 @@
     import { ChatType } from '$lib/types/models';
     import { _, format } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
+    import { getMediaTypeName } from '$lib/utils/media';
+    import MarkdownIt from 'markdown-it';
 
     // Props
     export let chat: ChatPreview;
@@ -16,6 +18,15 @@
 
     // Event dispatcher
     const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
+    
+    // Markdown parser
+    const md = new MarkdownIt({
+        html: false,
+        linkify: true,
+        typographer: false,
+        breaks: false,
+        xhtmlOut: false,
+    });
 
     // Stores
     const queryClient = useQueryClient();
@@ -28,8 +39,11 @@
 
     // Computed values
     $: counterpartId = chat.chat_type === ChatType.DM ? chat.other_user?.id as number | undefined ?? null : null;
+    $: renderedLastMessageContent = chat.last_message?.content ? (() => {
+        const plainText = chat.last_message.content;
+        return md.render(plainText).trim();
+    })() : '';
 
-    // Reactive statements
     $: if (chat) {
         if (chat.chat_type === ChatType.DM && counterpartId) {
             const presenceData = get(presenceStore)[counterpartId];
@@ -83,30 +97,6 @@
     }
 
     // Utility functions
-    function getAttachmentType(attachment: MessageAttachment): string {
-        const mimeType = attachment.mime_type.toLowerCase();
-        const fileType = attachment.file_type.toLowerCase();
-        
-        if (fileType === 'gif' || mimeType.includes('gif')) {
-            return 'gif';
-        }
-        if (mimeType.startsWith('image/')) {
-            return 'image';
-        }
-        if (mimeType.startsWith('video/')) {
-            return 'video';
-        }
-        if (mimeType.startsWith('audio/')) {
-            return 'audio';
-        }
-        return 'document';
-    }
-
-    function getAttachmentTypeName(attachment: MessageAttachment): string {
-        const type = getAttachmentType(attachment);
-        return $_(`common.attachmentTypes.${type}`);
-    }
-
     function getUrl(path: string): string {
         const baseUrl = getServerUrl();
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;
@@ -144,20 +134,23 @@
                 {#if chat.last_user}
                     <span class="sender-name">{chat.last_user.name}: </span>
                 {/if}
-                {#if chat.last_message.attachments && chat.last_message.attachments.length > 0}
+                {#if chat.last_message.media && chat.last_message.media.length > 0}
                     <span class="last-message-content">
-                        {#if chat.last_message.attachments[0].thumbnail_url}
+                        {#if chat.last_message.media[0].type === 'Photo' || chat.last_message.media[0].type === 'Video' || chat.last_message.media[0].type === 'Gif'}
                             <img 
-                                src={getUrl(chat.last_message.attachments[0].thumbnail_url)} 
+                                src={getUrl(chat.last_message.media[0].type === 'Gif' 
+                                    ? (chat.last_message.media[0].preview_url || chat.last_message.media[0].file_url)
+                                    : (chat.last_message.media[0].thumbnail_url || chat.last_message.media[0].file_url)
+                                )} 
                                 alt="" 
                                 class="mini-thumbnail"
                             />
                         {/if}
-                        <em class="attachment-type">{getAttachmentTypeName(chat.last_message.attachments[0])}</em>
-                        {#if chat.last_message.content} {chat.last_message.content}{/if}
+                        <em class="attachment-type">{getMediaTypeName(chat.last_message.media[0], $_)}</em>
+                        {#if chat.last_message.content} <span class="message-text-preview">{@html renderedLastMessageContent}</span>{/if}
                     </span>
                 {:else}
-                    <span class="last-message-content">{chat.last_message.content}</span>
+                    <span class="last-message-content"><span class="message-text-preview">{@html renderedLastMessageContent}</span></span>
                 {/if}
             {:else}
                 <span class="last-message empty">{$_('chat_element.no_messages')}</span>
@@ -330,6 +323,89 @@
     .last-message.empty {
         font-style: italic;
         opacity: 0.5;
+    }
+    
+    .message-text-preview {
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1;
+        height: 1em;
+    }
+    
+    .message-text-preview :global(*) {
+        display: inline !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    
+    .message-text-preview :global(p) {
+        display: inline;
+        margin: 0;
+    }
+    
+    .message-text-preview :global(h1),
+    .message-text-preview :global(h2),
+    .message-text-preview :global(h3),
+    .message-text-preview :global(h4),
+    .message-text-preview :global(h5),
+    .message-text-preview :global(h6) {
+        display: inline;
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+    }
+    
+    .message-text-preview :global(ul),
+    .message-text-preview :global(ol) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .message-text-preview :global(li) {
+        display: inline;
+        margin: 0;
+    }
+    
+    .message-text-preview :global(code) {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1px 3px;
+        border-radius: 2px;
+        font-size: 0.9em;
+    }
+    
+    .message-text-preview :global(blockquote) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .message-text-preview :global(table) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .message-text-preview :global(tr),
+    .message-text-preview :global(td),
+    .message-text-preview :global(th) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    
+    .message-text-preview :global(img) {
+        display: inline;
+        max-height: 1em;
+        vertical-align: middle;
     }
 
     .no-text-select {

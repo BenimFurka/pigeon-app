@@ -2,13 +2,12 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { writable, derived } from 'svelte/store';
     import { Search, Image, X, Send } from 'lucide-svelte';
-    import { useTrendingGifsQuery, useSearchGifsQuery, useSendGifMutation, useRecentGifsQuery, recentGifsToGifList } from '$lib/queries/gifs';
-    import type { GifItem } from '$lib/types/models';
+    import { useTrendingGifsQuery, useSearchGifsQuery, useUploadGifMutation, useRecentGifsQuery, recentGifsToGifList } from '$lib/queries/gifs';
+    import type { GifItem, GifMedia } from '$lib/types/models';
     import { fly, fade, slide } from 'svelte/transition';
     import { _ } from 'svelte-i18n';
 
     // Props
-    export let chatId: number;
     export let isOpen: boolean = false;
     export let isMobile: boolean = false;
     export let triggerButton: HTMLButtonElement;
@@ -16,11 +15,12 @@
     // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
-        selected: { gif: GifItem; attachmentId: number };
+        selected: { gif: GifItem; media: GifMedia };
     }>();
 
     // Stores
     const searchInput = writable('');
+    const searchEnabled = writable(false);
 
     // State
     let selectedGif: GifItem | null = null;
@@ -39,16 +39,15 @@
         return $searchInput.trim() === '' && !$showSearchResults;
     });
     const trendingQuery = useTrendingGifsQuery();
-    const searchQuery = useSearchGifsQuery(debouncedSearch, { 
-        enabled: isOpen && $showSearchResults 
-    });
+    const searchQuery = useSearchGifsQuery(debouncedSearch, { enabled: searchEnabled });
     const recentQuery = useRecentGifsQuery();
-    const sendGifMutation = useSendGifMutation(chatId);
+    const uploadGifMutation = useUploadGifMutation();
 
     $: currentQuery = $showSearchResults ? searchQuery : trendingQuery;
     $: isLoading = $currentQuery?.isFetching && !isLoadingMore;
     $: error = $currentQuery?.error ? String($currentQuery.error) : null;
     $: pages = $currentQuery?.data?.pages ?? [];
+    $: searchEnabled.set(isOpen && $showSearchResults);
     $: allGifs = pages.flatMap((page: any) => {
         if (Array.isArray(page)) return page;
         if (page.data && Array.isArray(page.data)) return page.data;
@@ -96,7 +95,6 @@
         }
         return [];
     });
-    $: recentError = $recentQuery?.error ? String($recentQuery.error) : null;
     $: recentIsLoading = $recentQuery?.isFetching && recentGifs.length === 0;
     $: showRecentGifs = $searchInput.trim() === '' && recentGifs.length > 0;
 
@@ -135,12 +133,12 @@
     }
 
     async function handleSendGif() {
-        if (!selectedGif || $sendGifMutation.isPending) return;
+        if (!selectedGif || $uploadGifMutation.isPending) return;
 
         try {
             const payload = (selectedGif as any).isRecent ? (selectedGif as any).originalData : selectedGif;
-            const attachment = await $sendGifMutation.mutateAsync(payload);
-            dispatch('selected', { gif: selectedGif, attachmentId: attachment.id });
+            const media = await $uploadGifMutation.mutateAsync(payload);
+            dispatch('selected', { gif: selectedGif, media });
             selectedGif = null;
             searchInput.set('');
         } catch (err) {
@@ -149,7 +147,7 @@
     }
 
     function handleClose() {
-        if (!$sendGifMutation.isPending) {
+        if (!$uploadGifMutation.isPending) {
             dispatch('close');
             selectedGif = null;
             searchInput.set('');
@@ -279,9 +277,9 @@
                                                     <button
                                                         class="send-btn"
                                                         on:click={handleSendGif}
-                                                        disabled={$sendGifMutation.isPending}
+                                                        disabled={$uploadGifMutation.isPending}
                                                     >
-                                                        {#if $sendGifMutation.isPending}
+                                                        {#if $uploadGifMutation.isPending}
                                                             <div class="btn-spinner"></div>
                                                         {:else}
                                                             <Send size={14} />
@@ -330,9 +328,9 @@
                                                     <button
                                                         class="send-btn"
                                                         on:click={handleSendGif}
-                                                        disabled={$sendGifMutation.isPending}
+                                                        disabled={$uploadGifMutation.isPending}
                                                     >
-                                                        {#if $sendGifMutation.isPending}
+                                                        {#if $uploadGifMutation.isPending}
                                                             <div class="btn-spinner"></div>
                                                         {:else}
                                                             <Send size={14} />
@@ -394,9 +392,9 @@
                                             <button
                                                 class="send-btn"
                                                 on:click={handleSendGif}
-                                                disabled={$sendGifMutation.isPending}
+                                                disabled={$uploadGifMutation.isPending}
                                             >
-                                                {#if $sendGifMutation.isPending}
+                                                {#if $uploadGifMutation.isPending}
                                                     <div class="btn-spinner"></div>
                                                 {:else}
                                                     <Send size={14} />
@@ -502,9 +500,9 @@
                                                 <button
                                                     class="send-btn"
                                                     on:click={handleSendGif}
-                                                    disabled={$sendGifMutation.isPending}
+                                                    disabled={$uploadGifMutation.isPending}
                                                 >
-                                                    {#if $sendGifMutation.isPending}
+                                                    {#if $uploadGifMutation.isPending}
                                                         <div class="btn-spinner"></div>
                                                     {:else}
                                                         <Send size={14} />
@@ -553,9 +551,9 @@
                                         <button
                                             class="send-btn"
                                             on:click={handleSendGif}
-                                            disabled={$sendGifMutation.isPending}
+                                            disabled={$uploadGifMutation.isPending}
                                         >
-                                            {#if $sendGifMutation.isPending}
+                                            {#if $uploadGifMutation.isPending}
                                                 <div class="btn-spinner"></div>
                                             {:else}
                                                 <Send size={14} />
@@ -617,9 +615,9 @@
                                         <button
                                             class="send-btn"
                                             on:click={handleSendGif}
-                                            disabled={$sendGifMutation.isPending}
+                                            disabled={$uploadGifMutation.isPending}
                                         >
-                                            {#if $sendGifMutation.isPending}
+                                            {#if $uploadGifMutation.isPending}
                                                 <div class="btn-spinner"></div>
                                             {:else}
                                                 <Send size={14} />
@@ -658,7 +656,6 @@
         max-height: 480px;
         background: var(--color-bg-elevated);
         border-radius: var(--radius-md);
-        box-shadow: var(--shadow-lg);
         border: 1px solid var(--color-border);
         display: flex;
         flex-direction: column;
@@ -716,11 +713,6 @@
         align-items: center;
         gap: 12px;
         padding: 12px 16px;
-    }
-
-    .gif-picker.desktop .header-content {
-        padding: 12px;
-        gap: 8px;
     }
 
     .search {

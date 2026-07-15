@@ -4,18 +4,20 @@
     import Button from '$lib/components/shared/Button.svelte';
     import Input from '$lib/components/shared/Input.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
-    import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+    import { useQueryClient } from '@tanstack/svelte-query';
     import { useSearch } from '$lib/queries/search';
     import { presence, type PresenceRecord } from '$lib/stores/presence';
     import { writable } from 'svelte/store';
-    import { UserMinus } from 'lucide-svelte';
-    import type { Chat } from '$lib/types/models';
+    import { UserMinus, Shield } from 'lucide-svelte';
+    import type { Chat, ChatMember } from '$lib/types/models';
     import { useCurrentProfile } from '$lib/queries/profile';
-    import { chatKeys } from '$lib/queries/chats';
+    import { useAddMember, useRemoveMember } from '$lib/queries/chats';
     import MemberListItem from '$lib/components/shared/MemberListItem.svelte';
+    import EditMemberPermissionsModal from './EditMemberPermissionsModal.svelte';
     import { formatLastSeen } from '$lib/datetime';
     import type { UserPublic } from '$lib/types/models';
     import { _, format } from 'svelte-i18n';
+    import { Search, Users } from 'lucide-svelte';
 
     // Props
     export let chat: Chat;
@@ -37,45 +39,9 @@
         scope: 'users',
     });
 
-    // Mutations
-    const addMembersMutation = createMutation({
-        mutationFn: async (userIds: number[]) => {
-            const { makeRequest } = await import('$lib/api');
-            const promises = userIds.map(userId =>
-                makeRequest(`/chats/${chat.id}/members`, { data: { user_id: userId } }, true, 'POST')
-            );
-            const responses = await Promise.all(promises);
-            if (responses.some(res => res.error)) throw new Error($_('manage_members.add_members_error'));
-            return responses.map(res => res.data);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
-            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
-            selectedUsers = [];
-        },
-        onError: (e: any) => {
-            error = e?.message || $_('manage_members.add_members_error');
-        },
-        onSettled: () => {
-            isSubmitting = false;
-        }
-    });
-
-    const removeMemberMutation = createMutation({
-        mutationFn: async (userId: number) => {
-            const { makeRequest } = await import('$lib/api');
-            const res = await makeRequest(`/chats/${chat.id}/members/${userId}`, null, true, 'DELETE');
-            if ((res as any).error) throw new Error((res as any).error.message || $_('manage_members.remove_member_error'));
-            return true;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: chatKeys.detail(chat.id) });
-            queryClient.invalidateQueries({ queryKey: chatKeys.previews() });
-        },
-        onError: (e: any) => {
-            error = e?.message || $_('manage_members.remove_member_error');
-        }
-    });
+    // Mutations from queries
+    const addMemberMutation = useAddMember();
+    const removeMemberMutation = useRemoveMember();
 
     // State
     let searchQuery = '';
@@ -83,6 +49,8 @@
     let isSubmitting = false;
     let error: string | null = null;
     let presenceState: Record<number, PresenceRecord> = {};
+    let editingMember: ChatMember | null = null;
+    let isPermissionsModalOpen = false;
     
     // Reactive statements
     $: members = chat?.members || [];
@@ -126,18 +94,38 @@
         }
     }
     
-    function handleAddSelected() {
+    async function handleAddSelected() {
         if (!canManageMembers || selectedUsers.length === 0) return;
         error = null;
         isSubmitting = true;
-        const ids = selectedUsers.map(u => u.id);
-        $addMembersMutation.mutate(ids);
+        try {
+            for (const user of selectedUsers) {
+                await $addMemberMutation.mutateAsync({ chatId: chat.id, userId: user.id });
+            }
+            selectedUsers = [];
+            searchQuery = '';
+        } catch (e: any) {
+            error = e?.message || $_('manage_members.add_members_error');
+        } finally {
+            isSubmitting = false;
+        }
     }
 
     function handleRemoveMember(userId: number) {
         if (!canManageMembers || userId === chat.owner_id) return;
         error = null;
-        $removeMemberMutation.mutate(userId);
+        $removeMemberMutation.mutate({ chatId: chat.id, userId });
+    }
+
+    function handleEditPermissions(member: ChatMember) {
+        if (!canManageMembers || member.user_id === chat.owner_id) return;
+        editingMember = member;
+        isPermissionsModalOpen = true;
+    }
+
+    function handlePermissionsModalClose() {
+        isPermissionsModalOpen = false;
+        editingMember = null;
     }
     
     function handleUserClick(event: CustomEvent) {
@@ -167,9 +155,12 @@
     on:close={handleClose}
     on:back={handleBack}
 >
-    <div class="content">
-        <div class="search-section">
-            <h3>{$_('manage_members.add_members')}</h3>
+    <div class="manage-members-content">
+        <div class="manage-members-group">
+            <div class="group-header">
+                <Search size={18} />
+                <span>{$_('manage_members.add_members')}</span>
+            </div>
             <div class="search-box">
                 <Input
                     type="text"
@@ -208,8 +199,11 @@
             {/if}
         </div>
         
-        <div class="members-section">
-            <h3>{$_('manage_members.members')} ({members?.length || 0})</h3>
+        <div class="manage-members-group members-group">
+            <div class="group-header">
+                <Users size={18} />
+                <span>{$_('manage_members.members')} ({members?.length || 0})</span>
+            </div>
             
             {#if members.length === 0}
                 <div class="no-members">
@@ -227,15 +221,27 @@
                         >
                         <svelte:fragment slot="actions">
                             {#if canManageMembers && m.user_id !== chat.owner_id}
-                                
+                                <div class="member-actions">
+                                    <!-- TODO: Delete Button -->
+                                    <Button
+                                        variant="ghost"
+                                        size="small"
+                                        style="min-width: 0; min-height: 0; padding: 0; width: 32px; height: 32px;"
+                                        on:click={() => handleEditPermissions(m)}
+                                        title={$_('manage_members.edit_permissions')}
+                                    >
+                                        <Shield size={16} />
+                                    </Button>
                                     <Button
                                         variant="danger"
                                         size="small"
                                         style="min-width: 0; min-height: 0; padding: 0; width: 32px; height: 32px;"
                                         on:click={() => handleRemoveMember(m.user_id)}
+                                        title={$_('manage_members.remove_member')}
                                     >
-                                        <UserMinus size="16" />
+                                        <UserMinus size={16} />
                                     </Button>
+                                </div>
                             {/if}
 
                                 </svelte:fragment>
@@ -259,25 +265,44 @@
     </div>
 </Modal>
 
+{#if editingMember}
+    <EditMemberPermissionsModal
+        chatId={chat.id}
+        member={editingMember}
+        isOpen={isPermissionsModalOpen}
+        on:close={handlePermissionsModalClose}
+    />
+{/if}
+
 <style>
-    .content {
+    .manage-members-content {
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 20px;
+    }
+
+    .manage-members-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-glass);
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 4px;
     }
     
     .search-section,
     .members-section {
         margin-bottom: 8px;
     }
-    
-    h3 {
-        margin: 0 0 12px;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--color-text);
-    }
-    
+
     .search-box {
         display: flex;
         gap: 8px;
@@ -345,5 +370,10 @@
         text-align: center;
         color: var(--color-text);
         font-size: 0.95rem;
+    }
+
+    .member-actions {
+        display: flex;
+        gap: 4px;
     }
 </style>

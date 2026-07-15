@@ -8,7 +8,7 @@
     import { formatDateHeader } from '$lib/datetime';
     import { ChevronDown } from 'lucide-svelte';
     import { ChatType } from '$lib/types/models';
-    import { session } from '$lib/session';
+    import { wsService } from '$lib/ws-service';
     import { _, format } from 'svelte-i18n';
     
     // Profile query
@@ -81,7 +81,30 @@
     // Reactive statements
     $: if (chatId && messagesQuery) {
         const data = $messagesQuery?.data || [];
-        messageList = data;
+        
+        if (data !== messageList) {
+            const hasChanged = 
+                data.length !== messageList.length ||
+                data.some((msg, i) => msg.id !== messageList[i]?.id);
+            
+            if (hasChanged) {
+                messageList = data;
+
+                if (data.length > 0) {
+                    import('$lib/queries/polls').then(({ storePollFromMessage }) => {
+                        const currentUserId = $profileQuery.data?.id || null;
+                        data.forEach(message => {
+                            if (message.media && message.media.length > 0) {
+                                const pollMedia = message.media.find(m => m.type === 'Poll');
+                                if (pollMedia) {
+                                    storePollFromMessage(message, currentUserId);
+                                }
+                            }
+                        });
+                    });
+                }
+            }
+        }
 
         if (chatId !== lastChatId) {
             lastChatId = chatId;
@@ -90,6 +113,11 @@
             replyToMap = new Map();
             lastMessageCount = 0;
             lastMarkReadMessageId = 0;
+            setTimeout(() => {
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            }, 0);
         }
 
         if (messageList.length > lastMessageCount && lastMessageCount > 0 && isUserAtBottom) {
@@ -248,10 +276,7 @@
     function sendMarkAsRead(messageId: number) {
         if (!chatId || messageId <= lastMarkReadMessageId) return;
         lastMarkReadMessageId = messageId;
-        const ws = session.getWebSocket();
-        if (ws) {
-            ws.send({ type: 'mark_as_read', data: { chat_id: chatId, message_id: messageId } });
-        }
+        wsService.send({ type: 'mark_as_read', data: { chat_id: chatId, message_id: messageId } });
         chatContext.updateChatUnreadCount(chatId, 0, messageId);
     }
 
@@ -343,7 +368,7 @@
                 <span class="date-text">{group.dateHeader}</span>
             </div>
             
-            {#each group.messages as message, index (message.id)}
+            {#each group.messages as message, index (message.clientId || message.id)}
                 {#if firstUnreadMessageId != null && message.id === firstUnreadMessageId}
                     <div class="date-header">
                         <span class="date-text">{$_('message_list.new_messages')}</span>
@@ -480,7 +505,6 @@
         background-image: 
             linear-gradient(var(--surface-glass), var(--surface-glass)),
             linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
-                
         color: var(--color-text);
         border: none;
         cursor: pointer;

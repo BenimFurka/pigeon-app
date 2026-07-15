@@ -1,18 +1,21 @@
 <!-- TODO: Paste -->
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, tick } from 'svelte';
     import { uploadAttachment } from '$lib/api';
-    import type { ChatAttachment } from '$lib/types/models';
-    import { X, Upload, Image, Video, Music, FileText } from 'lucide-svelte';
+    import type { MessageMedia } from '$lib/types/models';
+    import { X, Upload, Image, Video, Music, FileText, Plus } from 'lucide-svelte';
     import Button from '$lib/components/shared/Button.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
     import { _, format } from 'svelte-i18n';
     import { getServerUrl } from '$lib/config';
+    import { getMediaTitle, getMediaSubtitle } from '$lib/utils/media';
 
     // Props
     export let chatId: number;
     export let isOpen: boolean = false;
     export let isMobile: boolean = false;
+    export let initialContent: string = '';
+    export let initialFiles: File[] = [];
 
     // Constants
     const MAX_FILE_SIZE = 8 * 1024 * 1024;
@@ -20,20 +23,22 @@
     // Event dispatcher
     const dispatch = createEventDispatcher<{
         close: void;
-        sent: { content: string; attachmentIds: number[] };
+        sent: { content: string; media: MessageMedia[] };
     }>();
 
     // State
     let files: File[] = [];
-    let uploadedAttachments: ChatAttachment[] = [];
+    let uploadedMedia: MessageMedia[] = [];
     let uploadingFiles = new Set<number>();
     let messageContent = '';
     let isDragging = false;
     let error: string | null = null;
+    let hasInitialized = false;
 
     // DOM refs
     let inputElement: HTMLTextAreaElement;
     let fileInput: HTMLInputElement;
+    let selectFilesButton: HTMLButtonElement;
 
     // Event handlers
     function handleClose() {
@@ -76,7 +81,7 @@
     }
 
     function handleSend() {
-        if (uploadedAttachments.length === 0 && !messageContent.trim()) {
+        if (uploadedMedia.length === 0 && !messageContent.trim()) {
             error = $_('attachments.add_files_or_message');
             return;
         }
@@ -86,10 +91,9 @@
             return;
         }
 
-        const attachmentIds = uploadedAttachments.map(a => a.id);
         dispatch('sent', {
             content: messageContent.trim(),
-            attachmentIds
+            media: uploadedMedia
         });
 
         resetState();
@@ -128,7 +132,8 @@
         try {
             const response = await uploadAttachment(chatId, file);
             if (response.data) {
-                uploadedAttachments = [...uploadedAttachments, response.data];
+                const mediaData = response.data as unknown as MessageMedia;
+                uploadedMedia = [...uploadedMedia, mediaData];
             }
         } catch (err) {
             error = $_('attachments.upload_error');
@@ -138,37 +143,82 @@
         }
     }
 
-    function removeAttachment(index: number) {
-        uploadedAttachments = uploadedAttachments.filter((_, i) => i !== index);
+    function removeMedia(index: number) {
+        uploadedMedia = uploadedMedia.filter((_, i) => i !== index);
         files = files.filter((_, i) => i !== index);
         uploadingFiles.delete(index);
     }
 
     function resetState() {
         files = [];
-        uploadedAttachments = [];
+        uploadedMedia = [];
         messageContent = '';
         error = null;
         isDragging = false;
     }
 
-    function getFileIcon(fileType: string) {
-        if (fileType.startsWith('image')) return Image;
-        if (fileType.startsWith('video')) return Video;
-        if (fileType.startsWith('audio')) return Music;
-        return FileText;
-    }
-
-    function formatFileSize(bytes: number): string {
-        if (bytes < 1024) return `${bytes} ${$_('attachment_item.bytes')}`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${$_('attachment_item.kb')}`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} ${$_('attachment_item.mb')}`;
+    function getFileIcon(media: MessageMedia) {
+        switch (media.type) {
+            case 'Photo':
+                return Image;
+            case 'Video':
+                return Video;
+            case 'Audio':
+            case 'Voice':
+                return Music;
+            default:
+                return FileText;
+        }
     }
     
     function getUrl(path: string): string {
         const baseUrl = getServerUrl();
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;
         return `${baseUrl}/${cleanPath}`;
+    }
+
+    function handlePasteInModal(event: ClipboardEvent) {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const newFiles: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file' && item.type) {
+                const file = item.getAsFile();
+                if (file) {
+                    newFiles.push(file);
+                }
+            }
+        }
+
+        if (newFiles.length > 0) {
+            event.preventDefault();
+            addFiles(newFiles);
+        }
+    }
+
+    $: if (!isOpen) {
+        files = [];
+        uploadedMedia = [];
+        messageContent = '';
+        error = null;
+        isDragging = false;
+        hasInitialized = false;
+    }
+
+    $: if (isOpen && !hasInitialized) {
+        if (initialContent) {
+            messageContent = initialContent;
+        }
+        if (initialFiles.length > 0) {
+            addFiles(initialFiles);
+        }
+        hasInitialized = true;
+        
+        tick().then(() => {
+            inputElement?.focus();
+        });
     }
 </script>
 
@@ -180,64 +230,80 @@
     disabled={uploadingFiles.size > 0}
     on:close={handleClose}
 >
-    <div class="attachment-modal-content">
+    <div class="attachment-modal-content" on:paste={handlePasteInModal}>
         {#if error}
             <div class="error-message">{error}</div>
         {/if}
 
-        <div 
-            class="file-upload-area" 
-            class:dragging={isDragging}
-            on:dragover={handleDragOver}
-            on:dragleave={handleDragLeave}
-            on:drop={handleDrop}
-        >
-            <input
-                type="file"
-                bind:this={fileInput}
-                on:change={handleFileSelect}
-                multiple
-                style="display: none;"
-            />
-            <Upload size={32} />
-            <p>{$_('attachments.drag_files_or')}</p>
-            <button
-                type="button"
-                class="select-files-button"
-                on:click={() => fileInput?.click()}
-            >
-                {$_('attachments.select_files')}
-            </button>
-            <p class="hint">{$format('attachments.max_file_size', { values: { size: '8MB' } })}</p>
-        </div>
+        <input
+            type="file"
+            bind:this={fileInput}
+            on:change={handleFileSelect}
+            multiple
+            style="display: none;"
+        />
+        {#if files.length === 0}
+            <div class="attachment-group">
+                <div class="group-header">
+                    <Upload size={18} />
+                    <span>{$_('attachments.file_upload')}</span>
+                </div>
+                <div 
+                    class="file-upload-area" 
+                    class:dragging={isDragging}
+                    role="button"
+                    tabindex="0"
+                    on:dragover={handleDragOver}
+                    on:dragleave={handleDragLeave}
+                    on:drop={handleDrop}
+                >
+                    <Upload size={32} />
+                    <p>{$_('attachments.drag_files_or')}</p>
+                    <button
+                        type="button"
+                        class="select-files-button"
+                        bind:this={selectFilesButton}
+                        on:click={() => fileInput?.click()}
+                    >
+                        {$_('attachments.select_files')}
+                    </button>
+                    <p class="hint">{$format('attachments.max_file_size', { values: { size: '8MB' } })}</p>
+                </div>
+            </div>
+        {/if}
 
-        {#if uploadedAttachments.length > 0 || uploadingFiles.size > 0}
-            <div class="attachments-list">
-                <h3>{$format('attachments.attachments_count', { values: { count: uploadedAttachments.length } })}</h3>
+        {#if uploadedMedia.length > 0 || uploadingFiles.size > 0 || files.length > 0}
+            <div class="attachment-group">
+                <div class="group-header">
+                    <FileText size={18} />
+                    <span>{$format('attachments.attachments_count', { values: { count: uploadedMedia.length } })}</span>
+                </div>
                 <div class="attachments-grid">
                     {#each files as file, index}
                         {@const isUploading = uploadingFiles.has(index)}
-                        {@const attachment = uploadedAttachments.find(a => a.file_name === file.name)}
-                        <div class="attachment-item" class:uploading={isUploading}>
-                            {#if attachment}
-                                {@const Icon = getFileIcon(attachment.mime_type)}
+                        {@const media = uploadedMedia[index]}
+                        <div class="attachment-item"> <!-- class:uploading={isUploading}>-->
+                            {#if media}
+                                {@const Icon = getFileIcon(media)}
                                 <div class="attachment-preview">
-                                    {#if attachment.thumbnail_url}
-                                        <img src={getUrl(attachment.thumbnail_url)} alt={attachment.file_name} />
+                                    {#if media.type === 'Photo' && media.thumbnail_url}
+                                        <img src={getUrl(media.thumbnail_url)} alt={getMediaTitle(media)} />
+                                    {:else if media.type === 'Video' && media.thumbnail_url}
+                                        <img src={getUrl(media.thumbnail_url)} alt={getMediaTitle(media)} />
                                     {:else}
                                         <Icon size={24} />
                                     {/if}
                                 </div>
                                 <div class="attachment-info">
-                                    <div class="attachment-name">{attachment.file_name}</div>
+                                    <div class="attachment-name">{getMediaTitle(media)}</div>
                                     <div class="attachment-meta">
-                                        {formatFileSize(attachment.file_size)}
+                                        {getMediaSubtitle(media)}
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     class="remove-button"
-                                    on:click={() => removeAttachment(index)}
+                                    on:click={() => removeMedia(index)}
                                     aria-label={$_('common.remove')}
                                 >
                                     <X size={16} />
@@ -253,21 +319,34 @@
                             {/if}
                         </div>
                     {/each}
+                    <div 
+                        class="attachment-item add-more-card"
+                        role="button"
+                        tabindex="0"
+                        on:click={() => fileInput?.click()}
+                    >
+                        <div class="attachment-preview">
+                            <Plus size={24} />
+                        </div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">{$_('attachments.add_more_files')}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="message-input-section">
+                    <textarea
+                        id="message-content"
+                        bind:value={messageContent}
+                        on:input={adjustTextareaHeight}
+                        bind:this={inputElement}
+                        placeholder={$_('attachments.add_message_text')}
+                        class="message-textarea"
+                        rows="3"
+                    ></textarea>
                 </div>
             </div>
         {/if}
-
-        <div class="message-input-section">
-            <textarea
-                id="message-content"
-                bind:value={messageContent}
-                on:input={adjustTextareaHeight}
-                bind:this={inputElement}
-                placeholder={$_('attachments.add_message_text')}
-                class="message-textarea"
-                rows="3"
-            ></textarea>
-        </div>
     </div>
 
     <div slot="footer" class="attachment-modal-footer">
@@ -280,7 +359,7 @@
         </Button>
         <Button
             on:click={handleSend}
-            disabled={uploadingFiles.size > 0 || (uploadedAttachments.length === 0 && !messageContent.trim())}
+            disabled={uploadingFiles.size > 0 || (uploadedMedia.length === 0 && !messageContent.trim())}
         >
             {$_('common.send')}
         </Button>
@@ -293,6 +372,23 @@
         flex-direction: column;
         gap: 20px;
         color: var(--color-text);
+    }
+
+    .attachment-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-glass);
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 4px;
     }
 
     .error-message {
@@ -342,12 +438,6 @@
         transform: scale(1.05);
     }
 
-    .attachments-list h3 {
-        margin: 0 0 12px;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
     .attachments-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -363,10 +453,6 @@
         flex-direction: column;
         gap: 8px;
         border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
-    }
-
-    .attachment-item.uploading {
-        opacity: 0.6;
     }
 
     .attachment-preview {
@@ -464,6 +550,18 @@
         gap: 12px;
         justify-content: flex-end;
         width: 100%;
+    }
+
+    .add-more-card {
+        background: var(--color-bg-elevated);
+        border: 1px dashed var(--color-border, rgba(255, 255, 255, 0.2));
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .add-more-card:hover {
+        background: var(--color-bg-hover);
+        border-color: var(--color-accent);
     }
 
     @media (max-width: 576px) {

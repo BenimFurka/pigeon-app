@@ -4,13 +4,13 @@
     import { presence, type PresenceRecord } from '$lib/stores/presence';
     import { formatLastSeen } from '$lib/datetime';
     import Avatar from '$lib/components/shared/Avatar.svelte';
-    import Button from '$lib/components/shared/Button.svelte';
     import Modal from '$lib/components/overlays/Modal.svelte';
     import { useCurrentProfile } from '$lib/queries/profile';
     import MemberListItem from '$lib/components/shared/MemberListItem.svelte';
     import { createMutation, useQueryClient } from '@tanstack/svelte-query';
     import { chatKeys } from '$lib/queries/chats';
     import { _, format } from 'svelte-i18n';
+    import { Settings } from 'lucide-svelte';
 
     // Props
     export let chat: Chat;
@@ -144,12 +144,11 @@
 >
     <div class="content">
         <div class="chat-avatar-container">
-            <Avatar avatarUrl={avatarUrl} size="xlarge" />
+            <Avatar avatarUrl={avatarUrl} size={120} />
             {#if chat.chat_type === ChatType.DM && isOnline}
                 <span class="online-dot" title={$_('chat_info.online')} />
             {/if}
         </div>
-        
         <div class="chat-info-section">
             <h3 class="chat-name">{displayName}</h3>
             {#if chat.chat_type === ChatType.DM}
@@ -165,7 +164,7 @@
                         <p>{chatPreview.other_user.bio}</p>
                     </div>
                 {/if}
-                
+            
             {:else if chat.chat_type === ChatType.GROUP}
                 <div class="member-count">
                     {memberCountDisplay} {$_('chat_info.members')} • {onlineCount} {$_('chat_info.online')}
@@ -177,15 +176,68 @@
                         <p>{chat.description}</p>
                     </div>
                 {/if}
+            
+            <div class="chat-info-group">
+                <div class="group-header">
+                    <span>{$_('chat_info.members_title')}</span>
+                    {#if canManageMembers}
+                        <button class="btn text small" on:click={handleManageMembers}>
+                            {$_('chat_info.add_member')}
+                        </button>
+                    {/if}
+                </div>
                 
-                <div class="members-section">
-                    <div class="section-header">
-                        <h4>{$_('chat_info.members_title')}</h4>
-                        {#if canManageMembers}
-                            <Button variant="text" size="small" on:click={handleManageMembers}>
-                                {$_('chat_info.add_member')}
-                            </Button>
-                        {/if}
+                <div class="members-list">
+                    {#each members as member (member.user_id)}
+                        <MemberListItem
+                            userId={member.user_id}
+                            role={member.role}
+                            isOnline={isMemberOnline(member.user_id)}
+                            statusText={getMemberStatus(member.user_id)}
+                            on:userClick={handleUserClick}
+                        />
+                    {/each}
+                </div>
+            </div>
+            
+            {#if myMembership && chat.owner_id !== currentUser?.id}
+                <div class="chat-info-group">
+                    <div class="group-header">
+                        <Settings size={18} />
+                        <span>{$_('chat_info.actions')}</span>
+                    </div>
+                    <div class="leave-chat-section">
+                        <button 
+                            class="btn text small"
+                            on:click={handleLeaveChat}
+                            disabled={$leaveChatMutation.isPending}
+                            style="color: var(--color-danger);"
+                        >
+                            {$_('chat_info.leave_group')}
+                        </button>
+                    </div>
+                </div>
+            {/if}
+            
+        {:else if chat.chat_type === ChatType.CHANNEL}
+            <div class="subscriber-count">
+                {chat.member_count || 0} {$_('chat_info.subscribers')}
+            </div>
+            
+            {#if chat.description}
+                <div class="description">
+                    <h4>{$_('chat_info.description')}</h4>
+                    <p>{chat.description}</p>
+                </div>
+            {/if}
+
+            {#if showMembersSectionForChannel}
+                <div class="chat-info-group">
+                    <div class="group-header">
+                        <span>{$_('chat_info.members_title')}</span>
+                        <button class="btn text small" on:click={handleManageMembers}>
+                            {$_('chat_info.manage_members')}
+                        </button>
                     </div>
                     
                     <div class="members-list">
@@ -200,71 +252,27 @@
                         {/each}
                     </div>
                 </div>
-                
-                {#if myMembership && chat.owner_id !== currentUser?.id}
-                    <div class="leave-chat-section">
-                        <Button 
-                            variant="text" 
-                            size="small" 
-                            on:click={handleLeaveChat}
-                            disabled={$leaveChatMutation.isPending}
-                            style="color: var(--color-danger);"
-                        >
-                            {$_('chat_info.leave_group')}
-                        </Button>
-                    </div>
-                {/if}
-                
-            {:else if chat.chat_type === ChatType.CHANNEL}
-                <div class="subscriber-count">
-                    {chat.member_count || 0} {$_('chat_info.subscribers')}
-                </div>
-                
-                {#if chat.description}
-                    <div class="description">
-                        <h4>{$_('chat_info.description')}</h4>
-                        <p>{chat.description}</p>
-                    </div>
-                {/if}
+            {/if}
 
-                {#if showMembersSectionForChannel}
-                    <div class="members-section">
-                        <div class="section-header">
-                            <h4>{$_('chat_info.members_title')}</h4>
-                            <Button variant="text" size="small" on:click={handleManageMembers}>
-                                {$_('chat_info.manage_members')}
-                            </Button>
-                        </div>
-                        
-                        <div class="members-list">
-                            {#each members as member (member.user_id)}
-                                <MemberListItem
-                                    userId={member.user_id}
-                                    role={member.role}
-                                    isOnline={isMemberOnline(member.user_id)}
-                                    statusText={getMemberStatus(member.user_id)}
-                                    on:userClick={handleUserClick}
-                                />
-                            {/each}
-                        </div>
+            {#if myMembership && chat.owner_id !== currentUser?.id}
+                <div class="chat-info-group">
+                    <div class="group-header">
+                        <Settings size={18} />
+                        <span>{$_('chat_info.actions')}</span>
                     </div>
-                {/if}
-
-                {#if myMembership && chat.owner_id !== currentUser?.id}
                     <div class="leave-chat-section">
-                        <Button 
-                            variant="text" 
-                            size="small" 
+                        <button 
+                            class="btn text small"
                             on:click={handleLeaveChat}
                             disabled={$leaveChatMutation.isPending}
                             style="color: var(--color-danger);"
                         >
                             {$_('chat_info.leave_channel')}
-                        </Button>
+                        </button>
                     </div>
-                {/if}
+                </div>
             {/if}
-        </div>
+        {/if}
     </div>
 </Modal>
 
@@ -272,13 +280,33 @@
     .content {
         display: flex;
         flex-direction: column;
+        gap: 20px;
+    }
+
+    .chat-info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-glass);
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        justify-content: space-between;
     }
     
     .chat-avatar-container {
         position: relative;
         width: 120px;
         height: 120px;
-        margin: 0 auto 20px;
+        margin: 0 auto;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -317,7 +345,7 @@
     
     .bio,
     .description,
-    .members-section,
+    .members-list,
     .leave-chat-section {
         text-align: left;
         margin-top: 24px;
@@ -327,13 +355,7 @@
         text-align: center;
     }
     
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-    }
-    
+        
     h4 {
         margin: 0 0 8px;
         font-size: 1rem;

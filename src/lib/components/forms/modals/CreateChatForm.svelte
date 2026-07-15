@@ -8,6 +8,7 @@
     import { useSearch } from '$lib/queries/search';
     import Modal from '$lib/components/overlays/Modal.svelte';
     import { _ } from 'svelte-i18n';
+    import { Settings, Users } from 'lucide-svelte';
 
     // Props
     export let isOpen = false;
@@ -178,13 +179,25 @@
 </script>
 
 <Modal open={isOpen} title={$_('create_chat.create_chat')} on:close={() => dispatch('close')} zIndex={1200}>
-    <Form
-        submit={$createChat.isPending ? $_('create_chat.creating') : $_('create_chat.create_chat')}
-        fields={fields}
-        onSubmit={handleFormSubmit}
-        active={isFormActive}
-    >
-        <svelte:fragment slot="additional-content">
+    <div class="create-chat-content">
+        <div class="create-chat-group">
+            <div class="group-header">
+                <Settings size={18} />
+                <span>{$_('create_chat.chat_settings')}</span>
+            </div>
+            <Form
+                submit={$createChat.isPending ? $_('create_chat.creating') : $_('create_chat.create_chat')}
+                fields={fields}
+                onSubmit={handleFormSubmit}
+                active={isFormActive}
+            />
+        </div>
+        
+        <div class="create-chat-group">
+            <div class="group-header">
+                <Users size={18} />
+                <span>{$_('create_chat.member_selection')}</span>
+            </div>
             <div class="member-select">
                 <label for="member-search">{$_('create_chat.add_member')}</label>
                 <input
@@ -226,15 +239,38 @@
                     </div>
                 {/if}
             </div>
-        </svelte:fragment>
-    </Form>
-
-    {#if $createChat.error}
-        <div class="error">{String($createChat.error)}</div>
-    {/if}
+        </div>
+        
+        {#if $createChat.error}
+            <div class="error">{String($createChat.error)}</div>
+        {/if}
+    </div>
 </Modal>
 
 <style>
+    .create-chat-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .create-chat-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        background: var(--surface-glass);
+    }
+
+    .group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
     .error {
         color: var(--color-danger);
         font-size: 0.9rem;

@@ -44,7 +44,7 @@ export async function makeRequest<T = any>(
             }
 
             if (isApiError(res)) {
-                throw new Error(res.error.message || 'Request failed');
+                throw new Error(res.error?.message || 'Request failed');
             }
 
             return res;
@@ -63,7 +63,7 @@ export async function makeRequest<T = any>(
             const data: ApiResponse<T> = await res.json();
 
             if (isApiError(data)) {
-                throw new Error(data.error.message || 'Request failed');
+                throw new Error(data.error?.message || 'Request failed');
             }
 
             if (!res.ok) {
@@ -80,11 +80,11 @@ export async function makeRequest<T = any>(
 }
 
 export function isApiError<T>(response: ApiResponse<T>): response is ApiResponse<T> & { error: ApiError } {
-    return response.error !== undefined;
+    return response.error !== undefined && response.error !== null;
 }
 
 export function isApiSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { data: T } {
-    return response.data !== undefined && response.error === undefined;
+    return response.data !== undefined && response.error === undefined && response.error !== null;
 }
 
 export async function uploadUserAvatar(
@@ -191,9 +191,9 @@ export async function uploadChatAvatar(
 export async function uploadAttachment(
     chatId: number,
     file: File
-): Promise<ApiResponse<import("$lib/types/models").ChatAttachment>> {
+): Promise<ApiResponse<import("$lib/types/models").MessageMedia>> {
     try {
-        const MAX_FILE_SIZE = 8 * 1024 * 1024;
+        const MAX_FILE_SIZE = 100 * 1024 * 1024;
         if (file.size > MAX_FILE_SIZE) {
             throw new Error('Файл слишком большой. Максимальный размер: 8MB');
         }
@@ -210,15 +210,16 @@ export async function uploadAttachment(
             const { writeFile } = await import('@tauri-apps/plugin-fs');
             
             // TODO: tauri
-            const tempDir = '/tmp';
-            const tempFilePath = `${tempDir}/${file.name}`;
+            const { tempDir, join } = await import('@tauri-apps/api/path');
+            const tempDirPath = await tempDir();
+            const tempFilePath = await join(tempDirPath, file.name);
             const arrayBuffer = await file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             
             await writeFile(tempFilePath, uint8Array);
             
             const options = {
-                url: getApiUrl(`/chats/${chatId}/attachments`),
+                url: getApiUrl(`/chats/${chatId}/upload`),
                 file_path: tempFilePath,
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
@@ -226,19 +227,19 @@ export async function uploadAttachment(
             };
 
             try {
-                const res: ApiResponse<import("$lib/types/models").ChatAttachment> = await invoke('upload_attachment', {
+                const res: ApiResponse<import("$lib/types/models").MessageMedia> = await invoke('upload_attachment', {
                     options
                 });
 
                 if (isApiError(res)) {
-                    throw new Error(res.error.message || 'Upload failed');
+                    throw new Error(res.error?.message || 'Upload failed');
                 }
 
                 return res;
             } finally {
                 try {
-                    const { remove } = await import('@tauri-apps/plugin-fs');
-                    await remove(tempFilePath);
+                    const fs = await import('@tauri-apps/plugin-fs');
+                    await fs.remove(tempFilePath);
                 } catch (e) {
                     console.warn('Failed to clean up temporary file:', e);
                 }
@@ -247,7 +248,7 @@ export async function uploadAttachment(
             const formData = new FormData();
             formData.append('file', file);
 
-            const res = await fetch(getApiUrl(`/chats/${chatId}/attachments`), {
+            const res = await fetch(getApiUrl(`/chats/${chatId}/upload`), {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
@@ -255,10 +256,10 @@ export async function uploadAttachment(
                 body: formData
             });
 
-            const data: ApiResponse<import("$lib/types/models").ChatAttachment> = await res.json();
+            const data: ApiResponse<import("$lib/types/models").MessageMedia> = await res.json();
 
             if (isApiError(data)) {
-                throw new Error(data.error.message || 'Request failed');
+                throw new Error(data.error?.message || 'Request failed');
             }
 
             if (!res.ok) {
@@ -267,6 +268,50 @@ export async function uploadAttachment(
 
             return data;
         }
+    } catch (err) {
+        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Request failed';
+        throw new Error(errorMessage);
+    }
+}
+
+export async function sendMessageWithMedia(
+    chatId: number,
+    content: string,
+    media?: import("$lib/types/models").MessageMedia[],
+    replyTo?: number
+): Promise<ApiResponse<import("$lib/types/models").Message>> {
+    try {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            throw new Error('Необходима авторизация');
+        }
+
+        const requestBody: any = {
+            content,
+            reply_to: replyTo
+        };
+
+        if (media && media.length > 0) {
+            requestBody.media = media;
+        }
+
+        const res = await fetch(getApiUrl(`/chats/${chatId}/messages`), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        return data;
     } catch (err) {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : 'Request failed';

@@ -3,11 +3,13 @@
     import { ChatType, type ChatPreview, type Chat, type ChatMember } from '$lib/types/models';
     import { subscribeToPresence } from '$lib/presence';
     import Avatar from '$lib/components/shared/Avatar.svelte';
-    import { ArrowLeft } from 'lucide-svelte';
+    import { ArrowLeft, MoreVertical } from 'lucide-svelte';
     import { formatLastSeen } from '$lib/datetime';
     import { _, format } from 'svelte-i18n';
     import { typing } from '$lib/stores/typing';
     import { useCurrentProfile } from '$lib/queries/profile';
+    import PollCreator from '$lib/components/forms/modals/PollCreator.svelte';
+    import { onMount } from 'svelte';
     
     // Profile query
     const profileQuery = useCurrentProfile();
@@ -29,6 +31,7 @@
         menu: void;
         userClick: { user: any };
         openChatInfo: void;
+        createPoll: { poll: any };
     }>();
 
     // State
@@ -37,6 +40,8 @@
     let unsubscribePresence: (() => void) | null = null;
     let typingUsers: number[] = [];
     let unsubscribeTyping: (() => void) | null = null;
+    let showDropdown = false;
+    let showPollCreator = false;
 
     // Computed values
     $: chatPreview = chatContext.selectedChat;
@@ -47,7 +52,7 @@
     $: displayName = chatPreview?.chat_type === ChatType.DM
         ? chatPreview.other_user?.name
         : chatPreview?.name;
-    $: chatId = chatPreview?.id > 0 ? Number(chatPreview.id) : null;
+    $: chatId = chatPreview?.id && chatPreview.id > 0 ? Number(chatPreview.id) : null;
     $: typingStatus = getTypingStatus(typingUsers, chatPreview?.chat_type);
 
     // Reactive statements
@@ -103,6 +108,21 @@
     }
 
     // Lifecycle hooks
+    onMount(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.dropdown-container')) {
+                showDropdown = false;
+            }
+        };
+        
+        document.addEventListener('click', handleClickOutside);
+        
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    });
+
     onDestroy(() => {
         if (unsubscribePresence) {
             unsubscribePresence();
@@ -132,6 +152,23 @@
     // Event handlers
     function handleOpenChatInfo() {
         dispatch('openChatInfo');
+    }
+
+    function toggleDropdown() {
+        showDropdown = !showDropdown;
+    }
+
+    function openPollCreator() {
+        showDropdown = false;
+        showPollCreator = true;
+    }
+
+    function handleCreatePoll(poll: any) {
+        dispatch('createPoll', { poll });
+    }
+
+    function handleClosePollCreator() {
+        showPollCreator = false;
     }
 </script>
 
@@ -165,19 +202,110 @@
         </div>
         {/if}
     </div>
+    {#if chatPreview}
+    <div class="header-right">
+        <div class="dropdown-container" on:click={toggleDropdown} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDropdown(); } }} tabindex="0" role="button" aria-label={$_('chat_header.more_options')}>
+            <button class="menu-button" aria-label={$_('chat_header.more_options')}>
+                <MoreVertical size={20} />
+            </button>
+            
+            {#if showDropdown}
+            <div class="dropdown-menu" role="menu" tabindex="-1" on:click|stopPropagation on:keydown|stopPropagation>
+                <button class="dropdown-item" role="menuitem" on:click={openPollCreator} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPollCreator(); } }}>
+                    {$_('poll.create_poll')}
+                </button>
+            </div>
+            {/if}
+        </div>
+    </div>
+    {/if}
 </div>
+
+<PollCreator 
+    isOpen={showPollCreator} 
+    onClose={handleClosePollCreator}
+    onCreate={handleCreatePoll}
+/>
 
 <style>
     .chat-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        width: 100%;
     }
     
     .header-left {
         display: flex;
         align-items: center;
         gap: 8px;
+    }
+    
+    .header-right {
+        display: flex;
+        align-items: center;
+    }
+    
+    .dropdown-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .menu-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-text);
+        cursor: pointer;
+        transition: var(--transition);
+        padding: 0;
+    }
+
+    .menu-button:hover {
+        background: var(--surface-glass);
+        color: var(--color-text);
+    }
+    
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--color-bg-elevated);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        min-width: 180px;
+        z-index: 1000;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    
+    .dropdown-item {
+        width: 100%;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: var(--color-text);
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .dropdown-item:hover {
+        background: var(--surface-glass);
+    }
+    
+    .dropdown-item:focus {
+        outline: 2px solid var(--color-primary);
+        outline-offset: -2px;
     }
     
     .chat-info {

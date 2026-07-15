@@ -1,14 +1,13 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import { fade } from 'svelte/transition';
     import { Download, X, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2 } from 'lucide-svelte';
-    import type { MessageAttachment } from '$lib/types/models';
+    import type { MessageMedia, PhotoMedia, VideoMedia, GifMedia, StickerMedia, AudioMedia, VoiceMedia, DocumentMedia } from '$lib/types/models';
     import { getServerUrl } from '$lib/config';
     import { _ } from 'svelte-i18n';
 
     // Props
     export let open: boolean = false;
-    export let attachment: MessageAttachment;
+    export let media: MessageMedia;
     export let zIndex: number = 1000;
 
     // Event dispatcher
@@ -74,10 +73,11 @@
         };
         
         const handleGlobalContextmenu = (e: MouseEvent) => {
-            if (open && containerElement && !containerElement.contains(e.target as Node)) {
+            if (open) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
+                return false;
             }
         };
         
@@ -92,9 +92,36 @@
             }
         };
         
+        const handleGlobalTouchStart = (e: TouchEvent) => {
+            if (open && containerElement && !containerElement.contains(e.target as Node)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        };
+        
+        const handleGlobalTouchMove = (e: TouchEvent) => {
+            if (open && containerElement && !containerElement.contains(e.target as Node)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        };
+        
+        const handleGlobalTouchEnd = (e: TouchEvent) => {
+            if (open && containerElement && !containerElement.contains(e.target as Node)) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+        };
+        
         document.addEventListener('click', handleGlobalClick, true);
-        document.addEventListener('contextmenu', handleGlobalContextmenu, true);
+        document.addEventListener('contextmenu', handleGlobalContextmenu, { capture: true, passive: false });
         document.addEventListener('keydown', handleGlobalKeydown, true);
+        document.addEventListener('touchstart', handleGlobalTouchStart, { passive: false, capture: true });
+        document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false, capture: true });
+        document.addEventListener('touchend', handleGlobalTouchEnd, { passive: false, capture: true });
         
         blockOutsideEvents();
         
@@ -109,8 +136,11 @@
             window.removeEventListener('keydown', handleKeydown);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.removeEventListener('click', handleGlobalClick, true);
-            document.removeEventListener('contextmenu', handleGlobalContextmenu, true);
+            document.removeEventListener('contextmenu', handleGlobalContextmenu, { capture: true, passive: false } as any);
             document.removeEventListener('keydown', handleGlobalKeydown, true);
+            document.removeEventListener('touchstart', handleGlobalTouchStart, { capture: true } as any);
+            document.removeEventListener('touchmove', handleGlobalTouchMove, { capture: true } as any);
+            document.removeEventListener('touchend', handleGlobalTouchEnd, { capture: true } as any);
             unblockOutsideEvents();
             clearTimeout(controlsTimeout);
         };
@@ -161,6 +191,7 @@
         switch (event.key) {
             case KEYBOARD_SHORTCUTS.ESCAPE:
                 event.preventDefault();
+                event.stopPropagation();
                 close();
                 break;
             case KEYBOARD_SHORTCUTS.SPACE:
@@ -306,15 +337,82 @@
     }
 
     function getFileUrl(): string {
-        return getUrl(attachment.file_url);
+        switch (media.type) {
+            case 'Photo': {
+                const photo = media as PhotoMedia;
+                return getUrl(photo.file_url);
+            }
+            case 'Video': {
+                const video = media as VideoMedia;
+                return getUrl(video.file_url);
+            }
+            case 'Gif': {
+                const gif = media as GifMedia;
+                return getUrl(gif.file_url);
+            }
+            case 'Sticker': {
+                const sticker = media as StickerMedia;
+                return getUrl(sticker.file_url);
+            }
+            case 'Audio': {
+                const audio = media as AudioMedia;
+                return getUrl(audio.file_url);
+            }
+            case 'Voice': {
+                const voice = media as VoiceMedia;
+                return getUrl(voice.file_url);
+            }
+            case 'Document': {
+                const doc = media as DocumentMedia;
+                return getUrl(doc.file_url);
+            }
+            default:
+                return '';
+        }
+    }
+
+    function getFileSize(): number {
+        switch (media.type) {
+            case 'Photo': {
+                const photo = media as PhotoMedia;
+                return photo.file_size || 0;
+            }
+            case 'Video': {
+                const video = media as VideoMedia;
+                return video.file_size || 0;
+            }
+            case 'Gif': {
+                const gif = media as GifMedia;
+                return gif.file_size || 0;
+            }
+            case 'Audio': {
+                const audio = media as AudioMedia;
+                return audio.file_size || 0;
+            }
+            case 'Voice': {
+                const voice = media as VoiceMedia;
+                return voice.file_size || 0;
+            }
+            case 'Document': {
+                const doc = media as DocumentMedia;
+                return doc.file_size || 0;
+            }
+            default:
+                return 0;
+        }
     }
 
     function getFileType(): 'image' | 'gif' | 'video' | 'audio' | 'document' {
-        if (attachment.file_type === 'gif' || attachment.mime_type === 'image/gif') return 'gif';
-        if (attachment.file_type === 'image' || attachment.mime_type?.startsWith('image/')) return 'image';
-        if (attachment.file_type === 'video' || attachment.mime_type?.startsWith('video/')) return 'video';
-        if (attachment.file_type === 'audio' || attachment.mime_type?.startsWith('audio/')) return 'audio';
-        return 'document';
+        switch (media.type) {
+            case 'Photo': return 'image';
+            case 'Gif': return 'gif';
+            case 'Video': return 'video';
+            case 'Sticker': return 'image';
+            case 'Audio': return 'audio';
+            case 'Voice': return 'audio';
+            case 'Document': return 'document';
+            default: return 'document';
+        }
     }
 
     function formatTime(seconds: number): string {
@@ -348,8 +446,7 @@
     bind:this={containerElement}
     on:mousemove={handleMouseMove}
     on:mouseleave={() => showControls = true}
-    transition:fade
->
+>   
     <button
         class="control-button close-button"
         on:click={close}
@@ -372,9 +469,10 @@
             <div class="image-wrapper" on:click={close}>
                 <img
                     src={fileUrl}
-                    alt={attachment.file_name}
+                    alt={media.type}
                     class="media-image"
                     loading="eager"
+                    on:click|stopPropagation
                 />
                 {#if fileType === 'gif'}
                     <div class="gif-badge">GIF</div>
@@ -396,7 +494,7 @@
                     on:ended={() => isVideoPlaying = false}
                     on:progress={handleTimeUpdate}
                 >
-                    <source src={fileUrl} type={attachment.mime_type || 'video/mp4'} />
+                    <source src={fileUrl} type="video/mp4" />
                     {$_('media_viewer.browser_not_support_video')}
                 </video>
 
@@ -405,7 +503,7 @@
                         <div class="video-controls">
                             <button
                                 class="video-control-button"
-                                on:click={togglePlayPause}
+                                on:click|stopPropagation={togglePlayPause}
                                 aria-label={isVideoPlaying ? $_('media_viewer.pause') : $_('media_viewer.play')}
                             >
                                 {#if isVideoPlaying}
@@ -436,7 +534,7 @@
                             <div class="volume-controls">
                                 <button
                                     class="video-control-button"
-                                    on:click={toggleMute}
+                                    on:click|stopPropagation={toggleMute}
                                     aria-label={isMuted ? $_('media_viewer.unmute') : $_('media_viewer.mute')}
                                 >
                                     {#if isMuted || volume === 0}
@@ -460,7 +558,7 @@
 
                             <button
                                 class="video-control-button"
-                                on:click={toggleFullscreen}
+                                on:click|stopPropagation={toggleFullscreen}
                                 aria-label={isFullscreen ? $_('media_viewer.exit_fullscreen') : $_('media_viewer.fullscreen')}
                             >
                                 {#if isFullscreen}
@@ -477,9 +575,9 @@
     </div>
 
     <div class="file-info">
-        <span class="file-name">{attachment.file_name}</span>
-        {#if attachment.file_size}
-            <span class="file-size">({Math.round(attachment.file_size / 1024)} KB)</span>
+        <span class="file-name">{media.type}</span>
+        {#if getFileSize()}
+            <span class="file-size">({Math.round(getFileSize() / 1024)} KB)</span>
         {/if}
     </div>
 </div>

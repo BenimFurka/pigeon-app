@@ -1,12 +1,12 @@
 /* TODO: translate */
 import { makeRequest } from '$lib/api';
 import type {
-    ChatAttachment,
     GifAttachmentPayload,
     GifItem,
     GifListResponse,
     RecentGif,
-    RecentGifsResponse
+    RecentGifsResponse,
+    GifMedia
 } from '$lib/types/models';
 
 export interface GifSearchParams {
@@ -119,40 +119,21 @@ export async function addRecentGif(payload: GifItem): Promise<void> {
         source: payload.source,
         search_query: payload.search_query,
     };
-    
+
     await makeRequest('/gifs/recent', { data: requestData }, true, 'POST');
 }
 
-export async function createGifAttachment(chatId: number, payload: GifAttachmentPayload): Promise<ChatAttachment> {
-    const res = await makeRequest<ChatAttachment>(`/chats/${chatId}/gifs`, { data: payload }, true, 'POST');
+export async function uploadGif(payload: GifAttachmentPayload): Promise<GifMedia> {
+    const res = await makeRequest<GifMedia>(`/gifs/upload`, { data: payload }, true, 'POST');
     if (!res.data) {
-        throw new Error('Не удалось создать GIF-вложение');
+        throw new Error('Не удалось загрузить GIF');
     }
     return res.data;
 }
 
-export async function createGifAttachmentFromRecent(chatId: number, recentGif: RecentGif): Promise<ChatAttachment> {
+export async function uploadGifFromRecent(recentGif: RecentGif): Promise<GifMedia> {
     const payload = recentGifToAttachmentPayload(recentGif);
-    const res = await makeRequest<ChatAttachment>(`/chats/${chatId}/gifs`, { data: payload }, true, 'POST');
-    if (!res.data) {
-        throw new Error('Не удалось создать GIF-вложение');
-    }
-    return res.data;
-}
-
-export function mapGifToAttachmentPayload(gif: GifItem): GifAttachmentPayload {
-    const { id, title, url, preview_url, width, height, size, source, search_query } = gif;
-    return {
-        id,
-        title,
-        url,
-        preview_url,
-        width,
-        height,
-        size,
-        source,
-        search_query,
-    };
+    return uploadGif(payload);
 }
 
 export type GifLoader = (params?: GifListParams) => Promise<GifListResponse>;

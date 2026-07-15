@@ -9,7 +9,8 @@
     import { Settings, Plus } from 'lucide-svelte';
     import { useSearch, type SearchResults } from '$lib/queries/search';
     import { _ } from 'svelte-i18n';
-
+    import ConnectionBanner from '$lib/components/layout/ConnectionBanner.svelte';
+    
     // Props
     export let onOpenSettings: () => void = () => {};
     export let isSettingsOpen: boolean = false;
@@ -17,6 +18,7 @@
     export let isVisible: boolean = true;
     export let onOpenCreateChat: (preset?: { chatType?: ChatType; memberIds?: number[] }) => void = () => {};
     export let selectedChatId: number | null = null;
+    export let swipeDeltaX: number = 0;
 
     // Event dispatcher
     const dispatch = createEventDispatcher<{ select: { chat: ChatPreview } }>();
@@ -39,6 +41,7 @@
     // Computed values
     const searchQueryResult = useSearch(debouncedSearch);
     $: layoutVisibleClass = isMobile ? (isVisible ? 'mobile-visible' : 'mobile-hidden') : '';
+    $: swipeTransform = isMobile && swipeDeltaX > 0 ? `translateX(calc(-100% + ${Math.min(swipeDeltaX, window.innerWidth)}px))` : '';
     $: searchQuery = $searchInput;
     $: debouncedQuery = $debouncedSearch;
     $: searchActive = debouncedQuery.trim().length >= 2;
@@ -81,8 +84,13 @@
     }
 </script>
 
-<div class={`left-layout ${layoutVisibleClass}`} id="left-layout">
-   <Bar>
+<div 
+    class={`left-layout ${layoutVisibleClass}`} 
+    id="left-layout"
+    style={swipeTransform ? `transform: ${swipeTransform}; transition: none;` : ''}
+>
+    <ConnectionBanner />
+    <Bar>
         <div class="search-header">
             {#if isMobile}
                 <button
@@ -99,7 +107,7 @@
                 style="width: 100%; margin: 10px; padding: 10px;"
                 bind:value={$searchInput} />
         </div>
-   </Bar>
+    </Bar>
     <ChatList 
         bind:selectedChatId 
         on:select={handleChatSelect}
@@ -129,14 +137,11 @@
         width: 100%;
         max-width: 100%;
         position: relative;
-        z-index: 0;
         overflow: hidden;
-
         background-image: 
             linear-gradient(var(--surface-glass), var(--surface-glass)),
             linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated));
-                
-        transition: var(--transition);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .left-layout.mobile-hidden {
@@ -177,7 +182,7 @@
     }
 
     .settings-button.active {
-        background: var(--primary-color);
+        background: var(--color-accent);
         color: var(--text-color);
     }
 
@@ -220,7 +225,6 @@
             left: 0;
             height: 100%;
             max-width: 100%;
-            z-index: 2;
         }
     }
 

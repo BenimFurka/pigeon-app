@@ -9,11 +9,13 @@
     import { ChatType } from '$lib/types/models';
     import { session } from '$lib/session';
     import '$lib/stores/window';
+    import '$lib/stores/accent';
+    import '$lib/stores/connection';
     import CreateChatForm from '$lib/components/forms/modals/CreateChatForm.svelte';
     import SettingsModal from '$lib/components/forms/modals/SettingsModal.svelte';
-    import { goto } from '$app/navigation';
-    import { base } from '$app/paths';
+    import { softNavigate } from '$lib/utils/softNavigation';
     import { activeChatId } from '$lib/stores/activeChat';
+    import { hotkeys, matchesHotkey } from '$lib/stores/hotkeys';
     import { initPWA } from '$lib/pwa'
     
     let selectedChat: ChatPreview | null = null;
@@ -22,6 +24,7 @@
     let rightVisible = true;
     let isCreateChatOpen = false;
     let createChatPreset: { chatType?: ChatType; memberIds?: number[] } = {};
+    let swipeDeltaX = 0;
 
     let showSettingsModal = false;
 
@@ -58,11 +61,19 @@
         };
         window.addEventListener('resize', handleResize);
 
-        const handleKeyDown = (event: { ctrlKey: any; code: string; key: string; preventDefault: () => void; }) => {
-        if (event.ctrlKey && (event.code === 'Backquote' || event.key === '`')) {
-            event.preventDefault();
-            showSettingsModal = !showSettingsModal;
-        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const tag = target?.tagName?.toLowerCase();
+            const isTypingTarget =
+                tag === 'input' || tag === 'textarea' || target?.isContentEditable;
+
+            if (matchesHotkey(event, $hotkeys.toggle_settings)) {
+                event.preventDefault();
+                showSettingsModal = !showSettingsModal;
+                return;
+            }
+
+            if (isTypingTarget) return;
         };
         
         window.addEventListener('keydown', handleKeyDown);
@@ -81,11 +92,24 @@
     function handleChatSelect(event: CustomEvent<{ chat: ChatPreview }>) {
         const { chat } = event.detail;
         selectedChat = chat;
-        goto(`${base}/chats/${chat.id}`, { replaceState: true });
+        softNavigate(`/chats/${chat.id}`);
     }
 
     function handleBackToList() {
         selectedChat = null;
+        softNavigate('/');
+    }
+
+    function handleSwipeStart(event: CustomEvent<{ deltaX: number }>) {
+        swipeDeltaX = event.detail.deltaX;
+    }
+
+    function handleSwipeMove(event: CustomEvent<{ deltaX: number }>) {
+        swipeDeltaX = event.detail.deltaX;
+    }
+
+    function handleSwipeEnd() {
+        swipeDeltaX = 0;
     }
 
     function openSettings() {
@@ -109,7 +133,7 @@
         const { chat } = event.detail;
         selectedChat = chat;
         isCreateChatOpen = false;
-        goto(`${base}/chats/${chat.id}`, { replaceState: true });
+        softNavigate(`/chats/${chat.id}`);
     }
 </script>
 
@@ -130,16 +154,18 @@
             selectedChatId={selectedChat?.id ?? null}
             on:select={handleChatSelect}
             onOpenCreateChat={openCreateChat}
+            {swipeDeltaX}
         />
-        {#if !isMobile || selectedChat}
-            <RightLayout
-                selectedChat={selectedChat}
-                onBack={handleBackToList}
-                isMobile={isMobile}
-                isVisible={rightVisible}
-                on:select={handleChatSelect}
-            />
-        {/if}
+        <RightLayout
+            selectedChat={selectedChat}
+            onBack={handleBackToList}
+            isMobile={isMobile}
+            isVisible={rightVisible}
+            on:select={handleChatSelect}
+            on:swipeStart={handleSwipeStart}
+            on:swipeMove={handleSwipeMove}
+            on:swipeEnd={handleSwipeEnd}
+        />
     </main>
 
     <CreateChatForm
@@ -166,103 +192,6 @@
 </button>
 
 <style>
-	:global(:root) {
-		--hue: 235;
-		--radius-sm: 8px;
-		--radius-md: 12px;
-		--transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-		color-scheme: dark;
-		--color-bg: hsl(var(--hue), 15%, 6%);
-		--color-bg-elevated: hsl(var(--hue), 18%, 10%);
-		--color-surface: hsl(var(--hue), 20%, 13%);
-
-		--color-border: #333333;
-
-		--color-text: #FAFAFA;
-		--color-text-muted: rgba(250, 250, 250, 0.65);
-		--color-button-text: #FAFAFA;
-
-		--color-accent: hsl(var(--hue), 45%, 52%);
-		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 42%);
-
-		--color-danger: #ff4d4d;
-		--color-danger-soft: rgba(255, 77, 77, 0.1);
-
-		--color-success: #2ecc71;
-		--color-online: var(--color-success);
-
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
-
-        --surface-glass: rgba(255, 255, 255, 0.03);
-
-		--hover-filter: brightness(0.9);
-	}
-
-	:global(:root[data-theme='dark']) {
-		color-scheme: dark;
-
-		--color-bg: hsl(var(--hue), 15%, 6%);
-		--color-bg-elevated: hsl(var(--hue), 18%, 10%);
-		--color-surface: hsl(var(--hue), 20%, 13%);
-
-		--color-border: #333333;
-
-		--color-text: #FAFAFA;
-		--color-text-muted: rgba(250, 250, 250, 0.65);
-		--color-button-text: #FAFAFA;
-
-		--color-accent: hsl(var(--hue), 45%, 52%);
-		--color-accent-soft: hsla(var(--hue), 45%, 52%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 42%);
-
-		--color-danger: #ff4d4d;
-		--color-danger-soft: rgba(255, 77, 77, 0.1);
-
-		--color-success: #2ecc71;
-		--color-online: var(--color-success);
-
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
-
-		--surface-glass: rgba(255, 255, 255, 0.03);
-
-		--hover-filter: brightness(0.9);
-	}
-
-	:global(:root[data-theme='light']) {
-		color-scheme: light;
-
-        --color-bg: #f5f5f5;
-        --color-bg-elevated: #ffffff;
-        --color-surface: #fdfdfd;
-
-		--color-border: #e5e7eb;
-
-		--color-text: #111827;
-		--color-text-muted: #6b7280;
-		--color-button-text: #FAFAFA;
-
-		--color-accent: hsl(var(--hue), 45%, 58%);
-		--color-accent-soft: hsla(var(--hue), 45%, 58%, 0.14);
-        --color-accent-hover: hsl(var(--hue), 45%, 48%);
-
-		--color-danger: #dc2626;
-		--color-danger-soft: rgba(220, 38, 38, 0.08);
-
-		--color-success: #16a34a;
-		--color-online: var(--color-success);
-        
-        --color-warning: #ffc107;
-        --color-warning-soft: rgba(255, 193, 7, 0.1);
-
-		--surface-glass: rgba(0, 0, 0, 0.04);
-
-		--hover-filter: brightness(0.96);
-	}
-	
 	:global(body) {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 		display: flex;
@@ -290,6 +219,9 @@
         overflow: hidden;
 		scroll-behavior: auto;
 		scrollbar-width: none;
+        contain: layout style paint;
+        backface-visibility: hidden;
+        transform: translateZ(0);
 	}
 
 	.app::-webkit-scrollbar {

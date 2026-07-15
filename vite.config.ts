@@ -1,6 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+// import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 export default defineConfig(({ mode }) => {
     const isProduction = mode === 'production';
@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     return {
 		plugins: [
 		    sveltekit(),
-		    SvelteKitPWA({
+		    /*SvelteKitPWA({
 			    srcDir: './src',
 			    mode: 'production',
 			    strategies: 'generateSW',
@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
 		    },
 			    
 		    workbox: {
-		        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2,ttf,eot,json}'],
+		        globPatterns: ['**\/*.{js,css,html,ico,png,svg,webp,woff,woff2,ttf,eot,json}'],
 		        globDirectory: '.svelte-kit/output/client',
 		        
 		        navigateFallback: '/web/',
@@ -95,12 +95,13 @@ export default defineConfig(({ mode }) => {
 		            disabled: false,
 		            config: true
 		        }
-	        })
+	        })*/
 	    ],
 	    server: {
 		    host: '0.0.0.0',
 		    port: 1420,
-		    strictPort: true
+		    strictPort: true,
+			allowedHosts: ["pigeonmsg.mooo.com"]
 	    },
 	    preview: {
 		    host: '0.0.0.0',

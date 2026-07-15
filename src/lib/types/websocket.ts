@@ -11,7 +11,7 @@ export interface SendMessageMessage {
         chat_id: number;
         content: string;
         reply_to?: number;
-        attachment_ids?: number[];
+        media?: import('./models').MessageMedia[];
     };
 }
 
@@ -62,9 +62,29 @@ export interface MarkAsReadMessage {
     };
 }
 
+export interface VotePollMessage {
+    type: 'vote_poll';
+    data: {
+        message_id: number;
+        option_ids: number[];
+    };
+}
+
+export interface UnvotePollMessage {
+    type: 'unvote_poll';
+    data: {
+        message_id: number;
+    };
+}
+
 export interface PingMessage {
     type: 'ping';
     data?: Record<string, never>;
+}
+
+export interface GetOnlineListMessage {
+    type: 'get_online_list';
+    data: Record<string, never>;
 }
 
 export type ClientMessage =
@@ -76,7 +96,10 @@ export type ClientMessage =
     | RemoveReactionMessage
     | TypingMessage
     | MarkAsReadMessage
-    | PingMessage;
+    | VotePollMessage
+    | UnvotePollMessage
+    | PingMessage
+    | GetOnlineListMessage;
 
 export interface PongMessage {
     type: 'pong';
@@ -197,16 +220,27 @@ export interface PollVotedMessage {
     data: {
         chat_id: number;
         poll_id: number;
+        voter_id: number;
         option_ids: number[];
-        voter_id: number | null;
     };
 }
 
 export interface PollClosedMessage {
     type: 'poll_closed';
     data: {
+        message_id: number;
+    };
+}
+
+export interface PollUpdatedMessage {
+    type: 'poll_updated';
+    data: {
         chat_id: number;
-        poll_id: number;
+        poll: import('./models').Poll;
+        options: import('./models').PollOption[];
+        has_voted: boolean;
+        voter_id: number;
+        user_voted_options: number[];
     };
 }
 
@@ -227,5 +261,6 @@ export type ServerMessage =
     | AllMessagesReadMessage
     | PollCreatedMessage
     | PollVotedMessage
-    | PollClosedMessage;
+    | PollClosedMessage
+    | PollUpdatedMessage;
 

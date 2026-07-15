@@ -7,6 +7,7 @@
   import config from '$lib/config';
   import { changeLocale, setupI18n } from '$lib/i18n';
   import { assets } from '$app/paths';
+  import '../styles/index.scss';
 
   const initialLocale = get(config)?.app?.defaultLanguage;
   setupI18n(initialLocale);
