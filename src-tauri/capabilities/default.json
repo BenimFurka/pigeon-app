@@ -1,11 +1,14 @@
 {
+
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "description": "default capability for the main window",
+  "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:default",
+    "fs:allow-temp-write",
+    "fs:allow-remove",
+    "fs:scope-temp"
   ]
 }
