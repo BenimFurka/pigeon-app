@@ -38,7 +38,7 @@
 </script>
 
 <div 
-    class="member-item" 
+    class="member-item no-text-select" 
     class:clickable
     on:click={handleClick}
     role="button"

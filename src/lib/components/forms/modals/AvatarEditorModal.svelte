@@ -219,7 +219,7 @@
         {/if}
 
         <div
-            class="canvas-wrap"
+            class="canvas-wrap no-text-select"
             on:wheel={onWheel}
             role="presentation"
         >
@@ -283,13 +283,10 @@
         width: 280px;
         height: 280px;
         margin: 0 auto;
-        /* Та же форма, что и в JS-коде (BORDER_RADIUS_RATIO = 0.227) */
         border-radius: 22.7%;
         overflow: hidden;
-        /* Прозрачный фон вместо var(--color-bg), чтобы видеть реальную прозрачность canvas */
         background: transparent;
         touch-action: none;
-        user-select: none;
     }
 
     .preview {

@@ -513,7 +513,7 @@
                                 {/if}
                             </button>
 
-                            <div class="time-display">
+                            <div class="time-display no-text-select">
                                 {formatTime(currentTime)} / {formatTime(duration)}
                             </div>
 
@@ -712,7 +712,6 @@
         font-size: 0.9rem;
         min-width: 100px;
         text-align: center;
-        user-select: none;
     }
 
     .progress-slider {

@@ -18,6 +18,7 @@
 	align-items: center;
 	-webkit-tap-highlight-color: transparent;
 	touch-action: manipulation;
+	@extend .no-text-select;
 }
 
 .btn:hover {

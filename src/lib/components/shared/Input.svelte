@@ -40,6 +40,7 @@
                 {style}
                 {disabled}
                 on:change={onChange}
+                class="text-select"
             />
         {:else if type === 'password'}
             <input
@@ -52,6 +53,7 @@
                 {style}
                 {disabled}
                 on:change={onChange}
+                class="text-select"
             />
         {:else if type === 'email'}
             <input
@@ -64,6 +66,7 @@
                 {style}
                 {disabled}
                 on:change={onChange}
+                class="text-select"
             />
         {:else if type === 'select'}
             <select
@@ -73,6 +76,7 @@
                     style={style}
                     disabled={disabled}
                     on:change={onChange}
+                    class="text-select"
             >
                 {#if placeholder}<option value="">{placeholder}</option>{/if}
                 {#each options as option}

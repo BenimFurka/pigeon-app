@@ -98,7 +98,7 @@
     on:focus={handleFocus}
     on:blur={handleBlur}
     on:keydown={handleKeyDown}
-    class="textarea"
+    class="textarea text-select"
 ></textarea>
 
 <style lang="scss">

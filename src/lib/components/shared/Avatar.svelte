@@ -78,7 +78,7 @@
 
 <div 
     bind:this={container} 
-    class="avatar-container {className}"
+    class="avatar-container no-text-select {className}"
     style="width: {resolvedSize}px; height: {resolvedSize}px;"
 >
     {#if isVisible && avatarData?.data && !imageError}
@@ -103,10 +103,6 @@
 		position: relative; 
 		overflow: hidden;
 		border-radius: var(--avatar-radius);
-        -moz-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        user-select: none;
 	}
 
 	.avatar {

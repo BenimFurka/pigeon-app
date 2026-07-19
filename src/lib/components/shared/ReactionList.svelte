@@ -41,7 +41,7 @@
   <div class="reactions" class:own-message={isOwnMessage}>
     {#each Object.entries(reactionsByEmoji) as [emoji, userIds]}
       <button 
-        class="reaction-item" 
+        class="reaction-item no-text-select" 
         class:has-user={hasUser(emoji)} 
         class:own-reaction={isOwnMessage && hasUser(emoji)}
         on:click={() => handleReactionClick(emoji)}

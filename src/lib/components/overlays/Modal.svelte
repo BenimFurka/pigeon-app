@@ -1,6 +1,5 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-    import { fade } from 'svelte/transition';
     import { X, ArrowLeft, SquarePen } from 'lucide-svelte';
     import { _ } from 'svelte-i18n';
 
@@ -92,7 +91,7 @@
                     </button>
                 {/if}
             </div>
-            <h2 id="modal-title">{title}</h2>
+            <h2 id="modal-title" class="no-text-select">{title}</h2>
             <div class="modal-actions" style="margin-left: auto;">
                 {#if showEdit}
                     <button 
@@ -180,10 +179,6 @@
         font-weight: 600;
         width: calc(100% - 160px);
         text-align: center;
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
         pointer-events: none;
     }
 
