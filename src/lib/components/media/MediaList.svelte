@@ -1,8 +1,9 @@
 <script lang="ts">
-    import type { MessageMedia, Message, PhotoMedia, GifMedia, StickerMedia, VideoMedia } from '$lib/types/models';
+    import type { MessageMedia, Message } from '$lib/types/models';
     import MediaItem from './MediaItem.svelte';
     import { createEventDispatcher, onMount, tick } from 'svelte';
     import { _ } from 'svelte-i18n';
+    import { calculateMediaLayout, type MediaLayoutWithPercents } from '$lib/utils/media';
 
     export let media: MessageMedia[];
     export let maxItems: number = 10;
@@ -15,9 +16,10 @@
     // State
     let containerMaxWidth: number | null = null;
     let containerElement: HTMLElement;
-    let mutationObserver: MutationObserver | null = null;
 
-    // Computed values
+    // Computed Values
+    $: effectiveMaxWidth = containerMaxWidth || 400; 
+
     $: visualMedia = media.filter(m => 
         m.type === 'Photo' || m.type === 'Video' || m.type === 'Gif' || m.type === 'Sticker'
     );
@@ -26,296 +28,29 @@
         m.type !== 'Photo' && m.type !== 'Video' && m.type !== 'Gif' && m.type !== 'Sticker'
     );
 
-    $: mediaLayout = calculateMediaLayout(visualMedia, containerMaxWidth);
-    $: displayVisualMedia = visualMedia.slice(0, maxItems);
+    $: displayVisualMedia = visualMedia;
     $: hasMoreVisual = visualMedia.length > maxItems;
+    $: hiddenCount = visualMedia.length > maxItems ? visualMedia.length - maxItems : 0;
+
+    $: mediaLayout = calculateMediaLayout(displayVisualMedia, effectiveMaxWidth) as MediaLayoutWithPercents;
     $: hasMoreOther = otherMedia.length > maxItems;
 
-    function calculateMediaLayout(visualMedia: MessageMedia[], maxWidth: number | null) {
-        if (!visualMedia.length || !maxWidth) {
-            return { width: null, height: null, layout: [] };
-        }
-
-        const items = visualMedia.map(m => {
-            let width = 200, height = 200;
-
-            switch (m.type) {
-                case 'Photo': {
-                    const photo = m as PhotoMedia;
-                    width = photo.width || 200;
-                    height = photo.height || 200;
-                    break;
-                }
-                case 'Video': {
-                    const video = m as VideoMedia;
-                    width = video.width || 200;
-                    height = video.height || 200;
-                    break;
-                }
-                case 'Gif': {
-                    const gif = m as GifMedia;
-                    width = gif.width || 200;
-                    height = gif.height || 200;
-                    break;
-                }
-                case 'Sticker': {
-                    const sticker = m as StickerMedia;
-                    width = sticker.width || 200;
-                    height = sticker.height || 200;
-                    break;
-                }
-                default:
-                    width = 200;
-                    height = 200;
+    const updateMaxWidth = () => {
+        if (containerElement) {
+            const messageContent = containerElement.closest('.message-content');
+            let availableWidth = messageContent ? messageContent.clientWidth : 0;
+            
+            if (!availableWidth || availableWidth < 50) {
+                const parent = containerElement.parentElement;
+                availableWidth = parent ? parent.clientWidth : containerElement.clientWidth;
             }
 
-            return { w: width, h: height };
-        });
+            let targetWidth = Math.min(availableWidth > 20 ? availableWidth - 20 : availableWidth, 480);
 
-        const layout = createAlbumLayout({
-            items,
-            maxWidth,
-            minWidth: 50,
-            spacing: 2,
-            maxHeight: 1200,
-            forMedia: true
-        });
-
-        if (visualMedia.length === 1) {
-            return layout;
-        }
-
-        const layoutWithPercents = {
-            width: layout.width,
-            height: layout.height,
-            layout: layout.layout.map(item => ({
-                ...item,
-                xPercent: (item.x / layout.width) * 100,
-                widthPercent: (item.width / layout.width) * 100
-            }))
-        };
-
-        return layoutWithPercents;
-    }
-
-    function createAlbumLayout(options: {
-        items: { w: number, h: number }[],
-        maxWidth: number,
-        minWidth: number,
-        spacing: number,
-        maxHeight?: number,
-        forMedia?: boolean
-    }) {
-        const { items, maxWidth, minWidth, spacing, maxHeight = maxWidth * 1.5 } = options;
-        const count = items.length;
-
-        if (count === 0) return { width: 0, height: 0, layout: [] };
-        if (count === 1) {
-            const item = items[0];
-            const aspectRatio = item.w / item.h;
-            const reasonableMaxWidth = Math.max(maxWidth, 800);
-            const width = Math.min(item.w, reasonableMaxWidth);
-            const height = width / aspectRatio;
-            return {
-                width,
-                height,
-                layout: [{ x: 0, y: 0, width, height, item: 0 }]
-            };
-        }
-
-        if (count === 2) {
-            return layoutTwoItems(items, maxWidth, spacing, maxHeight);
-        } else if (count === 3) {
-            return layoutThreeItems(items, maxWidth, spacing, maxHeight);
-        } else if (count === 4) {
-            return layoutFourItems(items, maxWidth, spacing, maxHeight);
-        }
-
-        return layoutGridItems(items, maxWidth, minWidth, spacing, maxHeight);
-    }
-
-    function layoutTwoItems(items: { w: number, h: number }[], maxWidth: number, spacing: number, maxHeight: number) {
-        const aspectRatio1 = items[0].w / items[0].h;
-        const aspectRatio2 = items[1].w / items[1].h;
-
-        if (aspectRatio1 > 1.4 && aspectRatio2 > 1.4) {
-            const width = maxWidth;
-            const height1 = Math.min(width / aspectRatio1, (maxHeight - spacing) / 2);
-            const height2 = Math.min(width / aspectRatio2, (maxHeight - spacing) / 2);
-            return {
-                width,
-                height: height1 + height2 + spacing,
-                layout: [
-                    { x: 0, y: 0, width, height: height1, item: 0 },
-                    { x: 0, y: height1 + spacing, width, height: height2, item: 1 }
-                ]
-            };
-        }
-
-        const totalWidth = maxWidth - spacing;
-        const width1 = Math.round(totalWidth * 0.6);
-        const width2 = totalWidth - width1;
-        const height = Math.min(
-            width1 / aspectRatio1,
-            width2 / aspectRatio2,
-            maxHeight
-        );
-
-        return {
-            width: maxWidth,
-            height,
-            layout: [
-                { x: 0, y: 0, width: width1, height, item: 0 },
-                { x: width1 + spacing, y: 0, width: width2, height, item: 1 }
-            ]
-        };
-    }
-
-    function layoutThreeItems(items: { w: number, h: number }[], maxWidth: number, spacing: number, maxHeight: number) {
-        const topWidth = maxWidth;
-        const topHeight = Math.min(topWidth / (items[0].w / items[0].h), maxHeight * 0.66);
-        const remainingHeight = maxHeight - topHeight - spacing;
-        const bottomWidth = (maxWidth - spacing) / 2;
-        const bottomHeight = Math.min(remainingHeight, bottomWidth / Math.max(items[1].w / items[1].h, items[2].w / items[2].h));
-
-        return {
-            width: maxWidth,
-            height: topHeight + bottomHeight + spacing,
-            layout: [
-                { x: 0, y: 0, width: topWidth, height: topHeight, item: 0 },
-                { x: 0, y: topHeight + spacing, width: bottomWidth, height: bottomHeight, item: 1 },
-                { x: bottomWidth + spacing, y: topHeight + spacing, width: bottomWidth, height: bottomHeight, item: 2 }
-            ]
-        };
-    }
-
-    function layoutFourItems(items: { w: number, h: number }[], maxWidth: number, spacing: number, maxHeight: number) {
-        const topWidth = maxWidth;
-        const topHeight = Math.min(topWidth / (items[0].w / items[0].h), maxHeight * 0.66);
-        const remainingWidth = maxWidth - 2 * spacing;
-        const bottomWidth = remainingWidth / 3;
-        const bottomHeight = Math.min(
-            maxHeight - topHeight - spacing,
-            bottomWidth / Math.max(...items.slice(1).map(item => item.w / item.h))
-        );
-
-        return {
-            width: maxWidth,
-            height: topHeight + bottomHeight + spacing,
-            layout: [
-                { x: 0, y: 0, width: topWidth, height: topHeight, item: 0 },
-                { x: 0, y: topHeight + spacing, width: bottomWidth, height: bottomHeight, item: 1 },
-                { x: bottomWidth + spacing, y: topHeight + spacing, width: bottomWidth, height: bottomHeight, item: 2 },
-                { x: (bottomWidth + spacing) * 2, y: topHeight + spacing, width: bottomWidth, height: bottomHeight, item: 3 }
-            ]
-        };
-    }
-
-    function layoutGridItems(items: { w: number, h: number }[], maxWidth: number, minWidth: number, spacing: number, maxHeight: number) {
-        const cols = Math.min(3, Math.floor(maxWidth / (minWidth + spacing)));
-        const itemWidth = Math.floor((maxWidth - spacing * (cols - 1)) / cols);
-        const itemHeight = Math.min(itemWidth / Math.max(...items.map(item => item.w / item.h)), maxHeight / Math.ceil(items.length / cols));
-        
-        const layout = [];
-        for (let i = 0; i < items.length; i++) {
-            const row = Math.floor(i / cols);
-            const col = i % cols;
-            layout.push({
-                x: col * (itemWidth + spacing),
-                y: row * (itemHeight + spacing),
-                width: itemWidth,
-                height: itemHeight,
-                item: i
-            });
-        }
-
-        const rows = Math.ceil(items.length / cols);
-        return {
-            width: maxWidth,
-            height: rows * itemHeight + spacing * (rows - 1),
-            layout
-        };
-    }
-
-    function getParentChain(element: HTMLElement | null): string[] {
-        const chain: string[] = [];
-        let current = element;
-        
-        while (current && current !== document.body) {
-            chain.push(`${current.tagName.toLowerCase()}${current.className ? '.' + current.className.split(' ').join('.') : ''}`);
-            current = current.parentElement;
-        }
-        
-        return chain;
-    }
-
-    const updateMaxWidth = async () => {
-        if (containerElement) {
-            const bubbleElement = containerElement.closest('.bubble.has-media');
-
-            if (bubbleElement) {
-                const actualWidth = bubbleElement.clientWidth;
-
-                if (actualWidth > 0) {
-                    if (actualWidth !== containerMaxWidth) {
-                        containerMaxWidth = actualWidth;
-                    }
-                    return true;
-                }
-
-                const computedStyle = window.getComputedStyle(bubbleElement);
-                const maxWidth = computedStyle.getPropertyValue('max-width');
-
-                if (maxWidth && maxWidth !== 'none') {
-                    let newMaxWidth: number | null = null;
-
-                    if (maxWidth.includes('%')) {
-                        const parentWidth = bubbleElement.parentElement?.clientWidth || window.innerWidth;
-                        newMaxWidth = Math.round(parentWidth * parseFloat(maxWidth) / 100);
-                    } else {
-                        newMaxWidth = parseInt(maxWidth) || null;
-                    }
-
-                    if (newMaxWidth !== null && (isNaN(newMaxWidth) || newMaxWidth <= 0)) {
-                        newMaxWidth = 400;
-                    }
-
-                    if (newMaxWidth !== containerMaxWidth) {
-                        containerMaxWidth = newMaxWidth;
-                    }
-                    return true;
-                } else {
-                    const parentWidth = bubbleElement.parentElement?.clientWidth || window.innerWidth;
-                    const fallbackWidth = parentWidth > 400 ? parentWidth : 400;
-                    if (fallbackWidth !== containerMaxWidth) {
-                        containerMaxWidth = fallbackWidth;
-                    }
-                    return true;
-                }
-            } else {
-                const messageBubble = containerElement.closest('.message, .bubble, [class*="message"], [class*="bubble"]');
-
-                if (messageBubble) {
-                    const messageWidth = messageBubble.clientWidth;
-                    const fallbackWidth = messageWidth > 100 ? messageWidth : 400;
-                    if (fallbackWidth !== containerMaxWidth) {
-                        containerMaxWidth = fallbackWidth;
-                    }
-                } else {
-                    const windowWidth = window.innerWidth;
-                    const reasonableWidth = Math.min(windowWidth * 0.8, 600);
-                    const fallbackWidth = reasonableWidth > 200 ? reasonableWidth : 400;
-                    if (fallbackWidth !== containerMaxWidth) {
-                        containerMaxWidth = fallbackWidth;
-                    }
-                }
+            if (targetWidth > 100 && targetWidth !== containerMaxWidth) {
+                containerMaxWidth = targetWidth;
                 return true;
             }
-        }
-
-        const defaultWidth = 400;
-        if (containerMaxWidth !== defaultWidth) {
-            containerMaxWidth = defaultWidth;
         }
         return false;
     };
@@ -323,7 +58,7 @@
     const tryUpdateMaxWidth = async (maxRetries = 5, delay = 100) => {
         for (let i = 0; i < maxRetries; i++) {
             await tick();
-            if (await updateMaxWidth()) {
+            if (updateMaxWidth()) {
                 return;
             }
             if (i < maxRetries - 1) {
@@ -340,85 +75,86 @@
             await tryUpdateMaxWidth();
             
             if (containerElement) {
-                mutationObserver = new MutationObserver(async () => {
-                    await tryUpdateMaxWidth(3, 50);
+                const target = containerElement.closest('.message-content') || containerElement;
+                const resizeObserver = new ResizeObserver(() => {
+                    updateMaxWidth();
                 });
+                resizeObserver.observe(target);
                 
-                mutationObserver.observe(containerElement.parentElement!, {
-                    attributes: true,
-                    attributeFilter: ['class'],
-                    subtree: true,
-                    childList: true
-                });
+                cleanup = () => {
+                    resizeObserver.disconnect();
+                };
             }
-            
-            const resizeObserver = new ResizeObserver(async () => {
-                await updateMaxWidth();
-            });
-            
-            if (containerElement) {
-                resizeObserver.observe(containerElement.parentElement!);
-            }
-            
-            cleanup = () => {
-                resizeObserver.disconnect();
-                mutationObserver?.disconnect();
-            };
         };
         
         setup();
-        
-        return () => {
-            cleanup?.();
-        };
+        return () => cleanup?.();
     });
+
     function handleMediaClick(event: CustomEvent) {
-        const { media: clickedMedia } = event.detail;
         dispatch('mediaClick', { 
-            media: clickedMedia, 
+            media: event.detail.media, 
             allMedia: media,
-            index: media.indexOf(clickedMedia)
+            index: media.indexOf(event.detail.media)
         });
     }
 
     function handleMediaView(event: CustomEvent) {
-        const { media: viewedMedia } = event.detail;
         dispatch('mediaView', { 
-            media: viewedMedia, 
+            media: event.detail.media, 
             allMedia: media,
-            index: media.indexOf(viewedMedia)
+            index: media.indexOf(event.detail.media)
         });
     }
 </script>
 
 {#if media && media.length > 0}
-    <div class="media-list" bind:this={containerElement}>
+    <div class="media-list" bind:this={containerElement} style="width: fit-content; max-width: 100%;">
         {#if visualMedia.length > 0}
-            <div class="visual-media-group" style="width: {visualMedia.length === 1 ? mediaLayout.width + 'px' : '100%'}; height: {mediaLayout.height}px;">
-                {#each mediaLayout.layout as item (item.item)}
-                    <div
-                        class="album-item"
-                        style="left: {visualMedia.length === 1 ? item.x + 'px' : item.xPercent + '%'}; top: {item.y}px; width: {visualMedia.length === 1 ? item.width + 'px' : item.widthPercent + '%'}; height: {item.height}px;"
-                    >
-                        <MediaItem
-                            media={visualMedia[item.item]}
-                            width={visualMedia.length === 1 ? item.width : null}
-                            height={visualMedia.length === 1 ? item.height : null}
-                            isInAlbum={true}
-                            {currentUserId}
-                            {message}
-                            on:mediaClick={handleMediaClick}
-                            on:view={handleMediaView}
-                        />
-                    </div>
-                {/each}
-                
-                {#if hasMoreVisual}
-                    <div class="more-items">
-                        <span>+{visualMedia.length - maxItems}</span>
-                    </div>
-                {/if}
-            </div>
+            {#if visualMedia.length === 1}
+                <div class="visual-media-group single-item">
+                    <MediaItem
+                        media={visualMedia[0]}
+                        width={null}
+                        height={null}
+                        isInAlbum={false}
+                        {currentUserId}
+                        {message}
+                        on:mediaClick={handleMediaClick}
+                        on:view={handleMediaView}
+                    />
+                </div>
+            {:else}
+                <div 
+                    class="visual-media-group" 
+                    style="width: {effectiveMaxWidth}px; max-width: 100%; height: {mediaLayout.height}px;"
+                >
+                    {#each mediaLayout.layout as item (item.item)}
+                        <div
+                            class="album-item"
+                            style="left: {item.xPercent}%; top: {item.y}px; width: {item.widthPercent}%; height: {item.height}px;"
+                        >
+                            <MediaItem
+                                media={displayVisualMedia[item.item]}
+                                width={item.width}
+                                height={item.height}
+                                isInAlbum={true}
+                                isSingleItem={false}
+                                {currentUserId}
+                                {message}
+                                on:mediaClick={handleMediaClick}
+                                on:view={handleMediaView}
+                            />
+                        </div>
+                    {/each}
+                    
+                    {#if hasMoreVisual}
+                        <div class="more-items">
+                            <span>+{hiddenCount}</span>
+                        </div>
+                    {/if}
+                </div>
+            {/if}
         {/if}
         
         {#if otherMedia.length > 0}
@@ -449,7 +185,6 @@
         flex-direction: column;
         gap: 8px;
         margin-bottom: 8px;
-        width: 100%;
         max-width: 100%;
         min-width: 0;
         overflow: hidden;
@@ -460,10 +195,19 @@
         border-radius: 12px;
         overflow: hidden;
         background: transparent;
-        min-width: 50px;
-        min-height: 30px;
-        max-height: 1200px;
-        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .visual-media-group.single-item {
+        height: auto;
+    }
+
+    .visual-media-group.single-item :global(.media-item) {
+        width: 100% !important;
+        height: auto !important;
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
     }
 
     .album-item {
@@ -480,10 +224,6 @@
         border-radius: 0;
         min-width: 0;
         min-height: 0;
-    }
-
-    .album-item :global(.media-item.in-album) {
-        border-radius: 0;
     }
 
     .other-media-group {
@@ -521,34 +261,12 @@
     }
 
     @media (max-width: 768px) {
-        .media-list {
-            gap: 6px;
-        }
-        
-        .other-media-group {
-            gap: 6px;
-        }
+        .media-list, .other-media-group { gap: 6px; }
     }
 
     @media (max-width: 480px) {
-        .media-list {
-            gap: 4px;
-        }
-        
-        .other-media-group {
-            gap: 4px;
-        }
-        
-        .more-items {
-            bottom: 4px;
-            right: 4px;
-            padding: 2px 6px;
-            font-size: 10px;
-        }
-        
-        .more-items-text {
-            padding: 6px;
-            font-size: 0.8rem;
-        }
+        .media-list, .other-media-group { gap: 4px; }
+        .more-items { bottom: 4px; right: 4px; padding: 2px 6px; font-size: 10px; }
+        .more-items-text { padding: 6px; font-size: 0.8rem; }
     }
 </style>

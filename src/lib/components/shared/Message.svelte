@@ -64,8 +64,7 @@
     $: canEdit = isOwn;
     $: canDelete = isOwn || Boolean(myMembership?.can_manage_messages);
     $: timeStr = formatMessageTime(message.created_at, $format);
-    $: hasMediaAttachments = hasMediaFiles(message.media || undefined);
-    $: shouldExpandBubble = hasMediaAttachments || (message.media && message.media.length > 0);
+    $: hasVisualMedia = hasMediaFiles(message.media || undefined);
     $: pollMedia = message.media?.find(m => m.type === 'Poll') as any;
     $: allowRevote = pollMedia?.allow_revote ?? false;
     $: hasVoted = currentUserId && $polls[message.id]?.hasVoted[currentUserId] || false;
@@ -103,6 +102,11 @@
     }
     $: if (replyToUserQuery && $replyToUserQuery?.data) {
         replyToUser = $replyToUserQuery.data;
+    }
+
+    $: if ($pendingEditMessageId === message.id && canEdit && !isEditing) {
+        handleEdit();
+        pendingEditMessageId.set(null);
     }
 
     function hasMediaFiles(media: MessageMedia[] | undefined): boolean {
@@ -190,12 +194,6 @@
     function handleEdit() {
         isEditing = true;
         editContent = message.content || '';
-    }
-
-    // External edit request (e.g. ArrowUp hotkey for last own message)
-    $: if ($pendingEditMessageId === message.id && canEdit && !isEditing) {
-        handleEdit();
-        pendingEditMessageId.set(null);
     }
 
     function handleEditKeyDown(event: KeyboardEvent) {
@@ -437,7 +435,7 @@
                     <em>{$_('message.deleted')}</em>
                 </div>
             {:else}
-                <div class="content bubble {shouldExpandBubble ? 'has-attachments' : ''} {hasMediaAttachments ? 'has-media' : ''}">
+                <div class="content bubble {hasVisualMedia ? 'has-media' : ''}">
                 {#if message.reply_to_message_id && replyToMessage}
                     <button 
                         class="reply-preview" 
@@ -893,29 +891,21 @@
     }
     
     .message.other:has(.avatar-wrapper) .bubble {
-        max-width: min(calc(100% - 20px), 480px);
+        max-width: min(calc(100% - 20px), 720px);
     }
     
     .bubble.has-media {
-        max-width: min(calc(100% - 20px), 800px);
+        max-width: min(calc(100% - 20px), 720px);
         min-width: 100px;
         width: fit-content;
     }
     
-    .message.own:has(.avatar-wrapper) .bubble.has-attachments {
-        max-width: min(calc(100% - 20px), 85%);
-    }
-    
-    .message.other:has(.avatar-wrapper) .bubble.has-attachments {
-        max-width: min(calc(100% - 20px), 85%);
-    }
-    
     .message.own:has(.avatar-wrapper) .bubble.has-media {
-        max-width: min(calc(100% - 12px), 800px);
+        max-width: min(calc(100% - 12px), 480px);
     }
 
     .message.other:has(.avatar-wrapper) .bubble.has-media {
-        max-width: min(calc(100% - 12px), 800px);
+        max-width: min(calc(100% - 12px), 480px);
     }
  
     .other .bubble { --bubble-bg: var(--color-bg-elevated); }
@@ -1338,7 +1328,6 @@
     }
 
     @media (max-width: 480px) {
-        .bubble.has-attachments,
         .bubble.has-media {
             max-width: min(100%, 500px);
             min-width: 60px;

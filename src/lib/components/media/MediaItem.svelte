@@ -3,7 +3,7 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { _ } from 'svelte-i18n';
     import { Download, Play, MapPin, User, FileText, Volume2, MessageSquare, CheckCircle, XCircle, BarChart3, Loader, CircleAlert, Music } from 'lucide-svelte';
-    import { formatFileSize } from '$lib/utils/media';
+    import { formatFileSize, formatDuration, isVisualMedia, getMediaFileUrl, getMediaThumbnailUrl, getMediaFileName, getMediaMimeType } from '$lib/utils/media';
     import MediaViewer from '$lib/components/forms/modals/MediaViewer.svelte';
     import { getServerUrl } from '$lib/config';
     import Poll from '$lib/components/shared/Poll.svelte';
@@ -32,12 +32,11 @@
     $: mediaUrl = getUrl(getMediaFileUrl(media));
     $: displayUrl = blobUrl || mediaUrl;
     $: thumbnailUrl = getMediaThumbnailUrl(media) ? getUrl(getMediaThumbnailUrl(media)) : null;
-    $: isMediaFile = media.type === 'Photo' || media.type === 'Video' || media.type === 'Gif' || media.type === 'Sticker';
+    $: isMediaFile = isVisualMedia(media.type);
     $: containerWidth = (isInAlbum && width === null) ? '100%' : (typeof width === 'number' ? `${width}px` : (width || 'auto'));
     $: containerHeight = (isInAlbum && height === null)
         ? '100%'
-        : (isMediaFile ? (typeof height === 'number' ? `${height}px` : (height || '200px')) : 'auto');
-
+        : (isMediaFile ? (typeof height === 'number' ? `${height}px` : (height || '200px')) : 'auto'); 
 
     $: stablePollData = media.type === 'Poll' ? {
         id: message?.id || 0,
@@ -125,12 +124,6 @@
             default:
                 return '';
         }
-    }
-
-    function formatDuration(seconds: number): string {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = Math.floor(seconds % 60);
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
     function handleClick(event?: Event) {
@@ -259,63 +252,6 @@
         return `${baseUrl}/${cleanPath}`;
     }
 
-    function getMediaFileUrl(media: MessageMedia): string {
-        switch (media.type) {
-            case 'Photo': return (media as PhotoMedia).file_url;
-            case 'Video': return (media as VideoMedia).file_url;
-            case 'Document': return (media as DocumentMedia).file_url;
-            case 'Audio': return (media as AudioMedia).file_url;
-            case 'Voice': return (media as VoiceMedia).file_url;
-            case 'Sticker': return (media as StickerMedia).file_url;
-            case 'Gif': return (media as GifMedia).file_url;
-            default: return '';
-        }
-    }
-
-    function getMediaThumbnailUrl(media: MessageMedia): string | null {
-        switch (media.type) {
-            case 'Photo': {
-                const photo = media as PhotoMedia;
-                return photo.thumbnail_url || null;
-            }
-            case 'Video': {
-                const video = media as VideoMedia;
-                return video.thumbnail_url || null;
-            }
-            case 'Gif': {
-                const gif = media as GifMedia;
-                return gif.preview_url || null;
-            }
-            default: return null;
-        }
-    }
-
-    function getMediaFileName(media: MessageMedia): string {
-        switch (media.type) {
-            case 'Photo': return `photo_${Date.now()}.jpg`;
-            case 'Video': return `video_${Date.now()}.mp4`;
-            case 'Document': return (media as DocumentMedia).file_name || 'document';
-            case 'Audio': return (media as AudioMedia).file_name || `audio_${Date.now()}.mp3`;
-            case 'Voice': return `voice_${Date.now()}.ogg`;
-            case 'Gif': return `gif_${Date.now()}.gif`;
-            case 'Sticker': return `sticker_${Date.now()}.webp`;
-            default: return 'file';
-        }
-    }
-
-    function getMediaMimeType(media: MessageMedia): string | null {
-        switch (media.type) {
-            case 'Photo': return 'image/jpeg';
-            case 'Video': return 'video/mp4';
-            case 'Document': return (media as DocumentMedia).mime_type || null;
-            case 'Audio': return (media as AudioMedia).mime_type || 'audio/mpeg';
-            case 'Voice': return 'audio/ogg';
-            case 'Gif': return 'image/gif';
-            case 'Sticker': return 'image/webp';
-            default: return null;
-        }
-    }
-
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -377,7 +313,7 @@
     
     {#if media.type === 'Photo'}
         {@const photo = media}
-        <div class="media-thumbnail">
+        <div class="media-thumbnail {isInAlbum ? 'in-album' : ''}">
             {#if thumbnailUrl && loadState !== 'loaded'}
                 <img
                     src={thumbnailUrl}
@@ -408,7 +344,7 @@
         </div>
     {:else if media.type === 'Video'}
         {@const video = media}
-        <div class="media-thumbnail">
+        <div class="media-thumbnail {isInAlbum ? 'in-album' : ''}">
             {#if thumbnailUrl && loadState !== 'loaded'}
                 <img
                     src={thumbnailUrl}
@@ -529,7 +465,7 @@
         </div>
     {:else if media.type === 'Sticker'}
         {@const sticker = media}
-        <div class="media-thumbnail">
+        <div class="media-thumbnail {isInAlbum ? 'in-album' : ''}">
             {#if loadState === 'loaded'}
                 <img
                     src={displayUrl}
@@ -552,7 +488,7 @@
         </div>
     {:else if media.type === 'Gif'}
         {@const gif = media}
-        <div class="media-thumbnail">
+        <div class="media-thumbnail {isInAlbum ? 'in-album' : ''}">
             {#if thumbnailUrl && loadState !== 'loaded'}
                 <img
                     src={thumbnailUrl}
@@ -628,15 +564,7 @@
     }
 
     .media-item:hover {
-        background: var(--hover-background);
-    }
-
-    .media-item[data-type="Photo"]:hover,
-    .media-item[data-type="Video"]:hover,
-    .media-item[data-type="Gif"]:hover,
-    .media-item[data-type="Sticker"]:hover {
-        background: transparent;
-        transform: translateY(-2px);
+        background: var(--color-bg);
     }
 
     .media-item[data-type="Poll"]:hover {
@@ -686,7 +614,7 @@
 
     .loading-progress {
         width: 80%;
-        max-width: 200px;
+        max-width: 400px;
         text-align: center;
     }
 
@@ -739,7 +667,7 @@
         position: relative;
         width: 60px;
         height: 60px;
-        border-radius: 6px;
+        border-radius: 8px;
         overflow: hidden;
         flex-shrink: 0;
         cursor: pointer;
@@ -756,8 +684,7 @@
     }
 
     .media-thumbnail:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        opacity: 0.85;
     }
 
     .media-item.compact .media-thumbnail {
@@ -984,6 +911,7 @@
         text-overflow: ellipsis;
     }
 
+
     @media (max-width: 768px) {
         .file-card {
             padding: 8px;
@@ -998,14 +926,17 @@
         .audio-player {
             width: 90px;
         }
+        
+    }
 
-        .media-item[data-type="Photo"],
-        .media-item[data-type="Video"],
-        .media-item[data-type="Gif"],
-        .media-item[data-type="Sticker"] {
-            min-width: 160px;
-            min-height: 160px;
-        }
+    .media-thumbnail.in-album img,
+    .media-thumbnail.in-album video {
+        height: 100%;
+    }
+
+    .media-thumbnail:not(.in-album) img,
+    .media-thumbnail:not(.in-album) video {
+        height: auto;
     }
 
     @media (max-width: 480px) {
@@ -1022,14 +953,6 @@
         .audio-player {
             width: 80px;
             height: 24px;
-        }
-
-        .media-item[data-type="Photo"],
-        .media-item[data-type="Video"],
-        .media-item[data-type="Gif"],
-        .media-item[data-type="Sticker"] {
-            min-width: 120px;
-            min-height: 120px;
         }
     }
 </style>
