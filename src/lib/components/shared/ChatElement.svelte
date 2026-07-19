@@ -159,19 +159,21 @@
     </div>
 </div>
 
-<style>
+<style lang="scss">
+    @import '../../../styles/markdown/markdown-inline.scss';
+
     .chat-element {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 8px;
+        gap: 8px;
+        padding: 4px;
         cursor: pointer;
         border-radius: 8px;
         opacity: 0.85;
         margin: 2px;
         transition: var(--transition);
-        min-height: 56px;
-        max-height: 56px;
+        min-height: 60px;
+        max-height: 60px;
         height: auto;
         box-sizing: border-box;
         width: calc(100% - 8px);
@@ -197,8 +199,8 @@
         border: 2px solid var(--color-bg-elevated);
     }
 
-    .sender-name {
-        font-weight: 600;
+    .chat-element .sender-name {
+        color: var(--color-text-button)
     }
 
     .chat-element:hover {
@@ -237,7 +239,7 @@
     }
 
     .unread-badge {
-        min-width: 18px;
+        min-width: 10px;
         height: 18px;
         padding: 0 5px;
         border-radius: 9px;
@@ -326,86 +328,7 @@
     }
     
     .message-text-preview {
-        display: inline-flex;
-        flex-direction: row;
-        align-items: center;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        line-height: 1;
-        height: 1em;
-    }
-    
-    .message-text-preview :global(*) {
-        display: inline !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-    }
-    
-    .message-text-preview :global(p) {
-        display: inline;
-        margin: 0;
-    }
-    
-    .message-text-preview :global(h1),
-    .message-text-preview :global(h2),
-    .message-text-preview :global(h3),
-    .message-text-preview :global(h4),
-    .message-text-preview :global(h5),
-    .message-text-preview :global(h6) {
-        display: inline;
-        margin: 0;
-        font-size: 1em;
-        font-weight: 600;
-    }
-    
-    .message-text-preview :global(ul),
-    .message-text-preview :global(ol) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-    }
-    
-    .message-text-preview :global(li) {
-        display: inline;
-        margin: 0;
-    }
-    
-    .message-text-preview :global(code) {
-        background: rgba(0, 0, 0, 0.2);
-        padding: 1px 3px;
-        border-radius: 2px;
-        font-size: 0.9em;
-    }
-    
-    .message-text-preview :global(blockquote) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
-    }
-    
-    .message-text-preview :global(table) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
-    }
-    
-    .message-text-preview :global(tr),
-    .message-text-preview :global(td),
-    .message-text-preview :global(th) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
-    }
-    
-    .message-text-preview :global(img) {
-        display: inline;
-        max-height: 1em;
-        vertical-align: middle;
+        @extend .markdown-inline;
     }
 
     .no-text-select {

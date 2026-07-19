@@ -1,0 +1,78 @@
+// inline markdown preview styles
+
+.markdown-inline {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1;
+    height: 1em;
+
+    :global(*) {
+        display: inline !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    :global(p) {
+        display: inline;
+        margin: 0;
+    }
+
+    :global(h1),
+    :global(h2),
+    :global(h3),
+    :global(h4),
+    :global(h5),
+    :global(h6) {
+        display: inline;
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+    }
+
+    :global(ul),
+    :global(ol) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+
+    :global(li) {
+        display: inline;
+        margin: 0;
+    }
+
+    :global(code) {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1px 3px;
+        border-radius: 2px;
+        font-size: 0.9em;
+    }
+
+    :global(blockquote) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    :global(table) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    :global(tr),
+    :global(td),
+    :global(th) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+}
