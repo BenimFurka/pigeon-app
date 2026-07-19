@@ -1,5 +1,5 @@
 /* TODO: translate */
-import type { ApiResponse, ApiError, UserPublic } from "$lib/types/models";
+import type { ApiResponse, ApiError, UserPublic, NewsResponse, News } from "$lib/types/models";
 import { getApiUrl } from "$lib/config";
 import { getIsTauriEnvironment } from "$lib/tauri-env";
 
@@ -317,4 +317,16 @@ export async function sendMessageWithMedia(
         const errorMessage = err instanceof Error ? err.message : 'Request failed';
         throw new Error(errorMessage);
     }
+}
+
+export async function getLatestNews(): Promise<ApiResponse<News>> {
+    return makeRequest<News>('news/latest', undefined, false, 'GET');
+}
+
+export async function getNewsForUser(): Promise<ApiResponse<NewsResponse>> {
+    return makeRequest<NewsResponse>('news', undefined, true, 'GET');
+}
+
+export async function markNewsAsRead(newsId: number): Promise<ApiResponse<{ success: boolean }>> {
+    return makeRequest<{ success: boolean }>('news/read', { data: { news_id: newsId } }, true, 'POST');
 }

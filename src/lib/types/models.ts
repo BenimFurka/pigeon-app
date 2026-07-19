@@ -331,3 +331,18 @@ export interface InviteCode {
     created_at: string;
 }
 
+
+export interface News {
+    id: number;
+    title: string;
+    content: string;
+    media?: MessageMedia[];
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface NewsResponse {
+    news: News;
+    is_read: boolean;
+}
