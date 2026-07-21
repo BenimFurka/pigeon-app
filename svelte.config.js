@@ -23,7 +23,7 @@ const config = {
 		}),
 
 		paths: {
-			base: process.env.NODE_ENV === 'production' ? '/web' : '',
+			base: (process.env.NODE_ENV === 'production' && process.env.TAURI_BUILD !== 'true') ? '/web' : '',
 			relative: false
 		}
 	}
