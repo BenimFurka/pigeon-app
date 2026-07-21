@@ -1,4 +1,3 @@
-<!-- TODO: Paste -->
 <script lang="ts">
     import { createEventDispatcher, tick } from 'svelte';
     import { uploadAttachment } from '$lib/api';

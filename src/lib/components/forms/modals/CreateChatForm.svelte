@@ -247,28 +247,19 @@
     </div>
 </Modal>
 
-<style>
+<style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .create-chat-content {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+        @extend .modal-content;
     }
 
     .create-chat-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
-        border-radius: var(--radius-sm);
-        background: var(--surface-glass);
+        @extend .modal-group;
     }
 
     .group-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        margin-bottom: 4px;
+        @extend .modal-group-header;
     }
 
     .error {
@@ -320,10 +311,7 @@
     }
 
     .search-results {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 4px;
+        @extend .search-results;
     }
 
     .search-result {
@@ -339,46 +327,26 @@
         color: var(--color-text);
         text-align: left;
         font-size: 0.9rem;
-    }
 
-    .search-result:hover {
-        background-color: var(--color-accent);
-    }
+        &:hover {
+            background-color: var(--color-accent);
+        }
 
-    .search-result .username {
-        opacity: 0.7;
-        font-size: 0.9em;
+        .username {
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
     }
 
     .selected {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        @extend .selected;
     }
 
     .chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--surface-glass);
-        border-radius: var(--radius-sm);
-        padding: 8px 10px;
-    }
-
-    .chip button {
-        background: none;
-        border: none;
-        color: inherit;
-        cursor: pointer;
-        font-weight: 700;
+        @extend .chip;
     }
 
     .hint {
-        font-size: 0.85rem;
-        opacity: 0.8;
-    }
-
-    .hint.muted {
-        opacity: 0.6;
+        @extend .hint;
     }
 </style>

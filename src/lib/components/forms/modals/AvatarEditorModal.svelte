@@ -270,7 +270,9 @@
     </div>
 </Modal>
 
-<style>
+<style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .avatar-editor {
         display: flex;
         flex-direction: column;
@@ -327,23 +329,16 @@
     }
 
     .hint {
+        @extend .hint;
         margin: 0;
-        font-size: 0.85rem;
-        color: var(--color-text-muted);
     }
 
     .actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
+        @extend .section-actions;
         margin-top: 4px;
     }
 
     .error {
-        background: var(--color-danger-soft);
-        color: var(--color-danger);
-        padding: 8px 10px;
-        border-radius: var(--radius-sm);
-        font-size: 0.9rem;
+        @extend .modal-error;
     }
 </style>

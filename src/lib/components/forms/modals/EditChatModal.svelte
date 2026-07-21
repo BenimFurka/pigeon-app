@@ -272,29 +272,20 @@
     />
 {/if}
 
-<style>
+<style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .edit-chat-content {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+        @extend .modal-content;
     }
 
     .edit-chat-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
+        @extend .modal-group;
         margin-top: 16px;
-        border-radius: var(--radius-sm);
-        background: var(--surface-glass);
     }
 
     .group-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        margin-bottom: 4px;
+        @extend .modal-group-header;
     }
     
     .avatar-upload {
@@ -337,7 +328,7 @@
     }
     
     .file-input {
-        display: none;
+        @extend .file-input;
     }
     
     .avatar-error {
@@ -348,22 +339,12 @@
     }
     
     .form-group {
-        margin-bottom: 20px;
-    }
-    
-    label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 500;
-        color: var(--color-text);
+        @extend .form-group;
     }
 
     .error-message {
-        color: var(--color-danger);
-        padding: 10px 12px;
-        border-radius: 4px;
+        @extend .modal-error;
         margin-top: 16px;
-        font-size: 0.9rem;
     }
     
     button {

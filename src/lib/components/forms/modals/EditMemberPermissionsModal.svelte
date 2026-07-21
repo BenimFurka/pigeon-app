@@ -149,6 +149,8 @@
 </Modal>
 
 <style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .edit-permissions-content {
         display: flex;
         flex-direction: column;
@@ -195,16 +197,10 @@
     }
 
     .error-message {
-        color: var(--color-danger);
-        padding: 10px 12px;
-        border-radius: 4px;
-        background: rgba(239, 68, 68, 0.1);
-        font-size: 0.9rem;
+        @extend .modal-error;
     }
 
     .modal-footer {
-        display: flex;
-        gap: 8px;
-        justify-content: flex-end;
+        @extend .modal-footer;
     }
 </style>

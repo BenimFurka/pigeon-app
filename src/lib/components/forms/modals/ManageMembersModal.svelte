@@ -274,28 +274,19 @@
     />
 {/if}
 
-<style>
+<style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .manage-members-content {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+        @extend .modal-content;
     }
 
     .manage-members-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
-        border-radius: var(--radius-sm);
-        background: var(--surface-glass);
+        @extend .modal-group;
     }
 
     .group-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        margin-bottom: 4px;
+        @extend .modal-group-header;
     }
     
     .search-section,
@@ -304,76 +295,47 @@
     }
 
     .search-box {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
+        @extend .search-box;
     }
     
     .search-results {
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        max-height: 200px;
-        overflow-y: auto;
-        margin-bottom: 12px;
+        @extend .search-results;
     }
     
     .search-result-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 12px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        border-bottom: 1px solid var(--color-border);
-        gap: 12px;
+        @extend .search-result-item;
     }
     
-    .username {
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .search-results {
+        @extend .search-results;
+    }
+    
+    .bordered {
+        @extend .bordered;
     }
     
     .full-name {
-        font-size: 0.85rem;
-        color: var(--color-text);
+        @extend .full-name;
     }
     
     .no-results,
     .no-members {
-        padding: 16px;
-        text-align: center;
-        color: var(--color-text-muted);
-        font-size: 0.95rem;
+        @extend .no-results;
     }
 
     .members-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        border-radius: 12px;
-        background-color: var(--color-bg-elevated);
-        padding: 0;
-        overflow: hidden;
+        @extend .members-list;
     }
     
     .error-message {
-        color: var(--color-danger);
-        padding: 10px 12px;
-        border-radius: 4px;
-        margin-top: 8px;
-        font-size: 0.9rem;
+        @extend .modal-error;
     }
     
     .loading {
-        padding: 16px;
-        text-align: center;
-        color: var(--color-text);
-        font-size: 0.95rem;
+        @extend .loading;
     }
 
     .member-actions {
-        display: flex;
-        gap: 4px;
+        @extend .member-actions;
     }
 </style>

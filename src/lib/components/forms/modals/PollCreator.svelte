@@ -265,138 +265,53 @@
 </Modal>
 
 <style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .poll-creator {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        color: var(--color-text);
+        @extend .modal-content;
     }
 
     .poll-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
-        border-radius: var(--radius-sm);
-        background: var(--surface-glass);
+        @extend .modal-group;
     }
 
     .group-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        margin-bottom: 4px;
+        @extend .modal-group-header;
     }
 
     .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .form-group label {
-        font-weight: 500;
-        margin-bottom: 4px;
+        @extend .form-group;
     }
 
     .options-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        @extend .options-list;
     }
 
     .option-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        @extend .option-item;
     }
 
     .option-icon-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        flex-shrink: 0;
+        @extend .option-icon-wrapper;
     }
 
     .option-input {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid var(--color-border);
-        border-radius: 6px;
-        background: var(--color-bg-elevated);
-        color: var(--color-text);
-        font-family: inherit;
+        @extend .option-input;
     }
 
     .remove-option {
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: transparent;
-        color: var(--color-danger);
-        cursor: pointer;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        @extend .remove-option;
     }
 
     .add-option {
-        padding: 8px 12px;
-        border: 1px dashed var(--color-border);
-        border-radius: 6px;
-        background: transparent;
-        color: var(--color-text);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 14px;
-    }
-
-    .add-option:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+        @extend .add-option;
     }
 
     .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        font-weight: normal;
-    }
-
-    .checkbox-label input[type="checkbox"] {
-        margin: 0;
+        @extend .checkbox-label;
     }
 
     .poll-creator-footer {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-    }
-        .option-icon-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        flex-shrink: 0;
-    }
-
-    .option-icon-wrapper.clickable {
-        cursor: pointer;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-        background-color: var(--color-bg-elevated);
-        border-color: var(--color-border)
-    }
-
-    .option-icon-wrapper.clickable:hover {
-		filter: var(--hover-filter);
+        @extend .modal-footer;
     }
 </style>

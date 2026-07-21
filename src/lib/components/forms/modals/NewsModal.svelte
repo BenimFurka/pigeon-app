@@ -78,18 +78,14 @@
 
 <style lang="scss">
     @import '../../../../styles/markdown/markdown.scss';
+    @import '../../../../styles/components/modal';
 
     .footer-field {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
+        @extend .footer-field;
     }
 
     .content {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
+        @extend .modal-content;
     }
 
     .media-section {

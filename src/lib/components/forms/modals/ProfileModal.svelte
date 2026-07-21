@@ -107,81 +107,42 @@
     </div>
 </Modal>
 
-<style>
+<style lang="scss">
+    @import '../../../../styles/components/modal';
+
     .footer-field {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 8px;
+        @extend .footer-field;
     }
 
     .content {
-        display: flex;
-        flex-direction: column;
+        @extend .modal-content;
     }
     
     .user-avatar-container {
-        position: relative;
-        width: 120px;
-        height: 120px;
-        margin: 0 auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        @extend .avatar-profile-container;
     }
     
     .online-dot {
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: var(--color-online);
-        border: 2px solid var(--color-bg-elevated);
+        @extend .online-dot;
     }
     
     .user-info-section {
-        text-align: center;
+        @extend .user-info-section;
     }
     
     .user-name {
-        margin: 0 0 8px;
-        font-size: 1.5rem;
-        font-weight: 600;
+        @extend .user-name;
     }
     
     .username {
-        color: var(--color-text-muted);
-        font-size: 0.95rem;
-        margin-bottom: 16px;
+        @extend .username;
     }
     
     .status-text {
-        color: var(--color-accent);
-        margin-bottom: 24px;
-        font-size: 0.95rem;
-    }
-    
-    .status-text.online {
-        color: var(--color-online);
+        @extend .status-text;
     }
     
     .bio {
-        text-align: left;
-        margin-top: 24px;
-    }
-    
-    h4 {
-        margin: 0 0 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--color-text);
-    }
-    
-    p {
-        margin: 0;
-        color: var(--color-text);
-        line-height: 1.5;
+        @extend .bio;
     }
 </style>
