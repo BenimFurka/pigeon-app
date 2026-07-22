@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
     import { X, Send, Paperclip, Smile, ImagePlay, Bold, Italic, Strikethrough, Code, Link2, Heading, List, ListOrdered, Quote, Check, Eye, /* , Table, Rows, Minus, Plus, Columns */ 
-Underline, Minus, Sigma} from 'lucide-svelte';
+    Underline, Minus, Sigma} from 'lucide-svelte';
     import { hotkeys } from '$lib/stores/hotkeys';
     
     import CodeMirrorEditor from '$lib/components/editor/CodeMirrorEditor.svelte';
@@ -41,7 +41,7 @@ Underline, Minus, Sigma} from 'lucide-svelte';
     let pastedFiles: File[] = [];
 
     // Computed values
-    $: sendKeyBinding = $hotkeys.send_message;
+    $: sendKeyBinding = $hotkeys.send_message_full_editor;
     $: sendKeyHint = formatSendKeyHint(sendKeyBinding);
     $: placeholderText = $_('full_editor.placeholder').replace('Ctrl+Enter', sendKeyHint);
 
@@ -236,6 +236,7 @@ Underline, Minus, Sigma} from 'lucide-svelte';
 
                 <div class="editor-workspace">
                     <CodeMirrorEditor
+                        hotkeyAction="send_message_full_editor"
                         bind:this={editorComponent}
                         variant="full"
                         initialValue={initialDraft}

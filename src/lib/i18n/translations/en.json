@@ -44,7 +44,8 @@
       "toggle_settings": "Open / close settings",
       "send_message": "Send message",
       "pressKey": "Press a key…",
-      "reset": "Reset to defaults"
+      "reset": "Reset to defaults",
+      "send_message_full_editor": "Send message (Full Editor)"
     },
     "notifications": {
       "sectionTitle": "Notifications",

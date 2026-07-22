@@ -44,7 +44,8 @@
       "toggle_settings": "Открыть / закрыть настройки",
       "send_message": "Отправить сообщение",
       "pressKey": "Нажмите клавишу…",
-      "reset": "Сбросить по умолчанию"
+      "reset": "Сбросить по умолчанию",
+      "send_message_full_editor": "Отправка в полном редакторе"
     },
     "notifications": {
       "sectionTitle": "Уведомления",

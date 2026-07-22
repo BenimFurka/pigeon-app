@@ -13,11 +13,12 @@
     import { spoilerExtension, underlineExtension, inlineMathExtension } from '$lib/editor/markdown-extensions';
     import { markdownLivePreview, markdownBlockPreview } from '$lib/editor/markdown-live-preview';
     import { insertTable, reformatTable, addTableRow, removeTableRow, addTableColumn, removeTableColumn } from '$lib/editor/markdown-table';
-    import { hotkeys, matchesHotkey } from '$lib/stores/hotkeys';
+    import { type HotkeyAction, hotkeys, matchesHotkey } from '$lib/stores/hotkeys';
 
     export let variant: 'compact' | 'full' = 'compact';
     export let initialValue: string = '';
     export let placeholder: string = $_('codemirror_editor.placeholder');
+    export let hotkeyAction: HotkeyAction = 'send_message';
 
     const dispatch = createEventDispatcher<{ change: { markdown: string }; submit: void }>();
 
@@ -26,7 +27,7 @@
     let currentMarkdown = initialValue;
     
     let savedSelection = { anchor: 0, head: 0 };
-    $: sendKeyBinding = $hotkeys.send_message;
+    $: sendKeyBinding = $hotkeys[hotkeyAction];
 
     export function getEditorMarkdown(): string {
         if (!view) return currentMarkdown;
@@ -158,7 +159,7 @@
         '.cm-md-italic': { fontStyle: 'italic' },
         '.cm-md-strike': { textDecoration: 'line-through', color: 'var(--color-text)', opacity: "1.0"},
         '.cm-md-code, .cm-md-inline-math': { fontFamily: "'JetBrains Mono', monospace", backgroundColor: 'var(--color-bg)', color: 'var(--color-accent)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.92em' },
-        '.cm-md-spoiler': { backgroundColor: 'var(--color-bg-elevated)', color: 'var(--color-bg-elevated)', borderRadius: '2px', padding: '0 2px', transition: 'all 0.2s ease', cursor: 'pointer' },
+        '.cm-md-spoiler': { backgroundColor: 'rgba(0, 0, 0, 0.3);', color: 'rgba(0, 0, 0, 0.3);', borderRadius: '2px', padding: '0 2px', transition: 'all 0.2s ease', cursor: 'pointer' },
         '.cm-md-spoiler:hover': { backgroundColor: 'transparent', color: 'var(--color-text)'},
         '.cm-md-underline': { textDecoration: 'underline', textUnderlineOffset: '3px' },
         '.cm-md-h1': { fontSize: '1.6em', fontWeight: 'bold', lineHeight: '1.3' },

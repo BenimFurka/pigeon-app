@@ -56,6 +56,7 @@
     { action: 'edit_last_message', labelKey: 'settings.hotkeys.edit_last_message' },
     { action: 'toggle_settings', labelKey: 'settings.hotkeys.toggle_settings' },
     { action: 'send_message', labelKey: 'settings.hotkeys.send_message' },
+    { action: 'send_message_full_editor', labelKey: 'settings.hotkeys.send_message_full_editor' },
   ];
 
   // State

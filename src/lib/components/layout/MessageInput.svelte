@@ -321,6 +321,7 @@
         <div class="editor-wrapper">
             
             <CodeMirrorEditor
+                hotkeyAction="send_message"
                 bind:this={editorComponent}
                 placeholder={replyToMessage ? $_('message_input.write_reply') : $_('message_input.write_message')}
                 on:change={handleEditorChange}

@@ -5,7 +5,8 @@ export type HotkeyAction =
 	| 'toggle_settings'
 	| 'focus_message_input'
 	| 'cancel_reply_or_edit'
-	| 'send_message';
+	| 'send_message'
+	| 'send_message_full_editor';
 
 export type HotkeyBinding = {
 	key: string;
@@ -24,7 +25,8 @@ export const DEFAULT_HOTKEYS: HotkeyConfig = {
 	toggle_settings: { key: '`', ctrl: true },
 	focus_message_input: { key: 'Escape' },
 	cancel_reply_or_edit: { key: 'Escape' },
-	send_message: { key: 'Enter' }
+	send_message: { key: 'Enter' },
+	send_message_full_editor: { key: 'Enter', ctrl: true }
 };
 
 function loadHotkeys(): HotkeyConfig {
