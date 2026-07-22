@@ -3,18 +3,19 @@
     import { wsService } from '$lib/ws-service';
     import type { Message, MessageMedia, GifMedia } from '$lib/types/models';
     import { createEventDispatcher, onMount, tick } from 'svelte';
-    import { Send, Paperclip, ImagePlay, Smile } from 'lucide-svelte';
+    import { Send, Paperclip, ImagePlay, Smile, Maximize2 } from 'lucide-svelte';
     import AttachmentModal from '$lib/components/forms/modals/AttachmentModal.svelte';
     import GifPicker from '$lib/components/media/GifPicker.svelte';
     import EmojiPicker from '$lib/components/media/EmojiPicker.svelte';
     import type { GifItem } from '$lib/types/models';
     import { _ } from 'svelte-i18n';
-    import { getServerUrl } from '$lib/config';
+    import { getServerUrl, config } from '$lib/config';
     import { getMediaTypeName } from '$lib/utils/media';
     import { hotkeys, matchesHotkey, pendingEditMessageId } from '$lib/stores/hotkeys';
     import { queryClient } from '$lib/query';
     import { messageKeys } from '$lib/queries/messages';
     import { useCurrentProfile } from '$lib/queries/profile';
+    import CodeMirrorEditor from '$lib/components/editor/CodeMirrorEditor.svelte';
     
     // Props
     export let chatId: number | null = null;
@@ -24,13 +25,14 @@
         onClearReply: () => void;
         onUserClick: (event: CustomEvent) => void;
     };
+    export let allowFullEditor: boolean = true;
     
     // Event dispatcher
     const dispatch = createEventDispatcher();
 
     // State
-    let inputValue = '';
-    let inputElement: HTMLTextAreaElement;
+    let editorComponent: CodeMirrorEditor;
+    let currentMarkdown = '';
     let attachmentModalOpen = false;
     let gifDropdownOpen = false;
     let gifButtonRef: HTMLButtonElement;
@@ -46,6 +48,8 @@
     // Computed values
     $: replyToMessage = chatContext.replyToMessage;
     $: isMobile = chatContext.isMobile;
+    $: showFullEditor = allowFullEditor && $config.app.experimental.enableFullEditor;
+    $: sendKeyBinding = $hotkeys.send_message;
 
     function getUrl(path: string): string {
         const baseUrl = getServerUrl();
@@ -53,82 +57,71 @@
         return `${baseUrl}/${cleanPath}`;
     }
 
-    function adjustTextareaHeight() {
-        if (!inputElement) return;
-        
-        const currentOverflow = inputElement.style.overflowY;
-        inputElement.style.overflowY = 'hidden';
-        inputElement.style.height = 'auto';
-        
-        const maxHeight = 200;
-        const minHeight = 40;
-        
-        if (!inputValue.trim()) {
-            inputElement.style.height = `${minHeight}px`;
-        } else {
-            const scrollHeight = inputElement.scrollHeight;
-            const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-            inputElement.style.height = `${newHeight}px`;
-            
-            if (scrollHeight > maxHeight) {
-                inputElement.style.overflowY = 'auto';
-            }
-        }
+    function formatSendKeyHint(binding: any): string {
+        if (!binding) return $_('message_input.send_enter');
+        const parts: string[] = [];
+        if (binding.ctrl) parts.push('Ctrl');
+        if (binding.alt) parts.push('Alt');
+        if (binding.shift) parts.push('Shift');
+        if (binding.meta) parts.push('Meta');
+        parts.push(binding.key === ' ' ? 'Space' : binding.key);
+        const keyStr = parts.join('+');
+        return $_('message_input.send_enter').replace('Enter', keyStr);
     }
 
-    // Event handlers
-    function handleSubmit(attachmentIds?: number[], media?: MessageMedia[]) {
+    export function focus() {
+        editorComponent?.focusEditor();
+    }
+
+    export function getValue(): string {
+        return currentMarkdown;
+    }
+    
+    export function setMarkdown(md: string) {
+        currentMarkdown = md;
+        editorComponent?.setEditorMarkdown(md);
+    }
+
+    export function handleSubmit(attachmentIds?: number[], media?: MessageMedia[]) {
+        const content = currentMarkdown.trim();
+        
         if (!chatId) {
-            if (!inputValue.trim() && !attachmentIds?.length && !media?.length) {
-                return;
-            }
-            dispatch('ephemeralSend', { content: inputValue.trim(), attachmentIds, media });
-            inputValue = '';
-            queueMicrotask(() => {
-                adjustTextareaHeight();
-            });
+            if (!content && !attachmentIds?.length && !media?.length) return;
+            
+            dispatch('ephemeralSend', { content, attachmentIds, media });
+            editorComponent?.clearEditor();
+            currentMarkdown = '';
             dispatch('clearReply');
             chatContext.onClearReply();
             
-            if (inputElement) {
-                queueMicrotask(() => {
-                    if (inputElement) inputElement.focus();
-                });
-            }
+            queueMicrotask(() => editorComponent?.focusEditor());
             return;
         }
         
-        if (inputValue.trim().startsWith('ws-custom:')) {
+        if (content.startsWith('ws-custom:')) {
             try {
-                const jsonStr = inputValue.trim().substring('ws-custom:'.length).trim();
+                const jsonStr = content.substring('ws-custom:'.length).trim();
                 const customMessage = JSON.parse(jsonStr);
                 
                 wsService.send(customMessage);
-                
                 console.log('Custom WebSocket message sent:', customMessage);
-                inputValue = '';
-                queueMicrotask(() => {
-                    adjustTextareaHeight();
-                });
+                
+                editorComponent?.clearEditor();
+                currentMarkdown = '';
                 dispatch('clearReply');
                 chatContext.onClearReply();
                 
-                if (inputElement) {
-                    queueMicrotask(() => {
-                        if (inputElement) inputElement.focus();
-                    });
-                }
+                queueMicrotask(() => editorComponent?.focusEditor());
                 return;
             } catch (error) {
                 console.error('Failed to parse custom WebSocket message:', error);
             }
         }
         
-        if (!inputValue.trim() && !attachmentIds?.length && !media?.length) {
+        if (!content && !attachmentIds?.length && !media?.length) {
             return;
         }
 
-        const content = inputValue.trim();
         session.addOptimisticMessage(chatId, content, {
             reply_to: replyToMessage?.id ?? undefined,
             attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
@@ -141,49 +134,45 @@
             reply_to: replyToMessage?.id,
         };
 
-        if (attachmentIds?.length) {
-            messageData.attachment_ids = attachmentIds;
-        }
+        if (attachmentIds?.length) messageData.attachment_ids = attachmentIds;
+        if (media?.length) messageData.media = media;
 
-        if (media?.length) {
-            messageData.media = media;
-        }
-
-        wsService.send({
-            type: 'send_message',
-            data: messageData
-        });
+        wsService.send({ type: 'send_message', data: messageData });
         
-        console.log('WebSocket message sent:', {
-            type: 'send_message',
-            data: {
-                chat_id: chatId,
-                content: inputValue.trim(),
-                reply_to: replyToMessage?.id,
-                attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
-                media: media?.length ? media : undefined
-            }
-        });
-        
-        inputValue = '';
-        queueMicrotask(() => {
-            adjustTextareaHeight();
-        });
+        editorComponent?.clearEditor();
+        currentMarkdown = '';
         dispatch('clearReply');
         chatContext.onClearReply();
         
         sendTyping(false);
+        queueMicrotask(() => editorComponent?.focusEditor());
+    }
+
+    function handleEditorChange(event: CustomEvent<{ markdown: string }>) {
+        currentMarkdown = event.detail.markdown;
+        if (!chatId) return;
         
-        if (inputElement) {
-            queueMicrotask(() => {
-                if (inputElement) inputElement.focus();
-            });
+        if (!isTyping) {
+            sendTyping(true);
+            isTyping = true;
         }
+        
+        if (typingTimeout) clearTimeout(typingTimeout);
+        
+        typingTimeout = setTimeout(() => {
+            sendTyping(false);
+            isTyping = false;
+        }, 2000);
+    }
+
+    function handleEditorSubmit() {
+        handleSubmit();
     }
 
     function handleAttachmentSent(event: CustomEvent<{ content: string; media: MessageMedia[] }>) {
         const { content, media } = event.detail;
-        inputValue = content;
+        currentMarkdown = content;
+        editorComponent?.setEditorMarkdown(currentMarkdown);
         handleSubmit(undefined, media);
         attachmentModalOpen = false;
         pastedText = '';
@@ -197,34 +186,22 @@
     }
 
     function openAttachmentModal() {
-        if (chatId) {
-            attachmentModalOpen = true;
-        }
+        if (chatId) attachmentModalOpen = true;
     }
 
     function toggleGifDropdown(event: MouseEvent) {
         event.stopPropagation();
-        
-        if (chatId) {
-            gifDropdownOpen = !gifDropdownOpen;
-        }
+        if (chatId) gifDropdownOpen = !gifDropdownOpen;
     }
     
     function handleKeyDown(event: KeyboardEvent) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleSubmit();
-            return;
-        }
-
         if (
             matchesHotkey(event, $hotkeys.edit_last_message) &&
-            !inputValue.trim() &&
+            !currentMarkdown.trim() &&
             chatId
         ) {
             event.preventDefault();
             requestEditLastMessage();
-            return;
         }
     }
 
@@ -250,95 +227,41 @@
     }
 
     function handleEmojiSelect(event: CustomEvent<{ emoji: string }>) {
-        const emoji = event.detail.emoji;
-        const el = inputElement;
-        if (el) {
-            const start = el.selectionStart ?? inputValue.length;
-            const end = el.selectionEnd ?? inputValue.length;
-            inputValue = inputValue.slice(0, start) + emoji + inputValue.slice(end);
-            queueMicrotask(() => {
-                if (!inputElement) return;
-                const pos = start + emoji.length;
-                inputElement.focus();
-                inputElement.setSelectionRange(pos, pos);
-                adjustTextareaHeight();
-            });
-        } else {
-            inputValue += emoji;
-        }
+        currentMarkdown += event.detail.emoji;
+        editorComponent?.setEditorMarkdown(currentMarkdown);
         emojiPickerOpen = false;
-    }
-
-    export function focus() {
-        inputElement?.focus();
-    }
-
-    export function getValue(): string {
-        return inputValue;
-    }
-    
-    function handleInput() {
-        if (!chatId) return;
-        
-        if (!isTyping) {
-            sendTyping(true);
-            isTyping = true;
-        }
-        
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
-        
-        typingTimeout = setTimeout(() => {
-            sendTyping(false);
-            isTyping = false;
-        }, 2000);
-        
-        adjustTextareaHeight();
+        queueMicrotask(() => editorComponent?.focusEditor());
     }
 
     function handlePaste(event: ClipboardEvent) {
         if (!chatId) return;
-        
         const items = event.clipboardData?.items;
         if (!items) return;
 
         const files: File[] = [];
-        
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.kind === 'file' && item.type) {
                 const file = item.getAsFile();
-                if (file) {
-                    files.push(file);
-                }
+                if (file) files.push(file);
             }
         }
 
         if (files.length > 0) {
             event.preventDefault();
-            
-            pastedText = inputValue;
+            pastedText = currentMarkdown;
             pastedFiles = files;
-            inputValue = '';
-            queueMicrotask(() => {
-                adjustTextareaHeight();
-            });
+            currentMarkdown = '';
+            editorComponent?.setEditorMarkdown('');
             attachmentModalOpen = true;
-            
-            inputElement?.blur();
         }
     }
     
     function sendTyping(isTyping: boolean) {
         if (!chatId) return;
-        
         wsService.send({
             type: 'typing',
-            data: {
-                chat_id: chatId,
-                is_typing: isTyping
-            }
+            data: { chat_id: chatId, is_typing: isTyping }
         });
     }
     
@@ -346,9 +269,8 @@
         chatContext.onClearReply();
     }
 
-    // Reactive statements
-    $: if (inputElement) {
-        adjustTextareaHeight();
+    function handleOpenFullEditor() {
+        dispatch('openFullEditor', { content: currentMarkdown });
     }
 </script>
 
@@ -369,7 +291,6 @@
             {/if}
             <div class="reply-info">
                 <span class="reply-label">{$_('message_input.reply_to')}:</span>
-                
                 <div class="reply-content-container">
                     <div class="reply-content">
                         {#if replyToMessage.media && replyToMessage.media.length > 0}
@@ -385,9 +306,9 @@
         </div>
     {/if}
     
-    <div class="input-wrapper">
+    <div class="input-wrapper" on:paste={handlePaste}>
         <button
-            class="attachment-button"
+            class="icon-button"
             on:click={openAttachmentModal}
             disabled={!chatId}
             title={$_('message_input.attach_file')}
@@ -397,22 +318,32 @@
             <Paperclip size={18} />
         </button>
         
-        <textarea
-            bind:this={inputElement}
-            bind:value={inputValue}
-            placeholder={replyToMessage ? $_('message_input.write_reply') : $_('message_input.write_message')}
-            on:keydown={handleKeyDown}
-            on:input={handleInput}
-            on:paste={handlePaste}
-            class="message-input"
-            rows="1"
-        ></textarea>
-        
+        <div class="editor-wrapper">
+            
+            <CodeMirrorEditor
+                bind:this={editorComponent}
+                placeholder={replyToMessage ? $_('message_input.write_reply') : $_('message_input.write_message')}
+                on:change={handleEditorChange}
+                on:submit={handleEditorSubmit}
+            />
+        </div>
+
+        {#if showFullEditor}
+            <button
+                class="icon-button full-editor-button"
+                on:click={handleOpenFullEditor}
+                title={$_('message_input.open_full_editor')}
+                aria-label={$_('message_input.open_full_editor')}
+                type="button"
+            >
+                <Maximize2 size={18} />
+            </button>
+        {/if}
 
         <div class="gif-button-container">
             <button
                 bind:this={emojiButtonRef}
-                class="gif-button"
+                class="icon-button"
                 on:click={toggleEmojiPicker}
                 title={$_('message_input.select_emoji')}
                 aria-label={$_('message_input.select_emoji')}
@@ -432,7 +363,7 @@
         <div class="gif-button-container">
             <button
                 bind:this={gifButtonRef}
-                class="gif-button"
+                class="icon-button"
                 on:click={toggleGifDropdown}
                 disabled={!chatId}
                 title={$_('message_input.select_gif')}
@@ -457,11 +388,11 @@
             class="send-button" 
             on:click={(event) => {
                 event.preventDefault();
-                if (inputElement) inputElement.focus();
+                editorComponent?.focusEditor();
                 handleSubmit();
             }}
-            disabled={!inputValue.trim()}
-            title={$_('message_input.send_enter')}
+            disabled={!currentMarkdown.trim()}
+            title={formatSendKeyHint(sendKeyBinding)}
             aria-label={$_('message_input.send_message')}
         >
             <Send size={18} />
@@ -545,9 +476,7 @@
         gap: 4px;
     }
     
-    .attachment-type {
-        font-style: italic;
-    }
+    .attachment-type { font-style: italic; }
     
     .cancel-reply {
         background: none;
@@ -561,9 +490,7 @@
         flex-shrink: 0;
     }
     
-    .cancel-reply:hover {
-        opacity: 1;
-    }
+    .cancel-reply:hover { opacity: 1; }
     
     .input-wrapper {
         display: flex;
@@ -573,131 +500,38 @@
         position: relative;
     }
 
-    .gif-button-container {
-        position: relative;
-    }
-
-    .attachment-button {
-        border: none;
-        background: none;
-        border-radius: var(--radius-sm);
-        padding: 10px;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--color-text);
-        cursor: pointer;
-        transition: var(--transition);
-        flex-shrink: 0;
-        opacity: 0.7;
-    }
-
-    .gif-button {
-        border: none;
-        background: none;
-        border-radius: var(--radius-sm);
-        padding: 10px;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--color-text);
-        cursor: pointer;
-        transition: var(--transition);
-        flex-shrink: 0;
-        opacity: 0.7;
-    }
-
-    .gif-button:hover:not(:disabled) {
-        filter: var(--hover-filter);
-        transform: scale(1.05);
-        opacity: 1;
-    }
-
-    .gif-button:active:not(:disabled) {
-        transform: scale(0.95);
-    }
-
-    .gif-button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    .attachment-button:hover:not(:disabled) {
-        filter: var(--hover-filter);
-        transform: scale(1.05);
-        opacity: 1;
-    }
-
-    .attachment-button:active:not(:disabled) {
-        transform: scale(0.95);
-    }
-
-    .attachment-button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
-    }
-    
-    .message-input {
+    .editor-wrapper {
         flex: 1;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        background: var(--color-bg-elevated);
-        border: 1px solid var(--color-border);
+        min-width: 0;
+    }
+
+    .gif-button-container { position: relative; }
+
+    .icon-button {
+        border: none;
+        background: none;
         border-radius: var(--radius-sm);
-        padding: 10px 10px;
+        padding: 10px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: var(--color-text);
-        font-size: 14px;
-        outline: none;
+        cursor: pointer;
         transition: var(--transition);
-        min-height: 40px;
-        max-height: 200px;
-        resize: none;
-        line-height: 1.4;
-        box-sizing: border-box;
-        overflow-y: hidden;
-        overflow-x: hidden;
+        flex-shrink: 0;
+        opacity: 0.7;
     }
-    
-    .message-input::-webkit-scrollbar {
-        width: 4px;
+
+    .icon-button:hover:not(:disabled) {
+        filter: var(--hover-filter);
+        transform: scale(1.05);
+        opacity: 1;
     }
-    
-    .message-input::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    .message-input::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 2px;
-        transition: background 0.2s ease;
-    }
-    
-    .message-input::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.25);
-    }
-    
-    .message-input::-webkit-scrollbar-thumb:active {
-        background: rgba(255, 255, 255, 0.35);
-    }
-    
-    .message-input {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-    }
-    
-    .message-input:hover {
-        scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-    }
-    
-    .message-input:focus {
-        border-color: var(--color-accent);
-        box-shadow: 0 0 0 2px var(--color-accent-soft);
-    }
+
+    .icon-button:active:not(:disabled) { transform: scale(0.95); }
+    .icon-button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
     
     .send-button {
         border: none;
@@ -720,42 +554,13 @@
         transform: scale(1.05);
     }
     
-    .send-button:active:not(:disabled) {
-        transform: scale(0.95);
-    }
-    
-    .send-button:not(:disabled) {
-        background: var(--color-accent);
-        color: var(--color-button-text);
-    }
-
-    .send-button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
-    }
+    .send-button:active:not(:disabled) { transform: scale(0.95); }
+    .send-button:not(:disabled) { background: var(--color-accent); color: var(--color-button-text); }
+    .send-button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
     @media (max-width: 576px) {
-        .reply-preview {
-            padding: 6px 8px;
-        }
-        
-        .input-wrapper {
-            padding: 8px;
-            gap: 4px;
-        }
-        
-        .attachment-button,
-        .gif-button,
-        .send-button {
-            width: 36px;
-            height: 36px;
-            padding: 8px;
-        }
-        
-        .message-input {
-            font-size: 16px;
-            min-height: 36px;
-        }
+        .reply-preview { padding: 6px 8px; }
+        .input-wrapper { padding: 8px; gap: 4px; }
+        .icon-button, .send-button { width: 36px; height: 36px; padding: 8px; }
     }
 </style>
