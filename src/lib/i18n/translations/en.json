@@ -6,6 +6,7 @@
       "appearance": "Appearance",
       "hotkeys": "Hotkeys",
       "notifications": "Notifications",
+      "experimental": "Experimental",
       "config": "Configuration"
     },
     "profile": {
@@ -41,6 +42,7 @@
       "sectionHint": "Click a shortcut, then press the new key combination. Esc cancels.",
       "edit_last_message": "Edit last sent message",
       "toggle_settings": "Open / close settings",
+      "send_message": "Send message",
       "pressKey": "Press a key…",
       "reset": "Reset to defaults"
     },
@@ -49,7 +51,18 @@
       "enableTitle": "Enable notifications",
       "enableHint": "Show desktop notifications when you receive new messages",
       "soundTitle": "Notification sound",
-      "soundHint": "Play sound when you receive new messages"
+      "soundHint": "Play sound when you receive new messages",
+      "newsTitle": "Show news",
+      "newsHint": "Display news and announcements"
+    },
+    "experimental": {
+      "sectionTitle": "Experimental",
+      "newsTitle": "Show news",
+      "newsHint": "Display news and announcements",
+      "fullEditorTitle": "Enable full editor",
+      "fullEditorHint": "Allow opening the full message editor from the input",
+      "sendKeyTitle": "Send key",
+      "sendKeyHint": "Choose which key combination sends messages"
     },
     "config": {
       "sectionTitle": "Configuration",
@@ -168,7 +181,32 @@
     "select_emoji": "Emoji",
     "open_gif_panel": "Open GIF panel",
     "send_enter": "Send (Enter)",
-    "send_message": "Send message"
+    "send_message": "Send message",
+    "send_shift_enter": "Send (Shift+Enter)",
+    "send_ctrl_enter": "Send (Ctrl+Enter)"
+  },
+  "full_editor": {
+    "title": "Compose message",
+    "close": "Close (Esc)",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strikethrough": "Strikethrough",
+    "spoiler": "Spoiler",
+    "code": "Code",
+    "heading": "Heading",
+    "quote": "Quote",
+    "bullet_list": "Bullet list",
+    "ordered_list": "Ordered list",
+    "link": "Link",
+    "horizontal_rule": "Horizontal rule",
+    "inline_math": "Inline math",
+    "placeholder": "Write your message... (Ctrl+Enter to send)",
+    "send": "Send",
+    "send_hint": "Send (Ctrl+Enter)"
+  },
+  "codemirror_editor": {
+    "placeholder": "Write a message..."
   },
   "emoji_picker": {
     "title": "Emoji",

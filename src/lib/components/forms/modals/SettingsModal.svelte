@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, type ComponentType } from 'svelte';
-  import { User, Palette, Settings as SettingsIcon, Globe, Wifi, Bell, Keyboard } from 'lucide-svelte';
+  import { User, Palette, Settings as SettingsIcon, Globe, Wifi, Bell, Keyboard, FlaskConical } from 'lucide-svelte';
   import Modal from '$lib/components/overlays/Modal.svelte';
   
   import Avatar from '$lib/components/shared/Avatar.svelte';
@@ -18,6 +18,7 @@
     DEFAULT_HOTKEYS,
   } from '$lib/stores/hotkeys';
   import { logout, loggedIn } from '$lib/stores/auth';
+  import { newsEnabled } from '$lib/stores/news';
   import { SUPPORTED_LOCALES, changeLocale } from '$lib/i18n';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -28,7 +29,7 @@
   export let zIndex: number = 1000;
 
   // Types
-  type SettingsSection = 'profile' | 'appearance' | 'hotkeys' | 'notifications' | 'config';
+  type SettingsSection = 'profile' | 'appearance' | 'hotkeys' | 'notifications' | 'config' | 'experimental';
   type NavItem = { id: SettingsSection; labelKey: string; icon: ComponentType };
 
   // Event dispatcher
@@ -47,12 +48,14 @@
     { id: 'appearance', labelKey: 'settings.nav.appearance', icon: Palette },
     { id: 'hotkeys', labelKey: 'settings.nav.hotkeys', icon: Keyboard },
     { id: 'notifications', labelKey: 'settings.nav.notifications', icon: Bell },
+    { id: 'experimental', labelKey: 'settings.nav.experimental', icon: FlaskConical },
     { id: 'config', labelKey: 'settings.nav.config', icon: SettingsIcon },
   ];
 
   const HOTKEY_ACTIONS: { action: HotkeyAction; labelKey: string }[] = [
     { action: 'edit_last_message', labelKey: 'settings.hotkeys.edit_last_message' },
     { action: 'toggle_settings', labelKey: 'settings.hotkeys.toggle_settings' },
+    { action: 'send_message', labelKey: 'settings.hotkeys.send_message' },
   ];
 
   // State
@@ -69,6 +72,8 @@
   let isConfigDirty = false;
   let isSavingConfig = false;
   let configError: string | null = null;
+  let hotkeysInitialized = false;
+  let isHotkeysDirty = false;
   let showAvatarEditor = false;
   let avatarEditFile: File | null = null;
   let capturingHotkey: HotkeyAction | null = null;
@@ -99,14 +104,20 @@
     profileError = null;
   }
 
+  $: if (open && !hotkeysInitialized) {
+    hotkeysInitialized = true;
+  }
+
   $: if (!open) {
     profileInitialized = false;
+    hotkeysInitialized = false;
     avatarError = null;
     profileError = null;
     configError = null;
     localConfig = null;
     configInitialized = false;
     isConfigDirty = false;
+    isHotkeysDirty = false;
     stopCaptureHotkey();
     activeSection = $loggedIn ? 'profile' : 'appearance';
   }
@@ -345,6 +356,22 @@
     }
   }
 
+  function updateExperimentalField(field: keyof typeof $config.app.experimental, value: any) {
+    if (!localConfig) return;
+
+    localConfig = {
+      ...localConfig,
+      app: {
+        ...localConfig.app,
+        experimental: {
+          ...localConfig.app.experimental,
+          [field]: value,
+        },
+      },
+    };
+    checkIfConfigDirty();
+  }
+
   function formatPort(value: string): number {
     const port = parseInt(value, 10);
     return Number.isNaN(port) ? 80 : Math.min(Math.max(port, 1), 65535);
@@ -377,6 +404,23 @@
     </nav>
 
     <div class="settings-content">
+      {#if isConfigDirty && ['config', 'notifications', 'experimental'].includes(activeSection)}
+        <div class="config-prompt">
+          <div class="prompt-text">{$t('settings.config.savePrompt')}</div>
+          <button
+            class="btn primary"
+            on:click={handleConfigSave}
+            disabled={isSavingConfig}
+          >
+            {#if isSavingConfig}
+              <span>{$t('settings.config.saving')}</span>
+            {:else}
+              <span>{$t('settings.config.save')}</span>
+            {/if}
+          </button>
+        </div>
+      {/if}
+      
       {#if activeSection === 'profile'}
         <section class="section">
           <h3>{$t('settings.profile.sectionTitle')}</h3>
@@ -597,6 +641,43 @@
                 <span class="slider"></span>
               </label>
             </div>
+
+            <div class="appearance-row">
+              <div>
+                <div class="row-title">{$t('settings.notifications.newsTitle')}</div>
+                <div class="row-hint">{$t('settings.notifications.newsHint')}</div>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={$newsEnabled}
+                  on:change={(e) => newsEnabled.set(e.currentTarget?.checked ?? false)}
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+      {:else if activeSection === 'experimental'}
+        <section class="section">
+          <h3>{$t('settings.experimental.sectionTitle')}</h3>
+
+          <div class="appearance-block">
+            <div class="appearance-row">
+              <div>
+                <div class="row-title">{$t('settings.experimental.fullEditorTitle')}</div>
+                <div class="row-hint">{$t('settings.experimental.fullEditorHint')}</div>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  checked={localConfig?.app?.experimental?.enableFullEditor ?? true}
+                  on:change={(e) => updateExperimentalField('enableFullEditor', e.currentTarget?.checked ?? false)}
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </section>
 
@@ -606,23 +687,6 @@
 
           {#if localConfig}
             <div class="config-block">
-              {#if isConfigDirty}
-                <div class="config-prompt">
-                  <div class="prompt-text">{$t('settings.config.savePrompt')}</div>
-                  <button
-                    class="btn primary"
-                    on:click={handleConfigSave}
-                    disabled={isSavingConfig}
-                  >
-                    {#if isSavingConfig}
-                      <span>{$t('settings.config.saving')}</span>
-                    {:else}
-                      <span>{$t('settings.config.save')}</span>
-                    {/if}
-                  </button>
-                </div>
-              {/if}
-
               <div class="config-group">
                 <div class="group-header">
                   <Globe size={18} />
@@ -742,8 +806,10 @@
           {/if}
         </section>
       {/if}
+      
     </div>
   </div>
+  
 </Modal>
 
 {#if showAvatarEditor && avatarEditFile}
