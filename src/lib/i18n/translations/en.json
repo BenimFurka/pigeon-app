@@ -166,6 +166,8 @@
     "loading": "Loading...",
     "new_messages": "New messages",
     "loading_messages": "Loading messages...",
+    "load_error": "Could not load messages",
+    "load_error_hint": "Check your connection. Cached messages will appear when available.",
     "scroll_down": "Scroll down"
   },
   "reaction_list": {

@@ -16,7 +16,8 @@
     import { messageKeys } from '$lib/queries/messages';
     import { useCurrentProfile } from '$lib/queries/profile';
     import CodeMirrorEditor from '$lib/components/editor/CodeMirrorEditor.svelte';
-    
+    import { md, normalizeMarkdown } from '$lib/utils/markdown';
+
     // Props
     export let chatId: number | null = null;
     export let chatContext: {
@@ -50,6 +51,12 @@
     $: isMobile = chatContext.isMobile;
     $: showFullEditor = allowFullEditor && $config.app.experimental.enableFullEditor;
     $: sendKeyBinding = $hotkeys.send_message;
+
+    $: renderedReplyContent = replyToMessage?.content ? (() => {
+        const normalized = normalizeMarkdown(replyToMessage.content);
+        const processed = md.render(normalized).trim().replace(/<\/div>\s*\n/g, '</div>');
+        return processed;
+    })() : '';
 
     function getUrl(path: string): string {
         const baseUrl = getServerUrl();
@@ -291,13 +298,13 @@
             {/if}
             <div class="reply-info">
                 <span class="reply-label">{$_('message_input.reply_to')}:</span>
-                <div class="reply-content-container">
+                <div class="reply-content-container markdown-inline">
                     <div class="reply-content">
                         {#if replyToMessage.media && replyToMessage.media.length > 0}
                             <em class="attachment-type">{getMediaTypeName(replyToMessage.media[0], $_)}</em>
-                            {#if replyToMessage.content} {replyToMessage.content}{/if}
-                        {:else}
-                            {replyToMessage.content}
+                        {/if}
+                        {#if renderedReplyContent}
+                            <span class="reply-text-content">{@html renderedReplyContent}</span>
                         {/if}
                     </div>
                 </div>
@@ -417,7 +424,9 @@
     {/if}
 </div>
 
-<style>
+<style lang="scss">
+    @import '../../../styles/markdown/markdown-inline.scss';
+
     .message-input-container {
         display: flex;
         flex-direction: column;
@@ -468,6 +477,8 @@
     }
     
     .reply-content {
+        @extend .markdown-inline;
+        
         font-size: 0.85em;
         overflow: hidden;
         text-overflow: ellipsis;
