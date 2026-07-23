@@ -55,7 +55,7 @@ jobs:
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
-        run: npm install # change this to npm, yarn or pnpm depending on which one you use.
+        run: npm ci # change this to npm, yarn or pnpm depending on which one you use.
 
       - uses: tauri-apps/tauri-action@v1
         env:
@@ -78,7 +78,7 @@ jobs:
 
       - name: Resolve app version
         id: version
-        run: echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(jq -r '.version' src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
 
       - name: setup node
         uses: actions/setup-node@v6
@@ -129,61 +129,8 @@ jobs:
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
-      - name: Setup Android signing
-        env:
-          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        if: env.ANDROID_KEY_BASE64 != ''
-        run: |
-          cd src-tauri/gen/android
-          echo "keyAlias=${ANDROID_KEY_ALIAS}" > keystore.properties
-          echo "password=${ANDROID_KEY_PASSWORD}" >> keystore.properties
-          base64 -d <<< "${ANDROID_KEY_BASE64}" > "$RUNNER_TEMP/keystore.jks"
-          echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
-
-      - name: Configure release signing in Gradle
-        env:
-          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
-        if: env.ANDROID_KEY_BASE64 != ''
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          path = Path("src-tauri/gen/android/app/build.gradle.kts")
-          text = path.read_text()
-          if "signingConfigs" in text:
-              raise SystemExit(0)
-          block = '''
-          signingConfigs {
-              create("release") {
-                  val keystorePropertiesFile = rootProject.file("keystore.properties")
-                  val keystoreProperties = java.util.Properties()
-                  if (keystorePropertiesFile.exists()) {
-                      keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-                  }
-                  keyAlias = keystoreProperties["keyAlias"] as String
-                  keyPassword = keystoreProperties["password"] as String
-                  storeFile = file(keystoreProperties["storeFile"] as String)
-                  storePassword = keystoreProperties["password"] as String
-              }
-          }
-          '''.strip() + "\n    "
-          needle = "    buildTypes {"
-          if needle not in text:
-              raise SystemExit("build.gradle.kts layout changed; update signing patch")
-          text = text.replace(needle, block + needle, 1)
-          text = text.replace(
-              "        getByName(\"release\") {\n            isMinifyEnabled = true",
-              "        getByName(\"release\") {\n            signingConfig = signingConfigs.getByName(\"release\")\n            isMinifyEnabled = true",
-              1,
-          )
-          path.write_text(text)
-          PY
-
-      - name: Build Android APK
-        run: npm run android:build
-        env:
-          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+      - name: Build Android APK (debug + universal + per-abi)
+        run: npm run android:build -- --debug --split-per-abi
 
       - name: Upload APK workflow artifact
         uses: actions/upload-artifact@v4
