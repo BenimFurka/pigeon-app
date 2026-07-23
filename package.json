@@ -18,7 +18,7 @@
 		"build:tauri": "cross-env TAURI_BUILD=true npm run build",
 		"android:init": "tauri android init",
 		"android:dev": "tauri android dev",
-		"android:build": "tauri android build --apk"
+		"android:build": "cross-env TAURI_BUILD=true tauri android build --apk"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.9",
