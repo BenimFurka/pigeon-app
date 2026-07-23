@@ -131,7 +131,9 @@ jobs:
 
       - name: Build Android APK (debug + universal + per-abi)
         run: npm run android:build -- --debug --split-per-abi
-
+        env:
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          
       - name: Upload APK workflow artifact
         uses: actions/upload-artifact@v4
         with:
