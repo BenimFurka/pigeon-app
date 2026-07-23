@@ -1,7 +1,7 @@
 {
 	"name": "pigeon-app",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.8.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -14,8 +14,11 @@
 		"lint": "eslint . --ext .js,.ts,.svelte --ignore-path .gitignore",
 		"lint:fix": "eslint . --ext .js,.ts,.svelte --fix --ignore-path .gitignore",
 		"test": "vitest",
-		"test:run": "vitest run",		
-	    	"build:tauri": "cross-env TAURI_BUILD=true npm run build"
+		"test:run": "vitest run",
+		"build:tauri": "cross-env TAURI_BUILD=true npm run build",
+		"android:init": "tauri android init",
+		"android:dev": "tauri android dev",
+		"android:build": "tauri android build --apk"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.9",

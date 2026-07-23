@@ -1,78 +1,57 @@
-// inline markdown preview styles
+.markdown-inline,
+.reply-text-content {
+    display: inline-flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    line-height: 1.35 !important;
+    height: 1.35em !important;
+    vertical-align: middle !important;
 
-.markdown-inline {
-    display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1;
-    height: 1em;
-
-    :global(*) {
+    :global(p), 
+    :global(h1), :global(h2), :global(h3), :global(h4), :global(h5), :global(h6),
+    :global(ul), :global(ol), :global(li), 
+    :global(blockquote), :global(table), :global(tr), :global(td), :global(th), 
+    :global(div), :global(span) {
         display: inline !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
+        font-size: 1em !important;
+        font-weight: normal !important;
+        line-height: 1.35 !important;
+        white-space: nowrap !important;
     }
 
-    :global(p) {
-        display: inline;
-        margin: 0;
-    }
-
-    :global(h1),
-    :global(h2),
-    :global(h3),
-    :global(h4),
-    :global(h5),
-    :global(h6) {
-        display: inline;
-        margin: 0;
-        font-size: 1em;
-        font-weight: 600;
-    }
-
-    :global(ul),
-    :global(ol) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-    }
-
-    :global(li) {
-        display: inline;
-        margin: 0;
+    :global(br) {
+        display: none !important;
     }
 
     :global(code) {
-        background: rgba(0, 0, 0, 0.2);
-        padding: 1px 3px;
-        border-radius: 2px;
-        font-size: 0.9em;
+        display: inline !important;
+        background: rgba(0, 0, 0, 0.15);
+        padding: 1px 4px !important;
+        border-radius: 3px;
+        font-size: 0.9em !important;
+        font-family: monospace;
+        white-space: nowrap !important;
     }
 
-    :global(blockquote) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
+    :global(img), 
+    :global(svg), 
+    :global(.katex:not(.katex-display *)), 
+    :global(.MathJax:not(.MathJax_Display *)) {
+        display: inline-block !important;
+        vertical-align: middle !important;
+        max-height: 1.2em !important;
+        margin: 0 2px !important;
     }
 
-    :global(table) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
-    }
-
-    :global(tr),
-    :global(td),
-    :global(th) {
-        display: inline;
-        margin: 0;
-        padding: 0;
-        border: none;
+    :global(.katex-display), 
+    :global(.MathJax_Display), 
+    :global(pre), 
+    :global(hr) {
+        display: none !important;
     }
 }

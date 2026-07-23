@@ -1,70 +1,152 @@
-import MarkdownIt from 'markdown-it';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
+import remarkRehype from 'remark-rehype';
+import rehypeRaw from 'rehype-raw';
+import rehypeStringify from 'rehype-stringify';
+import { visit } from 'unist-util-visit';
 import hljs from 'highlight.js';
+import type { Root, PhrasingContent } from 'mdast';
+import type { Element, Root as HastRoot, Text as HastText } from 'hast';
+import type { Plugin } from 'unified';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
-export const md = new MarkdownIt({
-    html: false,
-    linkify: true,
-    typographer: false,
-    breaks: false,
-    xhtmlOut: false,
-});
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
-md.disable(['lheading']);
+function splitInlinePattern(
+    tree: Root,
+    pattern: RegExp,
+    toHtml: (content: string) => string
+): void {
+    visit(tree, 'text', (node, index, parent) => {
+        if (index == null || !parent) return;
 
-md.renderer.rules.fence = function(tokens: any[], idx: number, options: any, env: any) {
-    const token = tokens[idx];
-    const info = token.info ? token.info.trim() : '';
-    const lang = info.split(' ')[0];
-    let content = token.content || '';
+        pattern.lastIndex = 0;
+        if (!pattern.test(node.value)) return;
 
-    content = content.replace(/\n+$/, '');
-    const lines = content.split('\n');
+        pattern.lastIndex = 0;
+        const newNodes: PhrasingContent[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
 
-    if (lang && hljs.getLanguage(lang)) {
-        try {
-            const highlighted = hljs.highlight(content, { language: lang, ignoreIllegals: true }).value;
-            const highlightedLines = highlighted.split('\n');
-            const langDisplay = lang.toUpperCase();
-
-            let codeHtml = '';
-            for (let i = 0; i < lines.length; i++) {
-                const lineNumber = i + 1;
-                const highlightedLine = highlightedLines[i] || '';
-                codeHtml += `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${highlightedLine}</span></div>`;
+        while ((match = pattern.exec(node.value)) !== null) {
+            if (match.index > lastIndex) {
+                newNodes.push({ type: 'text', value: node.value.slice(lastIndex, match.index) });
             }
+            newNodes.push({ type: 'html', value: toHtml(match[1]) });
+            lastIndex = match.index + match[0].length;
+        }
 
-            return `<div class="code-block"><div class="code-header">${langDisplay}</div><div class="code-content">${codeHtml}</div></div>\n`;
-        } catch (__) {}
-    }
+        if (lastIndex < node.value.length) {
+            newNodes.push({ type: 'text', value: node.value.slice(lastIndex) });
+        }
 
-    const highlighted = hljs.highlightAuto(content).value;
-    const highlightedLines = highlighted.split('\n');
-    const langDisplay = 'TEXT';
+        parent.children.splice(index, 1, ...newNodes);
+    });
+}
 
-    let codeHtml = '';
-    for (let i = 0; i < lines.length; i++) {
-        const lineNumber = i + 1;
-        const highlightedLine = highlightedLines[i] || '';
-        codeHtml += `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${highlightedLine}</span></div>`;
-    }
-
-    return `<div class="code-block"><div class="code-header">${langDisplay}</div><div class="code-content">${codeHtml}</div></div>\n`;
+const remarkSpoiler: Plugin<[], Root> = () => (tree) => {
+    splitInlinePattern(tree, /\|\|([^|\n]+?)\|\|/g, (content) =>
+        `<span class="spoiler">${escapeHtml(content)}</span>`
+    );
 };
 
-md.renderer.rules.text = function(tokens: any[], idx: number) {
-    let content = tokens[idx].content;
-    content = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    content = content.replace(/\n/g, '<br>');
-    content = content.replace(/\|\|([^|]+)\|\|/g, '<span class="spoiler">$1</span>');
-    return content;
+const remarkUnderline: Plugin<[], Root> = () => (tree) => {
+    splitInlinePattern(tree, /\+\+([^+\n]+?)\+\+/g, (content) =>
+        `<u>${escapeHtml(content)}</u>`
+    );
 };
 
-md.renderer.rules.bullet_list_open = function() { return '<ul>'; };
-md.renderer.rules.bullet_list_close = function() { return '</ul>'; };
-md.renderer.rules.ordered_list_open = function() { return '<ol>'; };
-md.renderer.rules.ordered_list_close = function() { return '</ol>'; };
-md.renderer.rules.list_item_open = function() { return '<li>'; };
-md.renderer.rules.list_item_close = function() { return '</li>'; };
+function getElementText(node: Element): string {
+    return node.children
+        .map((child) => {
+            if (child.type === 'text') return (child as HastText).value;
+            if (child.type === 'element') return getElementText(child as Element);
+            return '';
+        })
+        .join('');
+}
+
+const rehypeCustomCodeBlocks: Plugin<[], HastRoot> = () => (tree) => {
+    visit(tree, 'element', (node, index, parent) => {
+        if (index == null || !parent || node.tagName !== 'pre') return;
+
+        const codeEl = node.children[0];
+        if (!codeEl || codeEl.type !== 'element' || codeEl.tagName !== 'code') return;
+
+        const className = codeEl.properties?.className;
+        let lang = '';
+
+        if (Array.isArray(className)) {
+            const langClass = className.find((item) => String(item).startsWith('language-'));
+            if (langClass) lang = String(langClass).replace('language-', '');
+        } else if (typeof className === 'string' && className.startsWith('language-')) {
+            lang = className.replace('language-', '');
+        }
+
+        const content = getElementText(codeEl as Element).replace(/\n$/, '');
+        const lines = content.split('\n');
+        let highlighted: string;
+        let langDisplay = 'TEXT';
+
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                highlighted = hljs.highlight(content, { language: lang, ignoreIllegals: true }).value;
+                langDisplay = lang.toUpperCase();
+            } catch {
+                highlighted = hljs.highlightAuto(content).value;
+            }
+        } else {
+            highlighted = hljs.highlightAuto(content).value;
+        }
+
+        const highlightedLines = highlighted.split('\n');
+        let codeHtml = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            const lineNumber = i + 1;
+            const highlightedLine = highlightedLines[i] || '';
+            codeHtml += `<div class="code-line"><span class="line-number">${lineNumber}</span><span class="line-content">${highlightedLine}</span></div>`;
+        }
+
+        parent.children[index] = {
+            type: 'raw',
+            value: `<div class="code-block"><div class="code-header">${langDisplay}</div><div class="code-content">${codeHtml}</div></div>`,
+        };
+    });
+};
+
+const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkMath)
+    .use(remarkSpoiler)
+    .use(remarkUnderline)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    .use(rehypeKatex)
+    .use(rehypeCustomCodeBlocks)
+    .use(rehypeStringify, { allowDangerousHtml: true });
+
+export function renderMarkdown(text: string): string {
+    if (!text) return '';
+    
+    const normalized = normalizeMarkdown(text);
+    return processor.processSync(normalized).toString().trim();
+}
+
+/** @deprecated */
+export const md = {
+    render: renderMarkdown,
+};
 
 export function normalizeMarkdown(text: string): string {
     if (!text) return text;

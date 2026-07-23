@@ -1,8 +1,10 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { session } from '$lib/session';
     import Bar from "$lib/components/layout/Bar.svelte";
     import MessageList from "$lib/components/layout/MessageList.svelte";
     import MessageInput from "$lib/components/layout/MessageInput.svelte";
+    import FullMessageEditor from "$lib/components/layout/FullMessageEditor.svelte";
     import GlobalAudioPlayer from "$lib/components/layout/GlobalAudioPlayer.svelte";
     import { ChatType, type ChatPreview, type Chat, type MessageMedia } from '$lib/types/models';
     import ChatHeader from '$lib/components/layout/ChatHeader.svelte';
@@ -44,7 +46,6 @@
     let chat: Chat | null = null;
     let replyToMessage: import("$lib/types/models").Message | null = null;
     let rightLayoutElement: HTMLDivElement;
-    let ephemeralText = '';
     let messageInputComponent: any = null;
     
     let touchStartX = 0;
@@ -52,6 +53,9 @@
     let isSwiping = false;
     const SWIPE_THRESHOLD = 50;
     const CLOSE_THRESHOLD = 100;
+
+    let isFullEditorOpen = false;
+    let fullEditorDraft = '';
 
     function handleTouchStart(e: TouchEvent) {
         if (!isMobile || !isVisible) return;
@@ -73,14 +77,10 @@
     }
 
     function handleTouchEnd() {
-        if (isSwiping) {
-            dispatch('swipeEnd');
-        }
+        if (isSwiping) dispatch('swipeEnd');
         const deltaX = touchCurrentX - touchStartX;
         
-        if (deltaX > CLOSE_THRESHOLD) {
-            handleBackClick();
-        }
+        if (deltaX > CLOSE_THRESHOLD) handleBackClick();
         
         isSwiping = false;
         touchStartX = 0;
@@ -120,9 +120,7 @@
     // Reactive statements
     $: {
         if (selectedChat?.id && selectedChat.id > 0) {
-            const query = useChat(selectedChat.id, {
-                enabled: !!selectedChat,
-            }) as CreateQueryResult<Chat, Error>;
+            const query = useChat(selectedChat.id, { enabled: !!selectedChat }) as CreateQueryResult<Chat, Error>;
             chatQuery = query;
             // @ts-expect-error - TypeScript cannot correctly infer type of $chatQuery
             chat = $chatQuery?.data ?? null;
@@ -138,7 +136,6 @@
         }
     }
 
-    // TODO: future
     $: if (selectedChat?.id != null && selectedChat.id > 0) {
         updateChatUnreadCount(selectedChat.id, 0);
     }
@@ -154,9 +151,7 @@
         avatarProfileUser = null;
     }
     
-    function handleOpenChatInfo() {
-        showChatInfo = true;
-    }
+    function handleOpenChatInfo() { showChatInfo = true; }
     
     function handleCloseChatInfo() {
         showChatInfo = false;
@@ -164,41 +159,20 @@
         showManageMembers = false;
     }
     
-    function handleMessageFromDMChatInfo() {
-        handleCloseChatInfo();
-    }
-    
-    function handleEditChat() {
-        showChatInfo = false;
-        showEditChat = true;
-    }
-    
-    function handleCloseEditChat() {
-        showEditChat = false;
-        showChatInfo = true;
-    }
-    
-    function handleManageMembers() {
-        showChatInfo = false;
-        showManageMembers = true;
-    }
-    
-    function handleCloseManageMembers() {
-        showManageMembers = false;
-        showChatInfo = true;
-    }
+    function handleMessageFromDMChatInfo() { handleCloseChatInfo(); }
+    function handleEditChat() { showChatInfo = false; showEditChat = true; }
+    function handleCloseEditChat() { showEditChat = false; showChatInfo = true; }
+    function handleManageMembers() { showChatInfo = false; showManageMembers = true; }
+    function handleCloseManageMembers() { showManageMembers = false; showChatInfo = true; }
     
     function handleChatUpdated(updatedChat: any) {
-        if (selectedChat) {
-            selectedChat = { ...selectedChat, ...updatedChat };
-        }
+        if (selectedChat) selectedChat = { ...selectedChat, ...updatedChat };
         showEditChat = false;
         showChatInfo = true;
     }
     
     function handleMessageToUser() {
         if (!avatarProfileUser?.id) return;
-        
         const targetUser = avatarProfileUser;
         handleCloseAvatarProfileModal();
         handleCloseChatInfo();
@@ -218,26 +192,18 @@
         dispatch('select', { chat: ephemeralChat });
     }
     
-    function handleReply(event: CustomEvent) {
-        replyToMessage = event.detail.message || null;
-    }
-    
-    function handleClearReply() {
-        replyToMessage = null;
-    }
+    function handleReply(event: CustomEvent) { replyToMessage = event.detail.message || null; }
+    function handleClearReply() { replyToMessage = null; }
 
     function handleKeyDown(event: KeyboardEvent) {
         if (event.key === 'Escape') {
             const mediaViewer = document.querySelector('.media-viewer-backdrop');
-            if (mediaViewer) {
-                return;
-            }
+            if (mediaViewer) return;
             
-            if (showAvatarProfile) {
-                handleCloseAvatarProfileModal();
-            } else if (showChatInfo || showEditChat || showManageMembers) {
-                handleCloseChatInfo();
-            } else if (selectedChat) {
+            if (showAvatarProfile) handleCloseAvatarProfileModal();
+            else if (showChatInfo || showEditChat || showManageMembers) handleCloseChatInfo();
+            else if (isFullEditorOpen) isFullEditorOpen = false;
+            else if (selectedChat) {
                 onBack();
                 replyToMessage = null;
             }
@@ -271,23 +237,16 @@
             user_voted_options: []
         } as MessageMedia;
 
-         if (messageInputComponent && messageInputComponent.handleSubmit) {
+        if (messageInputComponent && messageInputComponent.handleSubmit) {
             messageInputComponent.handleSubmit(undefined, [pollMedia]);
-        } else {
-           if (selectedChat && selectedChat.id > 0) {
-                wsService.send({
-                    type: 'send_message',
-                    data: {
-                        chat_id: selectedChat.id,
-                        content: '',
-                        media: [pollMedia]
-                    }
-                });
-            }
+        } else if (selectedChat && selectedChat.id > 0) {
+            wsService.send({
+                type: 'send_message',
+                data: { chat_id: selectedChat.id, content: '', media: [pollMedia] }
+            });
         }
     }
 
-    // Utility functions
     function updateChatUnreadCount(chatId: number, unreadCount: number = 0, lastReadMessageId?: number) {
         queryClient.setQueryData<import('$lib/types/models').ChatPreview[] | undefined>(chatKeys.previews(), (prev) => {
             if (!prev) return prev;
@@ -325,7 +284,6 @@
                         attachment_ids: (attachmentIds && attachmentIds.length ? attachmentIds : undefined) as any
                     }
                 } as any);
-                ephemeralText = '';
             }
         } catch (e) {
             console.error('Failed to create DM and send message', e);
@@ -381,18 +339,24 @@
                 {chatContext}
                 chatId={null}
                 on:ephemeralSend={({ detail }) => void sendEphemeralMessage(detail.content, detail.attachmentIds)}
-                bind:this={messageInputComponent}            
+                bind:this={messageInputComponent}
+                on:openFullEditor={({ detail }) => {
+                    fullEditorDraft = detail.content;
+                    isFullEditorOpen = true;
+                }}           
             />
         {:else if (selectedChat?.chat_type === ChatType.DM) || myMembership?.can_send_messages || (selectedChat?.chat_type === ChatType.CHANNEL && isCreator)}
             <MessageInput 
                 {chatContext}
                 chatId={Number(selectedChat.id)}
                 bind:this={messageInputComponent}
+                on:openFullEditor={({ detail }) => {
+                    fullEditorDraft = detail.content;
+                    isFullEditorOpen = true;
+                }}
             />
         {:else}
-            <ChatAccessPrompt
-                {chatContext}
-            />
+            <ChatAccessPrompt {chatContext} />
         {/if}
     {/if}
     
@@ -453,6 +417,46 @@
             />
         {/if}
     {/if}
+
+    <FullMessageEditor
+        isOpen={isFullEditorOpen}
+        chatId={selectedChat?.id && selectedChat.id > 0 ? Number(selectedChat.id) : null}
+        {chatContext}
+        initialDraft={fullEditorDraft}
+        on:close={(event) => {
+            fullEditorDraft = event.detail.draft;
+            if (messageInputComponent && fullEditorDraft) {
+                messageInputComponent.setMarkdown(fullEditorDraft);
+            }
+            isFullEditorOpen = false;
+        }}
+        on:send={async (event) => {
+            const { content, attachmentIds, media } = event.detail;
+            
+            if (selectedChat && selectedChat.id > 0) {
+                session.addOptimisticMessage(selectedChat.id, content, {
+                    reply_to: replyToMessage?.id ?? undefined,
+                    attachment_ids: attachmentIds?.length ? attachmentIds : undefined,
+                    media: media?.length ? media : undefined,
+                });
+
+                const messageData = {
+                    chat_id: selectedChat.id,
+                    content,
+                    reply_to: replyToMessage?.id,
+                };
+
+                if (attachmentIds?.length) messageData.attachment_ids = attachmentIds;
+                if (media?.length) messageData.media = media;
+
+                wsService.send({ type: 'send_message', data: messageData });
+                fullEditorDraft = '';
+            } else if (isEphemeralDm) {
+                await sendEphemeralMessage(content, attachmentIds);
+                fullEditorDraft = '';
+            }
+        }}
+    />
 </div>
 
 <style>
@@ -468,16 +472,7 @@
         background: var(--color-bg);
     }
     
-    .right-layout:focus {
-        outline: none;
-    }
-
-    .right-layout.mobile-hidden {
-        transform: translateX(100%);
-        pointer-events: none;
-    }
-
-    .right-layout.mobile-visible {
-        transform: translateX(0);
-    }
+    .right-layout:focus { outline: none; }
+    .right-layout.mobile-hidden { transform: translateX(100%); pointer-events: none; }
+    .right-layout.mobile-visible { transform: translateX(0); }
 </style>

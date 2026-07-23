@@ -15,10 +15,13 @@ const initialConfig = {
   
   app: {
     defaultLanguage: 'en',
-    version: '1.0.0',
+    version: '1.8.0',
     notifications: {
       enabled: true,
       sound: true
+    },
+    experimental: {
+      enableFullEditor: true
     }
   }
 };

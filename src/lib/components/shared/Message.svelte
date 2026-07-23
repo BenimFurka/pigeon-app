@@ -479,7 +479,7 @@
                 
                 <div class="message-row">
                     {#if message.content}
-                        <div class="message-text" role="button" tabindex="0" on:click|stopPropagation={handleSpoilerClick} on:keydown={(e) => e.key === 'Enter' && handleSpoilerClick(e)}>{@html renderedContent}</div>
+                        <div class="markdown-content" role="button" tabindex="0" on:click|stopPropagation={handleSpoilerClick} on:keydown={(e) => e.key === 'Enter' && handleSpoilerClick(e)}>{@html renderedContent}</div>
                     {/if}
                     
                     {#if !(messageReactions && messageReactions.length > 0)}
@@ -568,8 +568,8 @@
 {/if}
 
 <style lang="scss">
-    @import '../../../styles/markdown/markdown-inline.scss';
     @import '../../../styles/markdown/markdown.scss';
+    @import '../../../styles/markdown/markdown-inline.scss';
 
     .message {
         display: flex;
@@ -859,7 +859,6 @@
         gap: 4px;
         font-size: 0.7em;
         opacity: 0.7;
-        margin-top: auto;
     }
 
     .status-icon {
@@ -879,6 +878,7 @@
         flex-wrap: wrap;
         align-items: flex-end;
         width: 100%;
+        gap: 6px;
     }
 
     .reactions-footer-row {
@@ -965,9 +965,6 @@
         border: 1px solid var(--color-border);
     }
 
-    .message-text {
-        @extend .markdown-message-text;
-    }
 
     .own * {
         color: var(--color-button-text);
