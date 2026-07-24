@@ -25,7 +25,7 @@ tauri-plugin-log = "2.0.0-rc"
 tauri-plugin-fs = "2.0.0-rc"
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.20", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.20", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 url = "2.4"
 thiserror = "1.0"
