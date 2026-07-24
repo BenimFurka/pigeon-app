@@ -139,7 +139,7 @@ jobs:
           cd src-tauri/gen/android
           echo "keyAlias=${ANDROID_KEY_ALIAS}" > keystore.properties
           echo "password=${ANDROID_KEY_PASSWORD}" >> keystore.properties
-          echo "${ANDROID_KEY_BASE64}" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+          base64 -d <<< "${ANDROID_KEY_BASE64}" > "$RUNNER_TEMP/keystore.jks"
           echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
 
       - name: Configure release signing in Gradle
@@ -148,26 +148,18 @@ jobs:
         if: env.ANDROID_KEY_BASE64 != ''
         run: |
           python3 <<'PY'
-          import re
           from pathlib import Path
-
           path = Path("src-tauri/gen/android/app/build.gradle.kts")
           text = path.read_text()
-
           if "signingConfigs" in text:
-              print("signingConfigs already exists, skipping patch.")
               raise SystemExit(0)
-
-          if "import java.io.FileInputStream" not in text:
-              text = "import java.io.FileInputStream\nimport java.util.Properties\n" + text
-
-          signing_block = """
+          block = '''
           signingConfigs {
               create("release") {
                   val keystorePropertiesFile = rootProject.file("keystore.properties")
-                  val keystoreProperties = Properties()
+                  val keystoreProperties = java.util.Properties()
                   if (keystorePropertiesFile.exists()) {
-                      keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+                      keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
                   }
                   keyAlias = keystoreProperties["keyAlias"] as String
                   keyPassword = keystoreProperties["password"] as String
@@ -175,19 +167,17 @@ jobs:
                   storePassword = keystoreProperties["password"] as String
               }
           }
-          """.strip()
-
-          text = re.sub(r'(\n\s*buildTypes \{)', f'\n{signing_block}\\1', text, count=1)
-
-          text = re.sub(
-              r'(getByName\("release"\) \{\n\s*)(isMinifyEnabled)',
-              r'\1signingConfig = signingConfigs.getByName("release")\n\2',
-              text,
-              count=1
+          '''.strip() + "\n    "
+          needle = "    buildTypes {"
+          if needle not in text:
+              raise SystemExit("build.gradle.kts layout changed; update signing patch")
+          text = text.replace(needle, block + needle, 1)
+          text = text.replace(
+              "        getByName(\"release\") {\n            isMinifyEnabled = true",
+              "        getByName(\"release\") {\n            signingConfig = signingConfigs.getByName(\"release\")\n            isMinifyEnabled = true",
+              1,
           )
-
           path.write_text(text)
-          print("Gradle file patched successfully for release signing.")
           PY
 
       - name: Build Android APK (release + per-abi)
