@@ -191,7 +191,7 @@ jobs:
           PY
 
       - name: Build Android APK (release + per-abi)
-        run: npm run android:build -- --release --split-per-abi
+        run: npm run android:build -- --split-per-abi
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
